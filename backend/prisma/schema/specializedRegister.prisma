@@ -1,0 +1,55 @@
+// !--- Specialized Register table ---! //
+model SpecializedRegister {
+  id                 Int                 @id @default(autoincrement())
+  interestedMajorId  Int                 @map("interested_major_id")
+  interestedMajor    MajorData           @relation("InterestedMajor", fields: [interestedMajorId], references: [id])
+  specificMajorId    Int                 @map("specific_major_id")
+  specificMajor      MajorData           @relation("SpecificMajor", fields: [specificMajorId], references: [id])
+  admissionYear      Int?                @map("admission_year")
+  englishCertificate EnglishCertificate? @map("english_certificate")
+  gpa                GPA                 @map("gpa")
+  programScore       ProgramScore        @map("program_score")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
+
+  student Student?
+
+  @@map("specialized_register")
+}
+
+enum EnglishCertificate {
+  IELTS
+  TOEFL
+  TOEIC
+  VSTEP
+  APTIS
+  LINGUASKILL
+  PEIC
+  CAMBRIDGE_EXAM
+  PTE
+  other
+}
+
+enum GPA {
+  LOWER_21
+  G11_21_TO_23
+  G12_SEM1_21_TO_23
+  G12_21_TO_23
+  G11_24_TO_26
+  G12_SEM1_24_TO_26
+  G12_24_TO_26
+  G11_HIGHER_26
+  G12_SEM1_HIGHER_26
+  G12_HIGHER_26
+  OTHER
+}
+
+enum ProgramScore {
+  TALENT_SCHOLARSHIP
+  OTHER_SCHOLARSHIP
+  ELIGIBLE_NO_SCHOLARSHIP
+  PENDING_REVIEW
+  NOT_ELIGIBLE
+  OTHER
+}

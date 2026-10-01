@@ -1,0 +1,23 @@
+// !--- Account table ---! //
+model Account {
+  id        Int      @id @default(autoincrement())
+  roleId    Int?     @map("role_id")
+  groupId   Int?     @map("group_id")
+  password  String   @db.VarChar(255)
+  fullName  String?  @map("full_name") @db.VarChar(255)
+  email     String   @unique @db.VarChar(255)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  role             Role?              @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  group            UserGroup?         @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  leadingGroups    UserGroup[]        @relation("GroupLeader")
+  groupsCreated    UserGroup[]        @relation("GroupCreator")
+  inquiries        Inquiry[]
+  campaignsOwned   Campaign[]         @relation("CampaignOwner")
+  campaignsCreated Campaign[]         @relation("CampaignCreator")
+  templatesCreated CampaignTemplate[]
+  errorReports     ErrorReport[]
+
+  @@map("account")
+}

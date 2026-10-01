@@ -1,0 +1,86 @@
+// !--- Campaign tables ---! //
+
+enum ActivityType {
+  EMAIL
+  SMS
+  ZNS
+}
+
+model Campaign {
+  id          Int       @id @default(autoincrement())
+  name        String    @db.VarChar(255)
+  description String?
+  ownerId     Int       @map("owner_id")
+  status      String    @db.VarChar(50) // in_progress, completed, scheduled, cancelled
+  startDate   DateTime  @map("start_date")
+  endDate     DateTime? @map("end_date")
+  notes       String?
+  createdById Int?      @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz()
+
+  owner      Account            @relation("CampaignOwner", fields: [ownerId], references: [id])
+  createdBy  Account?           @relation("CampaignCreator", fields: [createdById], references: [id])
+  activities CampaignActivity[]
+
+  @@map("campaign")
+}
+
+model CampaignActivity {
+  id          Int          @id @default(autoincrement())
+  campaignId  Int          @map("campaign_id")
+  type        ActivityType
+  name        String       @db.VarChar(255)
+  subject     String?      @db.VarChar(255) // email only
+  content     String? // plain text or rich HTML
+  templateId  Int?         @map("template_id")
+  status      String       @default("draft") @db.VarChar(50) // draft, scheduled, sent, failed
+  scheduledAt DateTime?    @map("scheduled_at")
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime     @default(now()) @map("updated_at") @db.Timestamptz()
+
+  campaign   Campaign            @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  template   CampaignTemplate?   @relation(fields: [templateId], references: [id])
+  recipients CampaignRecipient[]
+
+  @@map("campaign_activity")
+}
+
+model CampaignRecipient {
+  id         Int      @id @default(autoincrement())
+  activityId Int      @map("activity_id")
+  inquiryId  Int      @map("inquiry_id")
+  email      String?  @db.VarChar(255)
+  mobile     String?  @db.VarChar(20)
+  fullName   String?  @map("full_name") @db.VarChar(255)
+  status     String?  @db.VarChar(50) // pending, sent, failed
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  activity CampaignActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  inquiry  Inquiry          @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  @@map("campaign_recipient")
+}
+
+enum CampaignTemplateStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+model CampaignTemplate {
+  id          Int                    @id @default(autoincrement())
+  name        String                 @db.VarChar(255)
+  channel     ActivityType
+  subject     String?                @db.VarChar(255) // Only for "Email" channel
+  content     String // plain text or rich text html
+  status      CampaignTemplateStatus @default(ACTIVE)
+  createdById Int?                   @map("created_by_id")
+  createdAt   DateTime               @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime               @default(now()) @map("updated_at") @db.Timestamptz()
+
+  createdBy  Account?           @relation(fields: [createdById], references: [id])
+  activities CampaignActivity[]
+
+  @@map("campaign_template")
+}

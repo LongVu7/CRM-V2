@@ -1,0 +1,28 @@
+enum SourceLevel {
+  source
+  sourceDetail   @map("source_detail")
+  approachMethod @map("approach_method")
+}
+
+model SourceData {
+  id        Int         @id @default(autoincrement())
+  name      String      @db.VarChar(255)
+  label     String      @db.VarChar(255)
+  level     SourceLevel
+  sortOrder Int         @default(0) @map("sort_order")
+  isActive  Boolean     @default(true) @map("is_active")
+
+  parentId Int?         @map("parent_id")
+  parent   SourceData?  @relation("SourceHierarchy", fields: [parentId], references: [id])
+  children SourceData[] @relation("SourceHierarchy")
+
+  inquiries Inquiry[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
+
+  @@unique([name, parentId])
+  @@index([parentId])
+  @@index([level])
+  @@map("source_data")
+}

@@ -1,0 +1,16 @@
+model UserGroup {
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar(255)
+
+  groupLeaderId Int? @map("group_leader")
+
+  groupLeader Account? @relation("GroupLeader", fields: [groupLeaderId], references: [id], onDelete: SetNull)
+
+  createdById Int?     @map("created_by_id")
+  createdBy   Account? @relation("GroupCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  accounts    Account[]
+  permissions GroupPermission[]
+
+  @@map("user_group")
+}

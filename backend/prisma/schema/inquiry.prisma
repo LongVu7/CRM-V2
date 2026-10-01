@@ -1,0 +1,64 @@
+// !--- Inquiry table ---! //
+model Inquiry {
+  id Int @id @default(autoincrement())
+
+  assignedToId Int? @map("assigned_to_id")
+
+  statusDataId Int?        @map("status_data_id")
+  statusData   StatusData? @relation(fields: [statusDataId], references: [id])
+
+  description String?
+
+  dataReceived DateTime? @map("data_received") @db.Date
+
+  sourceDataId Int?        @map("source_data_id")
+  sourceData   SourceData? @relation(fields: [sourceDataId], references: [id])
+
+  groupTele String? @map("group_tele") @db.VarChar(50)
+
+  interactionAt      DateTime?           @map("interaction_at") @db.Timestamptz()
+  callCount          Int?                @map("call_count")
+  eventNames         EventName[]         @default([]) @map("event_names")
+  callLog            String?             @map("call_log") @db.Text
+  recordFile         String?             @map("record_file")
+  compensationStatus CompensationStatus? @map("compensation_status")
+  priority           Priority?           @map("priority")
+
+  createDate DateTime? @map("create_date") @db.Timestamptz()
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+
+  firstProcessedAt  DateTime? @map("first_processed_at") @db.Timestamptz()
+  firstInteractedAt DateTime? @map("first_interacted_at") @db.Timestamptz()
+  nbAt              DateTime? @map("nb_at") @db.Timestamptz()
+
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
+
+  assignedTo Account? @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  studentId Int?     @unique @map("student_id")
+  student   Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  campaignRecipients CampaignRecipient[]
+
+  @@index([createdAt])
+  @@index([sourceDataId])
+  @@index([firstProcessedAt])
+  @@index([firstInteractedAt])
+  @@index([nbAt])
+  @@map("inquiry")
+}
+
+enum EventName {
+  TALKSHOW
+  LIVESTREAM
+  OPEN_DAY
+  COFFEE_TALK
+  CAMPUS_TOUR
+  WORKSHOP
+  ONE_ON_ONE_CONSULTATION
+}
+
+enum CompensationStatus {
+  REPORTED
+  COMPENSATED
+}

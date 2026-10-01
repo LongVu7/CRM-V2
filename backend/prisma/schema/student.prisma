@@ -1,0 +1,118 @@
+// !--- Student table ---! //
+model Student {
+  id       Int    @id @default(autoincrement())
+  fullName String @map("full_name") @db.VarChar(255)
+
+  gender String @db.VarChar(20)
+
+  email String? @db.VarChar(255)
+
+  mobile String @unique @db.VarChar(20)
+
+  otherPhone String? @map("other_phone") @db.VarChar(20)
+
+  birthDate DateTime? @map("birth_date") @db.Date
+
+  parentPhone String? @map("parent_phone") @db.VarChar(20)
+
+  primaryAddress String? @map("primary_address") @db.VarChar(255)
+
+  education StudentEducation?
+
+  specializedRegisterId Int?                 @unique @map("specialized_register_id")
+  specializedRegister   SpecializedRegister? @relation(fields: [specializedRegisterId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
+
+  inquiry Inquiry?
+
+  @@index([mobile])
+  @@map("student")
+}
+
+model NewProvince {
+  id   Int    @id @default(autoincrement())
+  name String @unique @db.VarChar(255)
+
+  studentEducations StudentEducation[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
+
+  @@map("new_province")
+}
+
+model Country {
+  id Int @id @default(autoincrement())
+
+  code String? @unique @db.VarChar(3)
+  name String  @unique @db.VarChar(255)
+
+  studentEducations StudentEducation[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
+
+  @@map("country")
+}
+
+enum ProvinceGroup {
+  HO_CHI_MINH
+  CORE_PROVINCE
+  OTHER_PROVINCE
+  FOREIGN
+}
+
+enum Priority {
+  I
+  II
+  III
+  IV
+  V
+}
+
+enum StudentClass {
+  GRADE_11
+  GRADE_12
+  FREELANCE
+}
+
+enum SchoolType {
+  A_STAR
+  A
+  B
+  C
+  D
+}
+
+model StudentEducation {
+  id Int @id @default(autoincrement())
+
+  studentId Int     @unique @map("student_id")
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  schoolId Int?    @map("school_id")
+  school   School? @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+
+  newProvinceId Int         @map("new_province_id")
+  newProvince   NewProvince @relation(fields: [newProvinceId], references: [id])
+
+  countryId Int     @map("country_id")
+  country   Country @relation(fields: [countryId], references: [id])
+
+  provinceGroup ProvinceGroup @map("province_group")
+
+  schoolType SchoolType @map("school_type")
+
+  class StudentClass @map("class")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
+
+  @@index([schoolId])
+  @@index([newProvinceId])
+  @@index([countryId])
+  @@map("student_education")
+}

@@ -1,0 +1,16 @@
+model School {
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar(255)
+
+  oldProvinceId Int         @map("old_province_id")
+  oldProvince   OldProvince @relation(fields: [oldProvinceId], references: [id])
+
+  studentEducations StudentEducation[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
+
+  @@unique([name, oldProvinceId])
+  @@index([oldProvinceId])
+  @@map("school")
+}

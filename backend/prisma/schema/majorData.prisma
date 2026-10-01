@@ -1,0 +1,28 @@
+enum MajorLevel {
+  interestedMajor @map("interested_major")
+  specificMajor   @map("specific_major")
+}
+
+model MajorData {
+  id        Int        @id @default(autoincrement())
+  name      String     @db.VarChar(255)
+  label     String     @db.VarChar(255)
+  level     MajorLevel
+  sortOrder Int        @default(0) @map("sort_order")
+  isActive  Boolean    @default(true) @map("is_active")
+
+  parentId Int?        @map("parent_id")
+  parent   MajorData?  @relation("MajorHierarchy", fields: [parentId], references: [id])
+  children MajorData[] @relation("MajorHierarchy")
+
+  interestedMajorRegisters SpecializedRegister[] @relation("InterestedMajor")
+  specificMajorRegisters   SpecializedRegister[] @relation("SpecificMajor")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
+
+  @@unique([name, parentId])
+  @@index([parentId])
+  @@index([level])
+  @@map("major_data")
+}

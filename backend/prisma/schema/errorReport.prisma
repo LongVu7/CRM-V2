@@ -1,0 +1,22 @@
+// !--- Error Report table ---! //
+model ErrorReport {
+  id          Int               @id @default(autoincrement())
+  title       String            @db.VarChar(255)
+  description String?           @db.Text
+  imageUrl    String?           @map("image_url") @db.Text
+  status      ErrorReportStatus @default(OPEN)
+
+  reportedById Int     @map("reported_by_id")
+  reportedBy   Account @relation(fields: [reportedById], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
+
+  @@map("error_report")
+}
+
+enum ErrorReportStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}

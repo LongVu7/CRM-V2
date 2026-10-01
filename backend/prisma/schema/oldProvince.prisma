@@ -1,0 +1,11 @@
+model OldProvince {
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar(255)
+
+  schools School[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
+
+  @@map("old_province")
+}

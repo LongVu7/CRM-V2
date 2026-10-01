@@ -1,0 +1,28 @@
+enum StatusLevel {
+  interaction
+  general
+  detail
+}
+
+model StatusData {
+  id        Int         @id @default(autoincrement())
+  name      String      @db.VarChar(255)
+  label     String      @db.VarChar(255)
+  level     StatusLevel
+  sortOrder Int         @default(0) @map("sort_order")
+  isActive  Boolean     @default(true) @map("is_active")
+
+  parentId Int?         @map("parent_id")
+  parent   StatusData?  @relation("StatusHierarchy", fields: [parentId], references: [id])
+  children StatusData[] @relation("StatusHierarchy")
+
+  inquiries Inquiry[]
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
+
+  @@unique([name, parentId])
+  @@index([parentId])
+  @@index([level])
+  @@map("status_data")
+}

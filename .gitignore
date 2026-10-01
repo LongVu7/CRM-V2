@@ -1,0 +1,9 @@
+docs/*
+backup/*
+.vscode/*
+.agents/*
+node_modules/*
+.env
+test/*
+.specify/*
+specs/*
