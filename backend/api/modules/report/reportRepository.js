@@ -3,6 +3,7 @@ const prisma = require('../../../config/db');
 const { BUSINESS_TZ } = require('./reportDateUtils');
 const { STATUS_BUCKETS } = require('./reportConstants');
 
+//Filters
 function buildFilters(filters) {
   let sourceFilter = Prisma.empty;
   if (filters.sourceIds && filters.sourceIds.length > 0) {
@@ -34,12 +35,14 @@ function buildFilters(filters) {
   `;
 }
 
+//Build scope condition
 function buildScopeCondition(scope) {
   if (scope.mode === 'all') return Prisma.sql`TRUE`;
   if (!scope.assignedToIds || scope.assignedToIds.length === 0) return Prisma.sql`FALSE`;
   return Prisma.sql`i.assigned_to_id IN (${Prisma.join(scope.assignedToIds)})`;
 }
 
+//Base cte for report
 const baseCte = (scopeCondition, filterCondition) => Prisma.sql`
 WITH RECURSIVE
 resolved_status AS (

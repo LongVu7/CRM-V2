@@ -13,7 +13,7 @@ const {
 const { applyStatusTransition } = require('../../utils/statusTransition');
 const { resolveHierarchy } = require('../../utils/hierarchyUtils');
 
-const importTokens = require('../../../utils/importTokenManager');
+const importTokens = require('../../utils/importTokenManager');
 
 const COLUMN_MAP = {
   'Full Name': { key: 'fullName', requiredStruct: true, requiredNew: true },

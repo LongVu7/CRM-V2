@@ -1,6 +1,6 @@
 const prisma = require('../../../config/db');
 const crypto = require('crypto');
-const importTokens = require('../../../utils/importTokenManager');
+const importTokens = require('../../utils/importTokenManager');
 const xlsx = require('xlsx');
 const { buildPaginationMeta } = require('../../utils/pagination');
 const {
