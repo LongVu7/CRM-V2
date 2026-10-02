@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
+import CallHistory from './../call/CallHistory.vue'
 import { useStudent } from '@/composables/useStudent'
 import { formatDate, formatDateTime } from '@/utils/dateUtils'
 import {
@@ -196,6 +197,11 @@ const navigateToEdit = () => {
             <span class="field-value field-value--muted">{{ formatDateTime(studentData.updatedAt) }}</span>
           </div>
         </div>
+      </div>
+      <!-- Call History -->
+      <div class="show-section" v-if="$can('call.read')">
+        <h3 class="section-title"><i class="pi pi-history"></i> Call History</h3>
+        <CallHistory :studentId="studentData.id" />
       </div>
     </div>
 

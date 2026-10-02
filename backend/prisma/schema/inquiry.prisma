@@ -40,6 +40,8 @@ model Inquiry {
 
   campaignRecipients CampaignRecipient[]
 
+  calls Call[]
+
   @@index([createdAt])
   @@index([sourceDataId])
   @@index([firstProcessedAt])

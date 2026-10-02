@@ -1,0 +1,36 @@
+// !--- AuditLog table ---! //
+
+enum AuditAction {
+  CALL_INITIATED
+  CALL_ANSWERED
+  CALL_ENDED
+  CALL_MISSED
+  DISPOSITION_SET
+  DISPOSITION_CHANGED
+  NOTE_ADDED
+  NOTE_EDITED
+  ASSOCIATION_CHANGED
+  EXTENSION_CREATED
+  EXTENSION_UPDATED
+  EXTENSION_DELETED
+}
+
+model AuditLog {
+  id         Int         @id @default(autoincrement())
+  actionType AuditAction @map("action_type")
+  actorId    Int         @map("actor_id")
+  actor      Account     @relation(fields: [actorId], references: [id])
+  entityType String?     @map("entity_type") @db.VarChar(50)
+  entityId   Int?        @map("entity_id")
+  oldValues  Json?       @map("old_values")
+  newValues  Json?       @map("new_values")
+  ipAddress  String?     @map("ip_address") @db.VarChar(45)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+  @@index([actionType])
+  @@index([createdAt])
+  @@map("audit_log")
+}

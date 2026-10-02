@@ -38,6 +38,10 @@
     <!-- Main Content -->
     <main class="main-content">
       <RouterView />
+
+      <!-- Global VoIP Components -->
+      <ActiveCallBar />
+      <IncomingCallDialog />
     </main>
   </div>
 </template>
@@ -49,6 +53,9 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import Toast from 'primevue/toast'
 import Button from 'primevue/button'
 import { useAuthStore } from '@/stores/auth'
+import ActiveCallBar from '@/components/call/ActiveCallBar.vue'
+import IncomingCallDialog from '@/components/call/IncomingCallDialog.vue'
+import { useVoip } from '@/composables/useVoip'
 
 const route = useRoute()
 const router = useRouter()
@@ -92,8 +99,13 @@ async function handleLogout() {
 
 const isLoginPage = computed(() => route.path === '/login')
 
-onMounted(() => {
-  authStore.checkAuth()
+const { initializeVoip } = useVoip()
+
+onMounted(async () => {
+  await authStore.checkAuth()
+  if (authStore.user) {
+    initializeVoip()
+  }
 })
 </script>
 

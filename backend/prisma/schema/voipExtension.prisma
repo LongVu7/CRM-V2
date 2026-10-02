@@ -1,0 +1,16 @@
+// !--- VoipExtension table ---! //
+
+model VoipExtension {
+  id                   Int     @id @default(autoincrement())
+  accountId            Int     @unique @map("account_id")
+  account              Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  extensionNumber      String  @unique @map("extension_number") @db.VarChar(20)
+  sipUsername          String  @map("sip_username") @db.VarChar(255)
+  sipPasswordEncrypted String  @map("sip_password_encrypted") @db.Text
+  isActive             Boolean @default(true) @map("is_active")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
+
+  @@map("voip_extension")
+}

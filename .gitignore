@@ -6,4 +6,12 @@ node_modules/*
 .env
 test/*
 .specify/*
+specs/*dist/
+build/
+*.log
+.env*
+.specs/*
 specs/*
+
+
+

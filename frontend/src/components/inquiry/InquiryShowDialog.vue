@@ -3,6 +3,7 @@ import { ref, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
+import CallButton from '@/components/call/CallButton.vue'
 import { useInquiry } from '@/composables/useInquiry'
 import { formatDate, formatDateTime } from '@/utils/dateUtils'
 import {
@@ -164,7 +165,10 @@ const navigateToEdit = () => {
           <div class="entity-avatar"><i class="pi pi-user"></i></div>
           <div class="entity-details">
             <h4 class="entity-name">{{ inquiryData.student.fullName }}</h4>
-            <p class="entity-meta">{{ inquiryData.student.email || 'No email' }} | {{ inquiryData.student.mobile || 'No phone' }}</p>
+            <div class="entity-meta flex align-items-center gap-2">
+              <span>{{ inquiryData.student.email || 'No email' }} | {{ inquiryData.student.mobile || 'No phone' }}</span>
+              <CallButton v-if="inquiryData.student.mobile" :phoneNumber="inquiryData.student.mobile" :inquiryId="inquiryData.id" />
+            </div>
           </div>
         </div>
         <span v-else class="field-value field-value--muted">No student assigned</span>

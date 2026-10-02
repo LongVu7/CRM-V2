@@ -19,5 +19,9 @@ model Account {
   templatesCreated CampaignTemplate[]
   errorReports     ErrorReport[]
 
+  calls         Call[]         @relation("CallHandler")
+  voipExtension VoipExtension?
+  auditLogs     AuditLog[]
+
   @@map("account")
 }
