@@ -21,9 +21,9 @@ export const useAuthStore = defineStore('auth', {
         const data = await apiLogin(email, password)
         this.user = data.user
         this.updateAbility(data.user.permissions || [])
-        if (data.token) {
-          localStorage.setItem('token', data.token)
-        }
+        // if (data.token) {
+        //   localStorage.setItem('token', data.token)
+        // }
         return data
       } finally {
         this.loading = false

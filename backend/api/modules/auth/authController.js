@@ -38,7 +38,7 @@ const login = (req, res, next) => {
 
     res.status(200).json({
       message: 'Login successful',
-      token,
+      // token,
       user: {
         id: account.id,
         email: account.email,
@@ -90,7 +90,7 @@ const refreshToken = (req, res) => {
 
   res.status(200).json({
     message: 'Token refreshed',
-    token,
+    // token,
     user: {
       id: req.user.accountId,
       email: req.user.email,

@@ -15,16 +15,16 @@ const PERMISSION_REASONS = ['MISSING_PERMISSION', 'MISSING_LOOKUP_PERMISSION']
 export function setupInterceptors(apiInstance, authStore, router, ability) {
   let refreshPromise = null
 
-  // Add a request interceptor to attach the Authorization header if token exists
-  apiInstance.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  }, (error) => {
-    return Promise.reject(error)
-  })
+  // Attaching the Authorization header to the request.
+  // apiInstance.interceptors.request.use((config) => {
+  //   const token = localStorage.getItem('token')
+  //   if (token) {
+  //     config.headers.Authorization = `Bearer ${token}`
+  //   }
+  //   return config
+  // }, (error) => {
+  //   return Promise.reject(error)
+  // })
 
   apiInstance.interceptors.response.use(
     response => response,
