@@ -1,9 +1,5 @@
 // ─── Unified authorization middleware
 // Checks permission (from req.user.permissions) and optionally resolves resource ownership.
-//
-// Usage:
-//   authorize('inquiry.read')
-//   authorize('inquiry.update', { ownership: { resolver: resolveInquiryOwnership } })
 
 const authorize = (permission, options = {}) => {
   return async (req, res, next) => {

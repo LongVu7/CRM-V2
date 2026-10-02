@@ -20,9 +20,9 @@ const login = (req, res, next) => {
     }
 
     const payload = {
-      id: account.id,
-      email: account.email,
-      roleName: account.role?.name || null
+      sub: account.id,
+      // groupId: account.groupId,
+      // roleId: account.roleId
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -72,9 +72,9 @@ const getMe = (req, res) => {
 // ─── Refresh token (re-issue JWT with current role from DB)
 const refreshToken = (req, res) => {
   const payload = {
-    id: req.user.accountId,
-    email: req.user.email,
-    roleName: req.user.roleName
+    sub: req.user.accountId,
+    // groupId: account.groupId,
+    // roleId: account.roleId
   };
 
   const token = jwt.sign(payload, process.env.JWT_SECRET, {
