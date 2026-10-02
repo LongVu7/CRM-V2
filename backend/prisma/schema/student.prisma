@@ -13,8 +13,6 @@ model Student {
 
   birthDate DateTime? @map("birth_date") @db.Date
 
-  parentPhone String? @map("parent_phone") @db.VarChar(20)
-
   primaryAddress String? @map("primary_address") @db.VarChar(255)
 
   education StudentEducation?

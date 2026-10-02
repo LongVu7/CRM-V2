@@ -94,9 +94,7 @@ function remapHeaders(xlsxBuffer, headerMap, injectedFields = {}) {
   return xlsx.write(newWorkbook, { type: 'buffer', bookType: 'xlsx' });
 }
 
-/**
- * Automated sync for Google Sheets to Inquiries
- */
+// Automated sync for Google Sheets to Inquiries
 async function syncGoogleSheetsToInquiries() {
   const systemAccountId = process.env.SYSTEM_ACCOUNT_ID;
 
