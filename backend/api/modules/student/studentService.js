@@ -1,8 +1,9 @@
 const prisma = require('../../../config/db');
+const crypto = require('crypto');
+const importTokens = require('../../../utils/importTokenManager');
 const xlsx = require('xlsx');
 const { buildPaginationMeta } = require('../../utils/pagination');
 const {
-  removeVietnameseTones,
   normalizeEnum,
   PROVINCE_MAP,
   CLASS_MAP,
@@ -276,41 +277,74 @@ const deleteStudent = async (id) => {
   }
 };
 
-// ─── Import students analysis
-const analyzeImport = async (parsedStudents) => {
-  const duplicates = [];
-  const mobileMap = new Map();
 
-  // Check duplicate mobile numbers in the uploaded files
-  parsedStudents.forEach((student) => {
-    if (student.mobile) {
-      if (mobileMap.has(student.mobile)) {
-        mobileMap.get(student.mobile).push(student);
-      } else {
-        mobileMap.set(student.mobile, [student]);
+// ─── Import students analysis
+const previewImportStudents = async (parsedStudents, accountId) => {
+  if (parsedStudents.length === 0) {
+    const error = new Error('The uploaded file is empty');
+    error.status = 400;
+    throw error;
+  }
+
+  // Clean and prepare rows
+  const processedRows = parsedStudents.map((row) => {
+    const r = { 
+      ...row, 
+      mobile: row.mobile || row['Mobile'],
+      fullName: row.fullName || row['Full Name'],
+      email: row.email || row['Email'],
+      gender: row.gender || row['Gender'],
+      otherPhone: row.otherPhone || row['Other Phone'],
+      birthDate: row.birthDate || row['Date of Birth'] || row['Birth Date'],
+      parentPhone: row.parentPhone || row['Parent Phone'],
+      primaryAddress: row.primaryAddress || row['Primary Address'],
+      school: row.school || row['School Name'] || row['School'],
+      schoolCity: row.schoolCity || row['School City'],
+      newProvince: row.newProvince || row['New Province'],
+      country: row.country || row['Country'],
+      provinceGroup: row.provinceGroup || row['Province Group'],
+      schoolType: row.schoolType || row['School Type'],
+      class: row.class || row['Class'],
+      gpa: row.gpa || row['GPA'],
+      englishCertificate: row.englishCertificate || row['English Certificate'],
+      programScore: row.programScore || row['Program Score'],
+      admissionYear: row.admissionYear || row['Admission Year'],
+      interestedMajor: row.interestedMajor || row['Interested Major'],
+      specificMajor: row.specificMajor || row['Specific Major'],
+      _meta: { rowNumber: row._mapping?.rowNumber, errors: [], classification: null } 
+    };
+    
+    // Normalize mobile
+    if (r.mobile) {
+      let cleaned = String(r.mobile).replace(/\D/g, '');
+      if (cleaned.length === 9 && !cleaned.startsWith('0')) {
+        cleaned = '0' + cleaned;
       }
+      r.mobile = cleaned;
     }
+    return r;
   });
 
-  for (const [mobile, studentsWithMobile] of mobileMap.entries()) {
-    if (studentsWithMobile.length > 1) {
-      studentsWithMobile.forEach(student => {
-        duplicates.push({
-          mobile: student.mobile,
-          fullName: student.fullName,
-          fileName: student._mapping?.fileName,
-          rowNumber: student._mapping?.rowNumber,
-          duplicatedType: 'file',
-          message: 'Duplicate mobile number found within the uploaded files.'
-        });
-      });
+  const mobileMap = new Map();
+
+  // In-file duplicates and missing mobile
+  for (const student of processedRows) {
+    if (!student.mobile) {
+      student._meta.errors.push('Mobile is required');
+      student._meta.classification = 'INVALID';
+    } else {
+      if (mobileMap.has(student.mobile)) {
+        student._meta.classification = 'DUPLICATE_IN_FILE';
+        student._meta.errors.push('Duplicate mobile number found within the uploaded files.');
+      } else {
+        mobileMap.set(student.mobile, student._meta.rowNumber);
+      }
     }
   }
 
-  // Check duplicate mobile numbers in the database
+  // Database duplicates
   const mobilesToCheck = Array.from(mobileMap.keys());
   let existingMobiles = new Set();
-
   if (mobilesToCheck.length > 0) {
     const existing = await prisma.student.findMany({
       where: { mobile: { in: mobilesToCheck } },
@@ -319,37 +353,15 @@ const analyzeImport = async (parsedStudents) => {
     existingMobiles = new Set(existing.map(s => s.mobile));
   }
 
-  parsedStudents.forEach(student => {
-    if (student.mobile && existingMobiles.has(student.mobile)) {
-      duplicates.push({
-        mobile: student.mobile,
-        fullName: student.fullName,
-        fileName: student._mapping?.fileName,
-        rowNumber: student._mapping?.rowNumber,
-        duplicatedType: 'db',
-        message: 'Mobile number already exists in the database. Record will be updated.'
-      });
-    }
-  });
-
-  // ─── Resolve schoolCity + school names to schoolId ───
-  const schoolWarnings = [];
-  const studentsNeedingSchoolLookup = parsedStudents.filter(
-    s => s.school && s.schoolCity && !s.schoolId
-  );
-
+  // References setup
+  const studentsNeedingSchoolLookup = processedRows.filter(s => s.school && s.schoolCity && !s.schoolId);
+  const cityLookup = new Map();
   if (studentsNeedingSchoolLookup.length > 0) {
-    // Get unique city names
     const cityNames = [...new Set(studentsNeedingSchoolLookup.map(s => String(s.schoolCity).trim()))];
-    
-    // Fetch cities with their schools in one query
     const cities = await prisma.oldProvince.findMany({
       where: { name: { in: cityNames, mode: 'insensitive' } },
       include: { schools: { select: { id: true, name: true } } }
     });
-
-    // Build lookup: cityName (lowercase) → { cityId, schools: Map<schoolName(lowercase), schoolId> }
-    const cityLookup = new Map();
     cities.forEach(city => {
       const schoolMap = new Map();
       city.schools.forEach(school => {
@@ -357,80 +369,74 @@ const analyzeImport = async (parsedStudents) => {
       });
       cityLookup.set(city.name.toLowerCase().trim(), { cityId: city.id, schools: schoolMap });
     });
-
-    // Resolve each student's schoolId
-    for (const student of parsedStudents) {
-      if (student.school && student.schoolCity && !student.schoolId) {
-        const cityKey = String(student.schoolCity).toLowerCase().trim();
-        const schoolKey = String(student.school).toLowerCase().trim();
-        const cityEntry = cityLookup.get(cityKey);
-
-        if (!cityEntry) {
-          schoolWarnings.push({
-            mobile: student.mobile,
-            fullName: student.fullName,
-            fileName: student._mapping?.fileName,
-            rowNumber: student._mapping?.rowNumber,
-            message: `City "${student.schoolCity}" not found in database.`
-          });
-        } else {
-          const schoolId = cityEntry.schools.get(schoolKey);
-          if (schoolId) {
-            student.schoolId = schoolId;
-          } else {
-            schoolWarnings.push({
-              mobile: student.mobile,
-              fullName: student.fullName,
-              fileName: student._mapping?.fileName,
-              rowNumber: student._mapping?.rowNumber,
-              message: `School "${student.school}" not found in city "${student.schoolCity}".`
-            });
-          }
-        }
-      }
-    }
   }
 
-  // ─── Resolve newProvince and country ───
-  const newProvinceNames = [...new Set(parsedStudents.map(s => String(s.newProvince || s['New Province'] || '').trim()).filter(Boolean))];
-  const countryNames = [...new Set(parsedStudents.map(s => String(s.country || s['Country'] || '').trim()).filter(Boolean))];
-
+  const newProvinceNames = [...new Set(processedRows.map(s => String(s.newProvince || s['New Province'] || '').trim()).filter(Boolean))];
+  const npLookup = new Map();
   if (newProvinceNames.length > 0) {
     const nps = await prisma.newProvince.findMany({ where: { name: { in: newProvinceNames, mode: 'insensitive' } } });
-    const npLookup = new Map(nps.map(p => [p.name.toLowerCase().trim(), p.id]));
-    for (const s of parsedStudents) {
-      const p = String(s.newProvince || s['New Province'] || '').trim();
-      if (p) {
-        const id = npLookup.get(p.toLowerCase());
-        if (id) s.newProvinceId = id;
-        else schoolWarnings.push({ mobile: s.mobile, fullName: s.fullName, fileName: s._mapping?.fileName, rowNumber: s._mapping?.rowNumber, message: `New Province "${p}" not found.` });
-      }
-    }
+    nps.forEach(p => npLookup.set(p.name.toLowerCase().trim(), p.id));
   }
 
+  const countryNames = [...new Set(processedRows.map(s => String(s.country || s['Country'] || '').trim()).filter(Boolean))];
+  const cLookup = new Map();
   if (countryNames.length > 0) {
     const cs = await prisma.country.findMany({ where: { name: { in: countryNames, mode: 'insensitive' } } });
-    const cLookup = new Map(cs.map(c => [c.name.toLowerCase().trim(), c.id]));
-    for (const s of parsedStudents) {
-      const c = String(s.country || s['Country'] || '').trim();
-      if (c) {
-        const id = cLookup.get(c.toLowerCase());
-        if (id) s.countryId = id;
-        else schoolWarnings.push({ mobile: s.mobile, fullName: s.fullName, fileName: s._mapping?.fileName, rowNumber: s._mapping?.rowNumber, message: `Country "${c}" not found.` });
-      }
-    }
+    cs.forEach(c => cLookup.set(c.name.toLowerCase().trim(), c.id));
   }
 
   const majorData = await prisma.majorData.findMany({ where: { isActive: true } });
 
-  for (const s of parsedStudents) {
+  for (const s of processedRows) {
+    if (s._meta.classification) continue; // Skip already invalid/duplicate_in_file
+
+    // Database Duplicate
+    if (existingMobiles.has(s.mobile)) {
+      s._meta.classification = 'EXISTING_STUDENT';
+      s._meta.errors.push('Mobile number already exists in the database. Record will be skipped.');
+      continue;
+    }
+
+    // Required fields check
+    if (!s.fullName) s._meta.errors.push('Full Name is required');
+    if (!s.school) s._meta.errors.push('School is required');
+
+    // School mapping
+    if (s.school && s.schoolCity && !s.schoolId) {
+      const cityKey = String(s.schoolCity).toLowerCase().trim();
+      const schoolKey = String(s.school).toLowerCase().trim();
+      const cityEntry = cityLookup.get(cityKey);
+      if (!cityEntry) {
+        s._meta.errors.push(`UNRESOLVED_MAPPING: City "${s.schoolCity}" not found.`);
+      } else {
+        const schoolId = cityEntry.schools.get(schoolKey);
+        if (schoolId) s.schoolId = schoolId;
+        else s._meta.errors.push(`UNRESOLVED_MAPPING: School "${s.school}" not found in city "${s.schoolCity}".`);
+      }
+    }
+
+    // Province mapping
+    const npStr = String(s.newProvince || s['New Province'] || '').trim();
+    if (npStr) {
+      const id = npLookup.get(npStr.toLowerCase());
+      if (id) s.newProvinceId = id;
+      else s._meta.errors.push(`UNRESOLVED_MAPPING: New Province "${npStr}" not found.`);
+    }
+
+    // Country mapping
+    const cStr = String(s.country || s['Country'] || '').trim();
+    if (cStr) {
+      const id = cLookup.get(cStr.toLowerCase());
+      if (id) s.countryId = id;
+      else s._meta.errors.push(`UNRESOLVED_MAPPING: Country "${cStr}" not found.`);
+    }
+
+    // Enums
     let pgVal = s.provinceGroup || s['Province Group'];
     if (pgVal) {
       let norm = normalizeEnum(pgVal);
       s.provinceGroup = PROVINCE_MAP[norm] || norm;
-      if (!Object.keys(ProvinceGroup).includes(s.provinceGroup)) {
-        schoolWarnings.push({ mobile: s.mobile, fullName: s.fullName, fileName: s._mapping?.fileName, rowNumber: s._mapping?.rowNumber, message: `Invalid Province Group: ${pgVal}` });
-      }
+      if (!Object.keys(ProvinceGroup).includes(s.provinceGroup)) s._meta.errors.push(`Invalid Province Group: ${pgVal}`);
     }
     
     let stVal = s.schoolType || s['School Type'];
@@ -438,18 +444,14 @@ const analyzeImport = async (parsedStudents) => {
       stVal = normalizeEnum(stVal);
       if (stVal === 'A_') stVal = 'A_STAR';
       s.schoolType = stVal;
-      if (!Object.keys(SchoolType).includes(s.schoolType)) {
-        schoolWarnings.push({ mobile: s.mobile, fullName: s.fullName, fileName: s._mapping?.fileName, rowNumber: s._mapping?.rowNumber, message: `Invalid School Type: ${s.schoolType || stVal}` });
-      }
+      if (!Object.keys(SchoolType).includes(s.schoolType)) s._meta.errors.push(`Invalid School Type: ${s.schoolType || stVal}`);
     }
     
     let clsVal = s.class || s['Class'];
     if (clsVal) {
       let norm = normalizeEnum(clsVal);
       s.class = CLASS_MAP[norm] || norm;
-      if (!Object.keys(StudentClass).includes(s.class)) {
-        schoolWarnings.push({ mobile: s.mobile, fullName: s.fullName, fileName: s._mapping?.fileName, rowNumber: s._mapping?.rowNumber, message: `Invalid Class: ${clsVal}` });
-      }
+      if (!Object.keys(StudentClass).includes(s.class)) s._meta.errors.push(`Invalid Class: ${clsVal}`);
     }
 
     let gpaVal = s.gpa || s['GPA'];
@@ -480,210 +482,140 @@ const analyzeImport = async (parsedStudents) => {
         s.interestedMajorId = im.id;
         if (specMajor) {
           sm = majorData.find(m => m.level === 'specificMajor' && m.name.toLowerCase() === (specMajor || '').toLowerCase().trim() && m.parentId === im.id);
-          if (sm) {
-            s.specificMajorId = sm.id;
-          } else {
-            schoolWarnings.push({ mobile: s.mobile, fullName: s.fullName, fileName: s._mapping?.fileName, rowNumber: s._mapping?.rowNumber, message: `Specific Major "${specMajor}" not found under Interested Major "${intMajor}".` });
-          }
+          if (sm) s.specificMajorId = sm.id;
+          else s._meta.errors.push(`UNRESOLVED_MAPPING: Specific Major "${specMajor}" not found.`);
         }
       } else {
-        schoolWarnings.push({ mobile: s.mobile, fullName: s.fullName, fileName: s._mapping?.fileName, rowNumber: s._mapping?.rowNumber, message: `Interested Major "${intMajor}" not found.` });
+        s._meta.errors.push(`UNRESOLVED_MAPPING: Interested Major "${intMajor}" not found.`);
       }
     }
 
     const hasAcademicIntentions = s.gpa || s.programScore || s.englishCertificate || s.admissionYear || s.interestedMajorId;
     if (hasAcademicIntentions) {
-      if (!s.interestedMajorId) {
-        schoolWarnings.push({ mobile: s.mobile, fullName: s.fullName, fileName: s._mapping?.fileName, rowNumber: s._mapping?.rowNumber, message: 'Interested Major is required when providing academic intentions (GPA, Program Score, etc.).' });
-      }
-      if (!s.specificMajorId) {
-        schoolWarnings.push({ mobile: s.mobile, fullName: s.fullName, fileName: s._mapping?.fileName, rowNumber: s._mapping?.rowNumber, message: 'Specific Major is required when providing academic intentions.' });
-      }
+      if (!s.interestedMajorId) s._meta.errors.push('Interested Major is required when providing academic intentions.');
+      if (!s.specificMajorId) s._meta.errors.push('Specific Major is required when providing academic intentions.');
+    }
+
+    if (s._meta.errors.length > 0) {
+      const hasUnresolved = s._meta.errors.some(e => e.includes('UNRESOLVED_MAPPING'));
+      s._meta.classification = hasUnresolved ? 'MAPPING_ISSUE' : 'INVALID';
+    } else {
+      s._meta.classification = 'READY_NEW';
     }
   }
 
-  return {
-    totalParsed: parsedStudents.length,
-    duplicateCount: duplicates.length,
-    duplicates,
-    schoolWarnings,
-    parsedStudents
+  // Create Token
+  const importToken = crypto.randomUUID();
+  importTokens.set(importToken, {
+    accountId,
+    data: processedRows,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 30 * 60 * 1000,
+    status: 'READY'
+  });
+
+  const summary = {
+    total: processedRows.length,
+    readyNew: processedRows.filter(r => r._meta.classification === 'READY_NEW').length,
+    existingStudent: processedRows.filter(r => r._meta.classification === 'EXISTING_STUDENT').length,
+    duplicateInFile: processedRows.filter(r => r._meta.classification === 'DUPLICATE_IN_FILE').length,
+    mappingIssue: processedRows.filter(r => r._meta.classification === 'MAPPING_ISSUE').length,
+    invalid: processedRows.filter(r => r._meta.classification === 'INVALID').length,
   };
+
+  return { importToken, summary, rows: processedRows };
 };
 
+
 // ─── Process confirmed import
-const processImport = async (students) => {
-  // 1. Re-validate
-  const mobileSet = new Set();
-  const validStudents = [];
+const confirmImportStudents = async (importToken, accountId) => {
+  const tokenData = importTokens.get(importToken);
 
-  for (let i = 0; i < students.length; i++) {
-    const s = students[i];
-    if (!s.mobile) {
-      const err = new Error(`Row ${i + 1} (${s.fullName || 'Unknown'}): Mobile number is required.`);
-      err.status = 400;
-      throw err;
-    }
-
-    if (mobileSet.has(s.mobile)) {
-      const err = new Error(`Duplicate mobile number (${s.mobile}) found in the confirmation payload.`);
-      err.status = 400;
-      throw err;
-    }
-    mobileSet.add(s.mobile);
-
-    // Clean up non-db fields before saving
-    const { _mapping, ...dbData } = s;
-    validStudents.push(dbData);
+  if (!tokenData) {
+    const err = new Error('Import token is invalid or has expired');
+    err.status = 400;
+    throw err;
   }
 
-  // 2. Perform Transaction
-  const existingRecords = await prisma.student.findMany({
-    where: { mobile: { in: Array.from(mobileSet) } },
-    select: { mobile: true }
-  });
-  const existingMobiles = new Set(existingRecords.map(r => r.mobile));
+  if (tokenData.accountId !== accountId) {
+    const err = new Error('Unauthorized token');
+    err.status = 403;
+    throw err;
+  }
+
+  if (tokenData.status !== 'READY') {
+    const err = new Error('Import is already processing or completed');
+    err.status = 400;
+    throw err;
+  }
+
+  tokenData.status = 'PROCESSING';
+  const rows = tokenData.data;
 
   let insertedCount = 0;
-  let updatedCount = 0;
+  let skipped = 0;
 
-  const transactionOperations = validStudents.map(studentData => {
-    // Separate SpecializedRegister fields and Excel-only lookup fields from Student fields
-    // Accept both interestedMajor/specificMajor (legacy) and interestedMajorId/specificMajorId
-    const { 
-      specializedRegister: existingSR, 
-      gpa, englishCertificate, 
-      interestedMajor, specificMajor,
-      interestedMajorId, specificMajorId,
-      admissionYear, programScore,
-      schoolId, newProvinceId, countryId,
-      school: _school, schoolCity: _schoolCity,  // Excel-only lookup fields (already resolved to schoolId)
-      newProvince: _np, 'New Province': _np2,
-      country: _c, 'Country': _c2,
-      provinceGroup, 'Province Group': _pg,
-      schoolType, 'School Type': _st,
-      class: studentClass, 'Class': _cls,
-      ...dbData 
-    } = studentData;
+  for (const row of rows) {
+    if (row._meta.classification === 'READY_NEW') {
+      try {
+        await prisma.$transaction(async (tx) => {
+          let srId = null;
+          // 1. Create SR conditionally
+          if (row.interestedMajorId || row.admissionYear || row.englishCertificate || row.gpa || row.programScore) {
+            const sr = await tx.specializedRegister.create({
+              data: {
+                interestedMajorId: row.interestedMajorId,
+                specificMajorId: row.specificMajorId,
+                admissionYear: row.admissionYear ? Number(row.admissionYear) : null,
+                englishCertificate: row.englishCertificate,
+                gpa: row.gpa,
+                programScore: row.programScore
+              }
+            });
+            srId = sr.id;
+          }
 
-    let pgVal = provinceGroup || _pg;
-    let stVal = schoolType || _st;
-    let clsVal = studentClass || _cls;
+          // 2. Create Student
+          const student = await tx.student.create({
+            data: {
+              fullName: row.fullName,
+              gender: row.gender || 'Unknown',
+              email: row.email || null,
+              mobile: row.mobile,
+              otherPhone: row.otherPhone || null,
+              birthDate: row.birthDate || null,
+              parentPhone: row.parentPhone || null,
+              primaryAddress: row.primaryAddress || null,
+              specializedRegisterId: srId
+            }
+          });
 
-    // Build SR fields — convert empty strings to null for enum fields
-    const cleanEnum = (val) => (val === '' || val === null || val === undefined) ? undefined : val;
-    const cleanInt = (val) => {
-      if (val === '' || val === null || val === undefined) return undefined;
-      const n = Number(val);
-      return isNaN(n) ? undefined : n;
-    };
-
-    const srFields = {};
-    const gpaVal = cleanEnum(gpa);
-    const englishCertVal = cleanEnum(englishCertificate);
-    const programScoreVal = cleanEnum(programScore);
-    const admissionYearVal = cleanInt(admissionYear);
-    const interestedMajorIdVal = cleanInt(interestedMajorId || interestedMajor);
-    const specificMajorIdVal = cleanInt(specificMajorId || specificMajor);
-
-    if (gpaVal !== undefined) srFields.gpa = gpaVal;
-    if (englishCertVal !== undefined) srFields.englishCertificate = englishCertVal;
-    if (programScoreVal !== undefined) srFields.programScore = programScoreVal;
-    if (admissionYearVal !== undefined) srFields.admissionYear = admissionYearVal;
-    if (interestedMajorIdVal !== undefined) srFields.interestedMajorId = interestedMajorIdVal;
-    if (specificMajorIdVal !== undefined) srFields.specificMajorId = specificMajorIdVal;
-
-    const hasAcademicIntentions = Object.keys(srFields).length > 0;
-    
-    if (hasAcademicIntentions) {
-      if (srFields.interestedMajorId === undefined && !existingSR?.interestedMajorId) {
-        const err = new Error(`Row ${i + 1} (${s.fullName}): Interested Major is required when providing academic intentions (GPA, Program Score, etc.).`);
-        err.status = 400;
-        throw err;
+          // 3. Create Education
+          await tx.studentEducation.create({
+            data: {
+              studentId: student.id,
+              schoolId: row.schoolId,
+              newProvinceId: row.newProvinceId,
+              countryId: row.countryId,
+              provinceGroup: row.provinceGroup,
+              schoolType: row.schoolType,
+              class: row.class
+            }
+          });
+        });
+        insertedCount++;
+      } catch (err) {
+        console.error(`Row ${row._meta.rowNumber} failed:`, err);
+        skipped++;
       }
-      if (srFields.specificMajorId === undefined && !existingSR?.specificMajorId) {
-        const err = new Error(`Row ${i + 1} (${s.fullName}): Specific Major is required when providing academic intentions.`);
-        err.status = 400;
-        throw err;
-      }
-    }
-
-    const specializedRegister = hasAcademicIntentions 
-      ? { ...(existingSR || {}), ...srFields } 
-      : existingSR;
-
-    if (existingMobiles.has(dbData.mobile)) {
-      updatedCount++;
     } else {
-      insertedCount++;
+      skipped++;
     }
-    
-    // Convert string to Date if needed
-    if (dbData.birthDate) {
-      dbData.birthDate = new Date(dbData.birthDate);
-    }
-    
-    const educationUpsert = (schoolId !== undefined || newProvinceId !== undefined) ? {
-      upsert: {
-        create: {
-          schoolId: schoolId === null ? undefined : schoolId,
-          newProvinceId: newProvinceId,
-          countryId: countryId,
-          provinceGroup: pgVal,
-          schoolType: stVal,
-          class: clsVal
-        },
-        update: {
-          ...(schoolId !== undefined && { schoolId: schoolId === null ? null : schoolId }),
-          ...(newProvinceId !== undefined && { newProvinceId }),
-          ...(countryId !== undefined && { countryId }),
-          ...(pgVal !== undefined && { provinceGroup: pgVal }),
-          ...(stVal !== undefined && { schoolType: stVal }),
-          ...(clsVal !== undefined && { class: clsVal })
-        }
-      }
-    } : undefined;
+  }
 
-    return prisma.student.upsert({
-      where: { mobile: dbData.mobile },
-      update: {
-        ...dbData,
-        ...(educationUpsert && { education: educationUpsert }),
-        ...(specializedRegister && {
-          specializedRegister: {
-            upsert: {
-              create: specializedRegister,
-              update: specializedRegister
-            }
-          }
-        })
-      },
-      create: {
-        ...dbData,
-        ...((schoolId !== undefined || newProvinceId !== undefined) ? {
-          education: {
-            create: {
-              schoolId: schoolId || undefined,
-              newProvinceId: newProvinceId,
-              countryId: countryId,
-              provinceGroup: pgVal,
-              schoolType: stVal,
-              class: clsVal
-            }
-          }
-        } : {}),
-        ...(specializedRegister && {
-          specializedRegister: {
-            create: specializedRegister
-          }
-        })
-      }
-    });
-  });
+  importTokens.delete(importToken);
 
-  await prisma.$transaction(transactionOperations);
-
-  return { insertedCount, updatedCount };
+  return { insertedCount, skipped };
 };
 
 // ─── Export students
@@ -722,7 +654,8 @@ const exportStudents = async (filters) => {
     
     // Education
     'School Name': s.education?.school?.name || '',
-    'School City': s.education?.newProvince?.name || '',
+    'School City': s.education?.school?.oldProvince?.name || '',
+    'New Province': s.education?.newProvince?.name || '',
     'Country': s.education?.country?.name || '',
     'Province Group': s.education?.provinceGroup || '',
     'School Type': s.education?.schoolType || '',
@@ -747,7 +680,7 @@ module.exports = {
   getStudentById,
   updateStudent,
   deleteStudent,
-  analyzeImport,
-  processImport,
+  previewImportStudents,
+  confirmImportStudents,
   exportStudents
 }; 

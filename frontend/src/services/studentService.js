@@ -53,8 +53,8 @@ export const previewImport = async (files) => {
   return response.data
 }
 
-export const confirmImport = async (students) => {
-  const response = await api.post(`${prefix}/import/confirm`, { students })
+export const confirmImport = async (token) => {
+  const response = await api.post(`${prefix}/import/confirm`, { token })
   return response.data
 }
 

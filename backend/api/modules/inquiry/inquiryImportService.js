@@ -3,7 +3,6 @@ const { ProvinceGroup, SchoolType, StudentClass, Priority, EnglishCertificate, G
 const prisma = require('../../../config/db');
 const crypto = require('crypto');
 const {
-  removeVietnameseTones,
   normalizeEnum,
   PROVINCE_MAP,
   CLASS_MAP,
@@ -14,19 +13,7 @@ const {
 const { applyStatusTransition } = require('../../utils/statusTransition');
 const { resolveHierarchy } = require('../../utils/hierarchyUtils');
 
-// !!-- Create an idempotent key for import process to prevent duplicate imports --!   Notes: Migrate Redis for cache data
-// Map<token, { accountId, data, createdAt, expiresAt, status }>
-const importTokens = new Map();
-
-// Clean up expired tokens periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [token, value] of importTokens.entries()) {
-    if (now > value.expiresAt) {
-      importTokens.delete(token);
-    }
-  }
-}, 60 * 1000);
+const importTokens = require('../../../utils/importTokenManager');
 
 const COLUMN_MAP = {
   'Full Name': { key: 'fullName', requiredStruct: true, requiredNew: true },

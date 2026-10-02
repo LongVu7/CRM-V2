@@ -33,60 +33,75 @@
     <div v-if="step === 2">
       <div class="review-header">
         <h3>Review Import Data</h3>
-        <p>Total Records: {{ parsedData.length }} | Duplicates Detected: {{ duplicateCount }}</p>
+        <p>Total Records: {{ summary.total }} | Ready: {{ summary.readyNew }}</p>
       </div>
 
-      <Message v-if="duplicateCount > 0" severity="warn" :closable="false">
-        Found {{ duplicateCount }} duplicate(s) based on mobile numbers. Records with existing database mobiles will be updated. Be careful with duplicates within the uploaded files themselves. Click on a mobile number to edit it.
-      </Message>
+      <div class="summary-cards">
+        <div class="summary-card" v-if="summary.readyNew > 0">
+          <i class="pi pi-check-circle text-green-500"></i>
+          <div>
+            <span class="font-bold">{{ summary.readyNew }}</span> Ready (New)
+          </div>
+        </div>
+        <div class="summary-card" v-if="summary.existingStudent > 0">
+          <i class="pi pi-info-circle text-blue-500"></i>
+          <div>
+            <span class="font-bold">{{ summary.existingStudent }}</span> DB Duplicates (Skipped)
+          </div>
+        </div>
+        <div class="summary-card" v-if="summary.duplicateInFile > 0">
+          <i class="pi pi-copy text-orange-500"></i>
+          <div>
+            <span class="font-bold">{{ summary.duplicateInFile }}</span> File Duplicates (Skipped)
+          </div>
+        </div>
+        <div class="summary-card" v-if="summary.invalid > 0 || summary.mappingIssue > 0">
+          <i class="pi pi-exclamation-triangle text-red-500"></i>
+          <div>
+            <span class="font-bold">{{ summary.invalid + summary.mappingIssue }}</span> Invalid/Mapping Issues
+          </div>
+        </div>
+      </div>
 
-      <Message v-if="schoolWarnings.length > 0" severity="warn" :closable="false">
-        {{ schoolWarnings.length }} student(s) had school lookup issues:
-        <ul style="margin: 0.5rem 0 0 1rem; padding: 0;">
-          <li v-for="(w, i) in schoolWarnings" :key="i" style="font-size: 0.85rem;">Row {{ w.rowNumber }} ({{ w.fullName }}): {{ w.message }}</li>
-        </ul>
+      <Message v-if="summary.invalid > 0 || summary.mappingIssue > 0" severity="error" :closable="false">
+        There are records with validation or mapping errors. They will be skipped during import. Please check the preview table below for details.
       </Message>
 
       <DataTable 
-        :value="parsedData" 
-        dataKey="mobile"
-        editMode="cell"
-        @cell-edit-complete="onCellEditComplete"
+        :value="previewData" 
+        dataKey="_meta.rowNumber"
         :paginator="true"
         :rows="10"
         class="p-datatable-sm mt-3 review-table"
       >
-        <Column field="fullName" header="Full Name" style="width: 25%"></Column>
-        <Column field="mobile" header="Mobile" style="width: 25%">
-          <template #editor="{ data, field }">
-            <InputText v-model="data[field]" autofocus />
-          </template>
+        <Column field="fullName" header="Full Name" style="width: 20%"></Column>
+        <Column field="mobile" header="Mobile" style="width: 15%">
           <template #body="{ data }">
-            <span :class="{'duplicate-text': isDuplicate(data.mobile)}">
-              {{ data.mobile || 'MISSING' }}
-              <i v-if="isDuplicate(data.mobile)" class="pi pi-exclamation-triangle ml-1" title="Duplicate Mobile"></i>
-            </span>
+            <span>{{ data.mobile || 'MISSING' }}</span>
           </template>
         </Column>
         <Column field="email" header="Email" style="width: 20%"></Column>
-        <Column header="School" style="width: 15%">
+        <Column header="Status" style="width: 20%">
           <template #body="{ data }">
-            <span v-if="data.schoolId" class="school-resolved">{{ data.school || `ID: ${data.schoolId}` }}</span>
-            <span v-else-if="data.school" class="school-unresolved">{{ data.school }} <i class="pi pi-exclamation-circle" title="School not found"></i></span>
-            <span v-else style="color: var(--p-text-muted-color)">—</span>
+            <span v-if="data._meta.classification === 'READY_NEW'" class="status-ready"><i class="pi pi-check mr-1"></i> Ready</span>
+            <span v-else-if="data._meta.classification === 'EXISTING_STUDENT'" class="status-skip"><i class="pi pi-info-circle mr-1"></i> DB Duplicate</span>
+            <span v-else-if="data._meta.classification === 'DUPLICATE_IN_FILE'" class="status-skip"><i class="pi pi-copy mr-1"></i> File Duplicate</span>
+            <span v-else class="status-error"><i class="pi pi-times-circle mr-1"></i> Invalid</span>
           </template>
         </Column>
-        <Column field="_mapping.fileName" header="Source File" style="width: 20%"></Column>
-        <Column header="Actions" style="width: 5%">
-          <template #body="{ index }">
-            <Button icon="pi pi-trash" severity="danger" text rounded aria-label="Cancel" @click="removeRow(index)" />
+        <Column header="Messages" style="width: 25%">
+          <template #body="{ data }">
+            <ul v-if="data._meta.errors && data._meta.errors.length" class="error-list">
+              <li v-for="(err, i) in data._meta.errors" :key="i">{{ err }}</li>
+            </ul>
+            <span v-else class="text-muted">—</span>
           </template>
         </Column>
       </DataTable>
 
       <div class="action-buttons">
         <Button label="Cancel" icon="pi pi-times" severity="secondary" @click="cancelImport" />
-        <Button label="Confirm Import" icon="pi pi-check" severity="success" @click="submitConfirm" :loading="isConfirming" />
+        <Button label="Confirm Import" icon="pi pi-check" severity="success" @click="submitConfirm" :loading="isConfirming" :disabled="summary.readyNew === 0" />
       </div>
     </div>
   </div>
@@ -99,7 +114,6 @@ import FileUpload from 'primevue/fileupload'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
-import InputText from 'primevue/inputtext'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
 import { previewImport, confirmImport } from '@/services/studentService'
@@ -113,10 +127,16 @@ const fileUpload = ref(null)
 const isUploading = ref(false)
 const isConfirming = ref(false)
 
-const parsedData = ref([])
-const duplicates = ref([])
-const duplicateCount = ref(0)
-const schoolWarnings = ref([])
+const importToken = ref(null)
+const previewData = ref([])
+const summary = ref({
+  total: 0,
+  readyNew: 0,
+  existingStudent: 0,
+  duplicateInFile: 0,
+  mappingIssue: 0,
+  invalid: 0
+})
 
 const onUpload = async (event) => {
   const files = event.files
@@ -126,10 +146,9 @@ const onUpload = async (event) => {
   try {
     const analysis = await previewImport(files)
     
-    parsedData.value = analysis.parsedStudents || []
-    duplicates.value = analysis.duplicates || []
-    duplicateCount.value = analysis.duplicateCount || 0
-    schoolWarnings.value = analysis.schoolWarnings || []
+    importToken.value = analysis.token
+    summary.value = analysis.summary || summary.value
+    previewData.value = analysis.preview || []
     
     step.value = 2
   } catch (error) {
@@ -141,37 +160,21 @@ const onUpload = async (event) => {
   }
 }
 
-const onCellEditComplete = (event) => {
-  let { data, newValue, field } = event
-  if (newValue !== null && newValue.trim().length > 0) {
-    data[field] = newValue.trim()
-  } else {
-    event.preventDefault()
-  }
-}
-
-const isDuplicate = (mobile) => {
-  if (!mobile) return false
-  return duplicates.value.some(d => d.mobile === mobile)
-}
-
-const removeRow = (index) => {
-  parsedData.value.splice(index, 1)
-}
-
 const cancelImport = () => {
   step.value = 1
-  parsedData.value = []
-  duplicates.value = []
-  duplicateCount.value = 0
+  importToken.value = null
+  previewData.value = []
   emit('cancel')
 }
 
 const submitConfirm = async () => {
+  if (!importToken.value) return
   isConfirming.value = true
   try {
-    const result = await confirmImport(parsedData.value)
-    toast.add({ severity: 'success', summary: 'Import Successful', detail: `Inserted: ${result.insertedCount}, Updated: ${result.updatedCount}`, life: 5000 })
+    const result = await confirmImport(importToken.value)
+    const inserted = result.summary?.insertedCount || result.summary?.readyNew || 0
+    const skipped = result.summary?.skipped || 0
+    toast.add({ severity: 'success', summary: 'Import Successful', detail: `Inserted: ${inserted}, Skipped: ${skipped}`, life: 5000 })
     emit('success')
     router.push('/students')
   } catch (error) {
@@ -258,9 +261,36 @@ const submitConfirm = async () => {
   font-weight: 500;
 }
 
-.duplicate-text {
+.summary-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.summary-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--p-surface-50);
+  border: 1px solid var(--p-surface-200);
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+.status-ready { color: var(--p-green-600); font-weight: 600; font-size: 0.85rem; }
+.status-skip { color: var(--p-orange-500); font-weight: 600; font-size: 0.85rem; }
+.status-error { color: #ef4444; font-weight: 600; font-size: 0.85rem; }
+.text-muted { color: var(--p-text-muted-color); }
+.font-bold { font-weight: bold; }
+.mr-1 { margin-right: 0.25rem; }
+
+.error-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  font-size: 0.8rem;
   color: #ef4444;
-  font-weight: bold;
 }
 
 .action-buttons {
@@ -268,20 +298,5 @@ const submitConfirm = async () => {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
-}
-
-.ml-1 {
-  margin-left: 0.25rem;
-}
-.mt-3 {
-  margin-top: 1rem;
-}
-.school-resolved {
-  color: var(--p-green-600);
-  font-size: 0.85rem;
-}
-.school-unresolved {
-  color: #ef4444;
-  font-size: 0.85rem;
 }
 </style>

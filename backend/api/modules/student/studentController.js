@@ -136,11 +136,15 @@ const previewImport = async (req, res) => {
       if (fs.existsSync(f.path)) fs.unlinkSync(f.path);
     });
 
-    const analysis = await studentService.analyzeImport(parsedStudents);
+    const accountId = req.user.accountId;
+    const { importToken, summary, rows } = await studentService.previewImportStudents(parsedStudents, accountId);
 
     res.status(200).json({
       message: 'Analysis complete. Please review data before confirming.',
-      ...analysis
+      token: importToken,
+      summary,
+      preview: rows.slice(0, 100),
+      totalRows: rows.length
     });
   } catch (error) {
     if (req.files) {
@@ -154,18 +158,19 @@ const previewImport = async (req, res) => {
 
 const confirmImport = async (req, res) => {
   try {
-    const { students } = req.body;
+    const { token } = req.body;
     
-    if (!students || !Array.isArray(students) || students.length === 0) {
-      return res.status(400).json({ error: 'No student data provided for import' });
+    if (!token) {
+      return res.status(400).json({ error: 'No import token provided' });
     }
 
-    const result = await studentService.processImport(students);
+    const accountId = req.user.accountId;
+    const result = await studentService.confirmImportStudents(token, accountId);
 
     res.status(200).json({
       message: 'Import successful',
-      insertedCount: result.insertedCount,
-      updatedCount: result.updatedCount
+      status: 'COMPLETED',
+      summary: result
     });
   } catch (error) {
     handleError(res, error);
