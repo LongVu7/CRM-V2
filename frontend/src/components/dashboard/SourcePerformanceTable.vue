@@ -5,70 +5,132 @@
       responsiveLayout="scroll">
       <Column expander style="width: 3rem" />
       <Column field="sourceLabel" header="Nguồn" class="font-semibold"></Column>
-      <Column field="interacted" header="Tương tác được"></Column>
-      <Column header="% tương tác được / Tổng data xử lý">
+      <Column field="interacted">
+        <template #header>
+          <span v-tooltip.top="'Tương tác - Tương tác được'">Tương tác</span>
+        </template>
+      </Column>
+      <Column>
+        <template #header>
+          <span v-tooltip.top="'% TT - % tương tác được / Tổng data xử lý'">% TT</span>
+        </template>
         <template #body="{ data }">
           {{ data.interactionRate }}%
         </template>
       </Column>
-      <Column field="nb" header="Đã đóng phí (NB)"></Column>
-      <Column header="Tỷ lệ NB / Tương tác được">
+      <Column field="nb">
+        <template #header>
+          <span v-tooltip.top="'NB - Đã đóng phí (NB)'">NB</span>
+        </template>
+      </Column>
+      <Column>
+        <template #header>
+          <span v-tooltip.top="'% NB - Tỷ lệ NB / Tương tác được'">% NB</span>
+        </template>
         <template #body="{ data }">
           {{ data.nbRate }}%
         </template>
       </Column>
-      <Column field="notInteracted" header="Chưa tương tác được"></Column>
-      <Column header="% chưa tương tác được / Tổng data xử lý">
+      <Column field="notInteracted">
+        <template #header>
+          <span v-tooltip.top="'Chưa TT - Chưa tương tác được'">Chưa TT</span>
+        </template>
+      </Column>
+      <Column>
+        <template #header>
+          <span v-tooltip.top="'% Chưa TT - % chưa tương tác được / Tổng data xử lý'">% Chưa TT</span>
+        </template>
         <template #body="{ data }">
           {{ data.notInteractedRate }}%
         </template>
       </Column>
-      <Column header="% Sai số">
+      <Column>
+        <template #header>
+          <span v-tooltip.top="'% SS - % Sai số'">% SS</span>
+        </template>
         <template #body="{ data }">
           {{ data.wrongNumberRate }}%
         </template>
       </Column>
-      <Column header="% Không quan tâm">
+      <Column>
+        <template #header>
+          <span v-tooltip.top="'% KQT - % Không quan tâm'">% KQT</span>
+        </template>
         <template #body="{ data }">
           {{ data.notInterestedRate }}%
         </template>
       </Column>
-      <Column field="unprocessed" header="Chưa xử lý"></Column>
+      <Column field="unprocessed">
+        <template #header>
+          <span v-tooltip.top="'Chưa xử lý - Chưa xử lý'">Chưa xử lý</span>
+        </template>
+      </Column>
 
       <!-- Expandable Source Details -->
       <template #expansion="slotProps">
         <div class="p-3 bg-gray-50 dark:bg-gray-900 rounded my-2 ml-10 border border-gray-100 dark:border-gray-700">
           <DataTable :value="slotProps.data.details" dataKey="sourceDetailKey">
             <Column field="sourceDetailLabel" header="Nguồn chi tiết" class="font-semibold text-gray-600"></Column>
-            <Column field="interacted" header="Tương tác được"></Column>
-            <Column header="% tương tác được">
+            <Column field="interacted">
+              <template #header>
+                <span v-tooltip.top="'Tương tác - Tương tác được'">Tương tác</span>
+              </template>
+            </Column>
+            <Column>
+              <template #header>
+                <span v-tooltip.top="'% TT - % tương tác được'">% TT</span>
+              </template>
               <template #body="{ data }">
                 {{ data.interactionRate }}%
               </template>
             </Column>
-            <Column field="nb" header="Đã đóng phí (NB)"></Column>
-            <Column header="Tỷ lệ NB">
+            <Column field="nb">
+              <template #header>
+                <span v-tooltip.top="'NB - Đã đóng phí (NB)'">NB</span>
+              </template>
+            </Column>
+            <Column>
+              <template #header>
+                <span v-tooltip.top="'% NB - Tỷ lệ NB'">% NB</span>
+              </template>
               <template #body="{ data }">
                 {{ data.nbRate }}%
               </template>
             </Column>
-            <Column field="notInteracted" header="Chưa tương tác được"></Column>
-            <Column header="% chưa tương tác được">
+            <Column field="notInteracted">
+              <template #header>
+                <span v-tooltip.top="'Chưa TT - Chưa tương tác được'">Chưa TT</span>
+              </template>
+            </Column>
+            <Column>
+              <template #header>
+                <span v-tooltip.top="'% Chưa TT - % chưa tương tác được'">% Chưa TT</span>
+              </template>
               <template #body="{ data }">
                 {{ data.notInteractedRate }}%
               </template>
             </Column>
-            <Column header="% Sai số">
+            <Column>
+              <template #header>
+                <span v-tooltip.top="'% SS - % Sai số'">% SS</span>
+              </template>
               <template #body="{ data }">
                 {{ data.wrongNumberRate }}%
               </template>
             </Column>
-            <Column header="% Không quan tâm">
+            <Column>
+              <template #header>
+                <span v-tooltip.top="'% KQT - % Không quan tâm'">% KQT</span>
+              </template>
               <template #body="{ data }">
                 {{ data.notInterestedRate }}%
               </template>
             </Column>
-            <Column field="unprocessed" header="Chưa xử lý"></Column>
+            <Column field="unprocessed">
+              <template #header>
+                <span v-tooltip.top="'Chưa xử lý - Chưa xử lý'">Chưa xử lý</span>
+              </template>
+            </Column>
           </DataTable>
         </div>
       </template>

@@ -40,7 +40,7 @@
         <SourcePerformanceTable :sourcePerformance="data.sourcePerformance" />
         
         <RegionPerformanceTable :regionPerformance="data.regionPerformance" />
-        <AdvisorRatesChart :ratesByAdvisor="data.ratesByAdvisor" />
+        <AdvisorRatesTable :ratesByAdvisor="data.ratesByAdvisor" />
       </div>
 
 
@@ -62,7 +62,7 @@ import SourceChart from '@/components/dashboard/SourceChart.vue'
 import SourcePerformanceTable from '@/components/dashboard/SourcePerformanceTable.vue'
 import AdvisorStatusChart from '@/components/dashboard/AdvisorStatusChart.vue'
 import AdvisorStatusTable from '@/components/dashboard/AdvisorStatusTable.vue'
-import AdvisorRatesChart from '@/components/dashboard/AdvisorRatesChart.vue'
+import AdvisorRatesTable from '@/components/dashboard/AdvisorRatesTable.vue'
 
 import ProgressSpinner from 'primevue/progressspinner'
 
