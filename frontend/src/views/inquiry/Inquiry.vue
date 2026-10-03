@@ -21,6 +21,7 @@
       @show="onShow"
       @export="onExport"
       @filter="onFilter"
+      @sort="onSort"
     />
 
     <InquiryShowDialog
@@ -43,7 +44,7 @@ import { useToast } from 'primevue/usetoast'
 const { inquiries, pagination, loading, fetchInquiries, deleteInquiry } = useInquiry()
 const toast = useToast()
 
-const currentParams = ref({ page: 1, limit: 20, search: '' })
+const currentParams = ref({ page: 1, limit: 20, search: '', sortField: null, sortOrder: null })
 
 // Show dialog state
 const showDialogVisible = ref(false)
@@ -65,6 +66,13 @@ const loadData = async () => {
 const onPageChange = async ({ page, limit }) => {
   currentParams.value.page = page
   currentParams.value.limit = limit
+  await loadData()
+}
+
+const onSort = async ({ sortField, sortOrder }) => {
+  currentParams.value.sortField = sortField
+  currentParams.value.sortOrder = sortOrder
+  currentParams.value.page = 1
   await loadData()
 }
 

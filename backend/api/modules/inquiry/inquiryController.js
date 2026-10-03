@@ -20,8 +20,10 @@ const getAllInquiries = async (req, res) => {
     const assignedTo = req.query.assignedTo || null;
     const birthYear = req.query.birthYear || null;
     const oldProvinceId = req.query.oldProvinceId || null;
+    const sortField = req.query.sortField || null;
+    const sortOrder = req.query.sortOrder || null;
 
-    const { inquiries, pagination } = await inquiryService.getAllInquiries({ page, limit, skip, search, user: req.user, hasStudent, statusGeneral, assignedTo, birthYear, oldProvinceId });
+    const { inquiries, pagination } = await inquiryService.getAllInquiries({ page, limit, skip, search, user: req.user, hasStudent, statusGeneral, assignedTo, birthYear, oldProvinceId, sortField, sortOrder });
 
     res.status(200).json({
       message: 'Inquiries retrieved successfully',

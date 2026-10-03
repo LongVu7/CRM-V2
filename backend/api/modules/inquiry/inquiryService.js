@@ -120,15 +120,29 @@ const buildInquiryWhere = async (filters, user) => {
 
 // ─── List all inquiries
 const getAllInquiries = async (filters) => {
-  const { page, limit, skip, user } = filters;
+  const { page, limit, skip, user, sortField, sortOrder } = filters;
   const where = await buildInquiryWhere(filters, user);
+
+  //Sort column 
+  let orderBy = { createdAt: 'desc' };
+  if (sortField) {
+    const order = parseInt(sortOrder, 10) === 1 ? 'asc' : 'desc';
+    const keys = sortField.split('.');
+    orderBy = {};
+    let current = orderBy;
+    for (let i = 0; i < keys.length - 1; i++) {
+      current[keys[i]] = {};
+      current = current[keys[i]];
+    }
+    current[keys[keys.length - 1]] = order;
+  }
 
   const [inquiries, totalCount] = await prisma.$transaction([
     prisma.inquiry.findMany({
       where,
       skip,
       take: limit,
-      orderBy: { createdAt: 'desc' },
+      orderBy,
       include: inquiryInclude
     }),
     prisma.inquiry.count({ where })

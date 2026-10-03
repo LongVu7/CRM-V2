@@ -2,7 +2,7 @@
   <div class="table-container">
     <DataTable :value="inquiries" lazy :paginator="true" :rows="pagination?.limit || 20"
       :first="((pagination?.page || 1) - 1) * (pagination?.limit || 20)" :totalRecords="pagination?.totalCount || 0"
-      :rowsPerPageOptions="[10, 20, 50, 100]" :loading="loading" @page="onPage" dataKey="id" removableSort stripedRows
+      :rowsPerPageOptions="[10, 20, 50, 100]" :loading="loading" @page="onPage" @sort="onSort" dataKey="id" removableSort stripedRows
       showGridlines
       paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
       currentPageReportTemplate="Showing {first} to {last} of {totalRecords} inquiries">
@@ -52,13 +52,13 @@
         </div>
       </template>
       
-      <Column header="Assigned Account" style="min-width: 150px">
+      <Column field="assignedTo.fullName" header="Assigned Account" sortable style="min-width: 150px">
         <template #body="{ data }">
           <span v-if="data.assignedTo">{{ data.assignedTo.fullName }}</span>
           <span v-else class="null-text">—</span>
         </template>
       </Column>
-      <Column header="Student" style="min-width: 150px">
+      <Column field="student.fullName" header="Student" sortable style="min-width: 150px">
         <template #body="{ data }">
           <span v-if="data.student">{{ data.student.fullName }}</span>
           <span v-else class="null-text">—</span>
@@ -80,7 +80,7 @@
         </template>
       </Column>
 
-      <Column field="description" header="Description" style="min-width: 200px">
+      <Column field="description" header="Description" sortable style="min-width: 200px">
         <template #body="{ data }">
           <span v-if="data.description" class="desc-text">{{ data.description.length > 60 ?
             data.description.substring(0, 60) + '...' : data.description }}</span>
@@ -133,7 +133,7 @@ const props = defineProps({
   pagination: { type: Object, default: null }
 })
 
-const emit = defineEmits(['page-change', 'search', 'delete', 'show', 'export', 'filter'])
+const emit = defineEmits(['page-change', 'search', 'delete', 'show', 'export', 'filter', 'sort'])
 
 const router = useRouter()
 const confirm = useConfirm()
@@ -185,6 +185,10 @@ const birthYearOptions = Array.from({ length: 40 }, (_, i) => {
 const onPage = (event) => {
   const page = Math.floor(event.first / event.rows) + 1
   emit('page-change', { page, limit: event.rows })
+}
+
+const onSort = (event) => {
+  emit('sort', { sortField: event.sortField, sortOrder: event.sortOrder })
 }
 
 const onSearch = (e) => {
