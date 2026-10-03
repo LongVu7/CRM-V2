@@ -7,6 +7,7 @@ import { useInquiry } from '@/composables/useInquiry'
 import { formatDate, formatDateTime } from '@/utils/dateUtils'
 import {
   getStatusLevel,
+  getSourceLevel,
   formatEventNames,
   getCompensationLabel
 } from '@/utils/inquiryLabels'
@@ -88,11 +89,21 @@ const navigateToEdit = () => {
       <!-- Source Information -->
       <div class="show-section">
         <h3 class="section-title"><i class="pi pi-map-marker"></i> Source</h3>
-        <div class="field-grid">
+        <div class="field-grid field-grid--three-col">
           <div class="field-item">
             <span class="field-label">Source</span>
-            <span class="field-value">{{ inquiryData.sourceData?.name || '—' }}</span>
+            <span class="field-value">{{ getSourceLevel(inquiryData.sourceData, 'source') }}</span>
           </div>
+          <div class="field-item">
+            <span class="field-label">Source Detail</span>
+            <span class="field-value">{{ getSourceLevel(inquiryData.sourceData, 'sourceDetail') }}</span>
+          </div>
+          <div class="field-item">
+            <span class="field-label">Approach Method</span>
+            <span class="field-value">{{ getSourceLevel(inquiryData.sourceData, 'approachMethod') }}</span>
+          </div>
+        </div>
+        <div class="field-grid" style="margin-top: 1rem;">
           <div class="field-item">
             <span class="field-label">Data Received</span>
             <span class="field-value">{{ formatDate(inquiryData.dataReceived) }}</span>

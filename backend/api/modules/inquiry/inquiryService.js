@@ -15,7 +15,17 @@ const inquiryInclude = {
     select: { id: true, fullName: true, email: true }
   },
   sourceData: {
-    select: { id: true, name: true, level: true }
+    select: {
+      id: true, name: true, label: true, level: true,
+      parent: {
+        select: {
+          id: true, name: true, label: true, level: true,
+          parent: {
+            select: { id: true, name: true, label: true, level: true }
+          }
+        }
+      }
+    }
   },
   statusData: {
     select: {

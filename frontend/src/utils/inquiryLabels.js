@@ -45,3 +45,27 @@ export const getStatusLevel = (statusData, level) => {
   
   return '—'
 }
+
+/**
+ * Extract a specific source level label from the nested sourceData object.
+ */
+export const getSourceLevel = (sourceData, level) => {
+  if (!sourceData) return '—'
+  
+  if (level === 'source') {
+    if (sourceData.level === 'source') return sourceData.label
+    if (sourceData.level === 'sourceDetail' && sourceData.parent) return sourceData.parent.label
+    if (sourceData.level === 'approachMethod' && sourceData.parent?.parent) return sourceData.parent.parent.label
+  }
+  
+  if (level === 'sourceDetail') {
+    if (sourceData.level === 'sourceDetail') return sourceData.label
+    if (sourceData.level === 'approachMethod' && sourceData.parent) return sourceData.parent.label
+  }
+  
+  if (level === 'approachMethod') {
+    if (sourceData.level === 'approachMethod') return sourceData.label
+  }
+  
+  return '—'
+}
