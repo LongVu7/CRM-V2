@@ -5,8 +5,8 @@
       <div class="filter-group col-span-1 md:col-span-2">
         <label class="block text-sm font-medium mb-1">Date Range</label>
         <div class="flex gap-2">
-          <DatePicker v-model="filters.from" dateFormat="yy-mm-dd" placeholder="From (YYYY-MM-DD)" class="w-full" showIcon />
-          <DatePicker v-model="filters.to" dateFormat="yy-mm-dd" placeholder="To (YYYY-MM-DD)" class="w-full" showIcon />
+          <DatePicker v-model="filters.from" dateFormat="dd/mm/yy" placeholder="From (DD/MM/YYYY)" class="w-full" showIcon />
+          <DatePicker v-model="filters.to" dateFormat="dd/mm/yy" placeholder="To (DD/MM/YYYY)" class="w-full" showIcon />
         </div>
       </div>
 

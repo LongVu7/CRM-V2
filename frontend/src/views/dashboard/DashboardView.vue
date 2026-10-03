@@ -29,15 +29,15 @@
       <div class="charts-grid mt-4">
         <!-- Thống kê tình trạng theo ngành -->
         <MajorChart :byMajor="data.byMajor" />
+        <!-- <RegionChart :byRegion="data.byRegion" /> -->
+        <AdvisorStatusChart :statusByAdvisor="data.statusByAdvisor" />
+        <!-- Thống kê tình trạng xử lý data (Chart and Table) -->
+        <AdvisorStatusTable :statusByAdvisor="data.statusByAdvisor" />
         <!-- Thống kê tình trạng theo Tỉnh/ TP -->
-        <RegionChart :byRegion="data.byRegion" />
         <MajorPerformanceTable :majorPerformance="data.majorPerformance" />
         <!-- Thống kê tình trạng theo Nguồn -->
         <SourceChart :bySource="data.bySource" />
         <SourcePerformanceTable :sourcePerformance="data.sourcePerformance" />
-        <!-- Thống kê tình trạng xử lý data (Chart and Table) -->
-        <AdvisorStatusChart :statusByAdvisor="data.statusByAdvisor" />
-        <AdvisorStatusTable :statusByAdvisor="data.statusByAdvisor" />
         
         <RegionPerformanceTable :regionPerformance="data.regionPerformance" />
         <AdvisorRatesChart :ratesByAdvisor="data.ratesByAdvisor" />

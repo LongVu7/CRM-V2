@@ -15,7 +15,7 @@ const { ProvinceGroup, SchoolType, StudentClass, EnglishCertificate, GPA, Progra
 
 // ─── Create a student
 const createStudent = async (data) => {
-  const { specializedRegister, education, ...studentData } = data;
+  const { specializedRegister, education, parentPhone, ...studentData } = data;
   try {
     return await prisma.$transaction(async (tx) => {
       return await tx.student.create({
@@ -43,8 +43,8 @@ const createStudent = async (data) => {
         },
         specializedRegister: {
           include: {
-            interestedMajor: { select: { id: true, name: true } },
-            specificMajor: { select: { id: true, name: true } }
+            interestedMajor: { select: { id: true, name: true, label: true } },
+            specificMajor: { select: { id: true, name: true, label: true } }
           }
         }
       }
@@ -67,7 +67,7 @@ const createStudent = async (data) => {
   }
 };
 
-
+//Filter function
 const buildStudentWhere = ({ search, oldProvinceId, newProvinceId, countryId, provinceGroup, schoolType, birthYear, class: studentClass }) => {
   const where = {};
   
@@ -76,7 +76,7 @@ const buildStudentWhere = ({ search, oldProvinceId, newProvinceId, countryId, pr
       { fullName: { contains: search, mode: 'insensitive' } },
       { mobile: { contains: search } },
       { email: { contains: search, mode: 'insensitive' } },
-      { parentPhone: { contains: search } }
+      { otherPhone: { contains: search } }
     ];
   }
   //Filter by birthYear
@@ -136,8 +136,8 @@ const getAllStudents = async (filters) => {
         },
         specializedRegister: {
           include: {
-            interestedMajor: { select: { id: true, name: true } },
-            specificMajor: { select: { id: true, name: true } }
+            interestedMajor: { select: { id: true, name: true, label: true } },
+            specificMajor: { select: { id: true, name: true, label: true } }
           }
         }
       },
@@ -166,8 +166,8 @@ const getStudentById = async (id) => {
       },
       specializedRegister: {
         include: {
-          interestedMajor: { select: { id: true, name: true } },
-          specificMajor: { select: { id: true, name: true } }
+          interestedMajor: { select: { id: true, name: true, label: true } },
+          specificMajor: { select: { id: true, name: true, label: true } }
         }
       }
     }
@@ -184,7 +184,7 @@ const getStudentById = async (id) => {
 
 // ─── Update a student
 const updateStudent = async (id, data) => {
-  const { specializedRegister, education, ...studentData } = data;
+  const { specializedRegister, education, parentPhone, ...studentData } = data;
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -239,8 +239,8 @@ const updateStudent = async (id, data) => {
           },
           specializedRegister: {
             include: {
-              interestedMajor: { select: { id: true, name: true } },
-              specificMajor: { select: { id: true, name: true } }
+              interestedMajor: { select: { id: true, name: true, label: true } },
+              specificMajor: { select: { id: true, name: true, label: true } }
             }
           }
         }
@@ -582,9 +582,8 @@ const confirmImportStudents = async (importToken, accountId) => {
               gender: row.gender || 'Unknown',
               email: row.email || null,
               mobile: row.mobile,
-              otherPhone: row.otherPhone || null,
+              otherPhone: row.otherPhone || row.parentPhone || null,
               birthDate: row.birthDate || null,
-              parentPhone: row.parentPhone || null,
               primaryAddress: row.primaryAddress || null,
               specializedRegisterId: srId
             }
@@ -642,14 +641,14 @@ const exportStudents = async (filters) => {
   });
 
   return students.map(s => ({
-    'Student ID': s.id,
+    // 'Student ID': s.id,
     'Full Name': s.fullName || '',
     'Gender': s.gender || '',
     'Email': s.email || '',
     'Mobile': s.mobile || '',
     'Other Phone': s.otherPhone || '',
     'Date of Birth': s.birthDate ? s.birthDate.toISOString().split('T')[0] : '',
-    'Parent Phone': s.parentPhone || '',
+    'Parent Phone': s.otherPhone || '',
     'Primary Address': s.primaryAddress || '',
     
     // Education

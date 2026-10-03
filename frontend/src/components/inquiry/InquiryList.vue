@@ -8,16 +8,40 @@
       currentPageReportTemplate="Showing {first} to {last} of {totalRecords} inquiries">
       <template #header>
         <div class="table-toolbar">
-          <IconField>
-            <InputIcon class="pi pi-search" />
-            <InputText placeholder="Search inquiries (desc, student)..." @input="onSearch" :value="searchQuery"
-              class="search-input" />
-          </IconField>
+          <div class="toolbar-left" style="display: flex; gap: 0.5rem; align-items: center;">
+            <Button label="Filter" icon="pi pi-filter" outlined @click="toggleFilterPopover" class="filter-btn">
+              <Badge v-if="activeFilterCount > 0" :value="activeFilterCount" class="filter-badge" />
+            </Button>
+            <IconField>
+              <InputIcon class="pi pi-search" />
+              <InputText placeholder="Search inquiries (desc, student)..." @input="onSearch" :value="searchQuery"
+                class="search-input" />
+            </IconField>
+          </div>
           <div class="toolbar-actions" style="margin-left: auto;">
             <Button v-if="$can('export', 'inquiry')" label="Export" icon="pi pi-download" text
               @click="emit('export')" class="export-btn" :loading="exporting" />
           </div>
         </div>
+
+        <Popover ref="filterPopover" class="filter-popover">
+          <div class="popover-content" style="padding: 1rem; width: 250px; display: flex; flex-direction: column; gap: 1rem;">
+            <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <label style="font-size: 0.85rem; font-weight: 600;">Birth Year</label>
+              <Select v-model="pendingFilters.birthYear" :options="birthYearOptions" optionLabel="label"
+                optionValue="value" placeholder="Select..." showClear appendTo="self" class="w-full" />
+            </div>
+            <div class="filter-group" style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <label style="font-size: 0.85rem; font-weight: 600;">Old Province</label>
+              <Select v-model="pendingFilters.oldProvinceId" :options="oldProvinces" optionLabel="name" optionValue="id"
+                placeholder="Select..." showClear appendTo="self" class="w-full" />
+            </div>
+            <div class="popover-actions" style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem;">
+              <Button label="Reset" text severity="secondary" size="small" @click="resetFilters" />
+              <Button label="Apply" size="small" @click="applyFilters" />
+            </div>
+          </div>
+        </Popover>
       </template>
 
       <template #empty>
@@ -86,7 +110,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -95,7 +119,11 @@ import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import ConfirmDialog from 'primevue/confirmdialog'
+import Select from 'primevue/select'
+import Popover from 'primevue/popover'
+import Badge from 'primevue/badge'
 import { useConfirm } from 'primevue/useconfirm'
+import { useSchoolOptions } from '@/composables/useSchoolOptions'
 import { getStatusLevel } from '@/utils/inquiryLabels'
 import { formatCompactDate } from '@/utils/dateUtils'
 
@@ -106,13 +134,54 @@ const props = defineProps({
   pagination: { type: Object, default: null }
 })
 
-const emit = defineEmits(['page-change', 'search', 'delete', 'show', 'export'])
+const emit = defineEmits(['page-change', 'search', 'delete', 'show', 'export', 'filter'])
 
 const router = useRouter()
 const confirm = useConfirm()
 
 const searchQuery = ref('')
 let searchTimeout = null
+
+const { oldProvinces, fetchOldProvinces } = useSchoolOptions()
+
+onMounted(() => {
+  fetchOldProvinces()
+})
+
+const filterPopover = ref(null)
+const activeFilters = ref({ oldProvinceId: null, birthYear: null })
+const pendingFilters = ref({ oldProvinceId: null, birthYear: null })
+
+const activeFilterCount = computed(() => {
+  let count = 0
+  if (activeFilters.value.oldProvinceId) count++
+  if (activeFilters.value.birthYear) count++
+  return count
+})
+
+const toggleFilterPopover = (event) => {
+  pendingFilters.value = { ...activeFilters.value }
+  filterPopover.value.toggle(event)
+}
+
+const applyFilters = () => {
+  activeFilters.value = { ...pendingFilters.value }
+  emit('filter', activeFilters.value)
+  filterPopover.value.hide()
+}
+
+const resetFilters = () => {
+  pendingFilters.value = { oldProvinceId: null, birthYear: null }
+  activeFilters.value = { oldProvinceId: null, birthYear: null }
+  emit('filter', activeFilters.value)
+  filterPopover.value.hide()
+}
+
+const currentYear = new Date().getFullYear()
+const birthYearOptions = Array.from({ length: 40 }, (_, i) => {
+  const year = currentYear - i
+  return { label: year.toString(), value: year }
+})
 
 const onPage = (event) => {
   const page = Math.floor(event.first / event.rows) + 1

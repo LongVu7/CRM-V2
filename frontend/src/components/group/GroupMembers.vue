@@ -1,10 +1,9 @@
 
 <template>
+  <div class="card-splitter">
+      <h2><i class="pi pi-users"></i> Group Members</h2>
+    </div>
   <div class="members-section">
-    <div class="section-card">
-      <div class="card-header">
-        <h2><i class="pi pi-users"></i> Group Members</h2>
-      </div>
 
       <!-- Add Member Row -->
       <div class="add-member-bar">
@@ -65,8 +64,8 @@
           </template>
         </Column>
       </DataTable>
-    </div>
   </div>
+  <div class="card-splitter"></div>
 </template>
 
 
@@ -122,7 +121,7 @@ const handleAddMember = () => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); 
 }
 
-.card-header {
+.card-splitter {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -131,7 +130,7 @@ const handleAddMember = () => {
   padding-bottom: 0.75rem;
 }
 
-.card-header h2 {
+.card-splitter h2 {
   font-size: 1.15rem;
   margin: 0;
   display: flex;
@@ -140,7 +139,7 @@ const handleAddMember = () => {
   color: var(--p-text-color);
 }
 
-.card-header h2 i {
+.card-splitter h2 i {
   color: var(--p-primary-color);
 }
 

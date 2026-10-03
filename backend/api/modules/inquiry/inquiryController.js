@@ -18,8 +18,10 @@ const getAllInquiries = async (req, res) => {
     const hasStudent = req.query.hasStudent === 'true';
     const statusGeneral = req.query.statusGeneral || null;
     const assignedTo = req.query.assignedTo || null;
+    const birthYear = req.query.birthYear || null;
+    const oldProvinceId = req.query.oldProvinceId || null;
 
-    const { inquiries, pagination } = await inquiryService.getAllInquiries({ page, limit, skip, search, user: req.user, hasStudent, statusGeneral, assignedTo });
+    const { inquiries, pagination } = await inquiryService.getAllInquiries({ page, limit, skip, search, user: req.user, hasStudent, statusGeneral, assignedTo, birthYear, oldProvinceId });
 
     res.status(200).json({
       message: 'Inquiries retrieved successfully',
@@ -40,7 +42,9 @@ const exportInquiries = async (req, res) => {
       search: req.query.search || '',
       hasStudent: req.query.hasStudent === 'true',
       statusGeneral: req.query.statusGeneral || null,
-      assignedTo: req.query.assignedTo || null
+      assignedTo: req.query.assignedTo || null,
+      birthYear: req.query.birthYear || null,
+      oldProvinceId: req.query.oldProvinceId || null
     };
 
     const data = await inquiryService.exportInquiries(filters, req.user);

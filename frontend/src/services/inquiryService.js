@@ -2,9 +2,7 @@ import api from '@/services/apiClient'
 
 const prefix = '/inquiries'
 
-export const getAllInquiries = async ({ page = 1, limit = 20, search = '', hasStudent } = {}) => {
-  const params = { page, limit, search }
-  if (hasStudent !== undefined) params.hasStudent = hasStudent
+export const getAllInquiries = async (params = {}) => {
   const response = await api.get(`${prefix}/`, { params })
   return response.data
 }

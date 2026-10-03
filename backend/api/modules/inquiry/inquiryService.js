@@ -58,6 +58,7 @@ const { buildPaginationMeta } = require('../../utils/pagination');
 
 // ─── Build Inquiry Where Clause
 const buildInquiryWhere = async (filters, user) => {
+  // Include data scope authorized
   const scope = await buildInquiryScope(user);
   const where = { ...scope };
 
@@ -83,6 +84,25 @@ const buildInquiryWhere = async (filters, user) => {
   }
   if (filters.assignedTo) {
     where.assignedToId = parseInt(filters.assignedTo, 10);
+  }
+
+  // Student specific filters
+  if (filters.birthYear || filters.oldProvinceId) {
+    where.student = { ...(where.student || {}) };
+    
+    if (filters.birthYear) {
+      const year = parseInt(filters.birthYear, 10);
+      where.student.birthDate = {
+        gte: new Date(`${year}-01-01T00:00:00.000Z`),
+        lt: new Date(`${year + 1}-01-01T00:00:00.000Z`)
+      };
+    }
+    
+    if (filters.oldProvinceId) {
+      where.student.education = {
+        school: { oldProvinceId: parseInt(filters.oldProvinceId, 10) }
+      };
+    }
   }
 
   return where;

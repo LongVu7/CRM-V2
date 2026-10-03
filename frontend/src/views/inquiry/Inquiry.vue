@@ -20,6 +20,7 @@
       @delete="onDelete"
       @show="onShow"
       @export="onExport"
+      @filter="onFilter"
     />
 
     <InquiryShowDialog
@@ -70,6 +71,11 @@ const onPageChange = async ({ page, limit }) => {
 const onSearch = async (searchQuery) => {
   currentParams.value.search = searchQuery
   currentParams.value.page = 1
+  await loadData()
+}
+
+const onFilter = async (filters) => {
+  currentParams.value = { ...currentParams.value, ...filters, page: 1 }
   await loadData()
 }
 

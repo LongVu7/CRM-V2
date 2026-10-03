@@ -17,11 +17,16 @@
     </div>
 
     <div v-else class="cards-container">
-      <!-- Edit Group Form -->
       <div class="section-card">
-        <div class="card-header">
-          <h2><i class="pi pi-pencil"></i> Edit Group Info</h2>
-        </div>
+        <!-- GroupMembers - Add member to group -->
+        <GroupMembers
+          :members="linkedMembers"
+          :allAccounts="accounts"
+          :isAdding="isAddingMember"
+          @add-member="handleAddMember"
+          @remove-member="handleRemoveMember"
+        />
+        <!-- GroupForm - specify priviledge to group -->
         <GroupForm
           :group="existingGroup"
           :accounts="accounts"
@@ -30,14 +35,6 @@
         />
       </div>
 
-      <!-- Membership Management -->
-      <GroupMembers
-        :members="linkedMembers"
-        :allAccounts="accounts"
-        :isAdding="isAddingMember"
-        @add-member="handleAddMember"
-        @remove-member="handleRemoveMember"
-      />
     </div>
   </div>
 </template>
