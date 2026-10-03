@@ -9,9 +9,8 @@
       <template #header>
         <div class="table-toolbar">
           <div class="toolbar-left" style="display: flex; gap: 0.5rem; align-items: center;">
-            <Button label="Filter" icon="pi pi-filter" outlined @click="toggleFilterPopover" class="filter-btn">
-              <Badge v-if="activeFilterCount > 0" :value="activeFilterCount" class="filter-badge" />
-            </Button>
+            <Button label="Filter" icon="pi pi-filter" outlined @click="toggleFilterPopover" class="filter-btn"
+              :badge="activeFilterCount > 0 ? String(activeFilterCount) : undefined" badgeSeverity="danger" />
             <IconField>
               <InputIcon class="pi pi-search" />
               <InputText placeholder="Search inquiries (desc, student)..." @input="onSearch" :value="searchQuery"

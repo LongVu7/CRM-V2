@@ -31,9 +31,8 @@
         <!-- Secondary Toolbar -->
         <div class="secondary-toolbar">
           <div class="secondary-left">
-            <Button label="Filter" icon="pi pi-filter" outlined @click="toggleFilterPopover" class="filter-btn">
-              <Badge v-if="activeFilterCount > 0" :value="activeFilterCount" class="filter-badge" />
-            </Button>
+            <Button label="Filter" icon="pi pi-filter" outlined @click="toggleFilterPopover" class="filter-btn"
+              :badge="activeFilterCount > 0 ? String(activeFilterCount) : undefined" badgeSeverity="danger" />
 
             <span v-if="selectedStudents.length > 0" class="selection-count">
               {{ selectedStudents.length }} Selected
