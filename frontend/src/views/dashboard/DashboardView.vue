@@ -36,7 +36,7 @@
         <!-- Thống kê tình trạng theo Tỉnh/ TP -->
         <MajorPerformanceTable :majorPerformance="data.majorPerformance" />
         <!-- Thống kê tình trạng theo Nguồn -->
-        <SourceChart :bySource="data.bySource" />
+        <SourceStatusTable :bySource="data.bySource" />
         <SourcePerformanceTable :sourcePerformance="data.sourcePerformance" />
         
         <RegionPerformanceTable :regionPerformance="data.regionPerformance" />
@@ -58,7 +58,7 @@ import MajorChart from '@/components/dashboard/MajorChart.vue'
 import MajorPerformanceTable from '@/components/dashboard/MajorPerformanceTable.vue'
 import RegionChart from '@/components/dashboard/RegionChart.vue'
 import RegionPerformanceTable from '@/components/dashboard/RegionPerformanceTable.vue'
-import SourceChart from '@/components/dashboard/SourceChart.vue'
+import SourceStatusTable from '@/components/dashboard/SourceStatusTable.vue'
 import SourcePerformanceTable from '@/components/dashboard/SourcePerformanceTable.vue'
 import AdvisorStatusChart from '@/components/dashboard/AdvisorStatusChart.vue'
 import AdvisorStatusTable from '@/components/dashboard/AdvisorStatusTable.vue'

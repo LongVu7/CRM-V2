@@ -1,0 +1,33 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Environment variables & secrets
+.env
+.env.*
+*.env
+
+# Local runtime & uploads
+uploads/
+logs/
+*.log
+
+# Tests and documentation
+test/
+tests/
+coverage/
+docs/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Git & Docker files
+.git/
+.gitignore
+Dockerfile
+.dockerignore
