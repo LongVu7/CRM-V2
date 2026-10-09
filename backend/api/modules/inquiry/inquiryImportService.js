@@ -15,6 +15,13 @@ const { resolveHierarchy } = require('../../utils/hierarchyUtils');
 
 const importTokens = require('../../utils/importTokenManager');
 
+/**
+ * @typedef {Object} ImportContext
+ * @property {'USER' | 'SYSTEM'} type - The actor type executing the import
+ * @property {number} [accountId] - The ID of the user (if type is 'USER')
+ * @property {string} [name] - The name of the automated job (if type is 'SYSTEM')
+ */
+
 const COLUMN_MAP = {
   'Full Name': { key: 'fullName', requiredStruct: true, requiredNew: true },
   'Gender': { key: 'gender', requiredStruct: false, requiredNew: false },
@@ -83,12 +90,7 @@ const parseExcelDate = (val) => {
 };
 
 
-const previewImportInquiry = async (fileBuffer, accountId) => {
-  const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  const rawData = xlsx.utils.sheet_to_json(sheet, { defval: '' });
-
+const validateInquiryRows = async (rawData) => {
   if (rawData.length === 0) {
     const error = new Error('The uploaded file is empty');
     error.status = 400;
@@ -323,16 +325,6 @@ const previewImportInquiry = async (fileBuffer, accountId) => {
     }
   }
 
-  // Create Token
-  const importToken = crypto.randomUUID();
-  importTokens.set(importToken, {
-    accountId,
-    data: parsedRows,
-    createdAt: Date.now(),
-    expiresAt: Date.now() + 30 * 60 * 1000,
-    status: 'READY'
-  });
-
   const summary = {
     total: parsedRows.length,
     readyNew: parsedRows.filter(r => r._meta.classification === 'READY_NEW_STUDENT_AND_INQUIRY').length,
@@ -343,37 +335,37 @@ const previewImportInquiry = async (fileBuffer, accountId) => {
     invalid: parsedRows.filter(r => r._meta.classification === 'INVALID').length,
   };
 
+  return { summary, rows: parsedRows };
+};
+
+const previewImportInquiry = async (fileBuffer, accountId) => {
+  const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  const rawData = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+
+  const { summary, rows: parsedRows } = await validateInquiryRows(rawData);
+
+  // Create Token
+  const importToken = crypto.randomUUID();
+  importTokens.set(importToken, {
+    accountId,
+    data: parsedRows,
+    createdAt: Date.now(),
+    expiresAt: Date.now() + 30 * 60 * 1000,
+    status: 'READY'
+  });
+
   return { importToken, summary, rows: parsedRows };
 };
 
-const confirmImportInquiry = async (importToken, accountId) => {
-  const tokenData = importTokens.get(importToken);
 
-  if (!tokenData) {
-    const err = new Error('Import token is invalid or has expired');
-    err.status = 400;
-    throw err;
-  }
 
-  if (tokenData.accountId !== accountId) {
-    const err = new Error('Unauthorized token');
-    err.status = 403;
-    throw err;
-  }
-
-  if (tokenData.status !== 'READY') {
-    const err = new Error('Import is already processing or completed');
-    err.status = 400;
-    throw err;
-  }
-
-  tokenData.status = 'PROCESSING';
-
-  const rows = tokenData.data;
+const insertInquiryRows = async (rows, context) => {
   let newStudentsCreated = 0;
   let newInquiriesForExisting = 0;
   let skipped = 0;
-
+  
   for (const row of rows) {
     if (row._meta.classification === 'READY_NEW_STUDENT_AND_INQUIRY') {
       try {
@@ -489,9 +481,6 @@ const confirmImportInquiry = async (importToken, accountId) => {
     }
   }
 
-  // Cleanup token
-  importTokens.delete(importToken);
-
   return {
     newStudentsCreated,
     newInquiriesForExisting,
@@ -499,8 +488,42 @@ const confirmImportInquiry = async (importToken, accountId) => {
   };
 };
 
+const confirmImportInquiry = async (importToken, accountId) => {
+  const tokenData = importTokens.get(importToken);
+
+  if (!tokenData) {
+    const err = new Error('Import token is invalid or has expired');
+    err.status = 400;
+    throw err;
+  }
+
+  if (tokenData.accountId !== accountId) {
+    const err = new Error('Unauthorized token');
+    err.status = 403;
+    throw err;
+  }
+
+  if (tokenData.status !== 'READY') {
+    const err = new Error('Import is already processing or completed');
+    err.status = 400;
+    throw err;
+  }
+
+  tokenData.status = 'PROCESSING';
+
+  // Call the core business logic
+  const result = await insertInquiryRows(tokenData.data, { type: 'USER', accountId });
+
+  // Cleanup token
+  importTokens.delete(importToken);
+
+  return result;
+};
+
 module.exports = {
   generateTemplate,
   previewImportInquiry,
-  confirmImportInquiry
+  confirmImportInquiry,
+  validateInquiryRows,
+  insertInquiryRows
 };

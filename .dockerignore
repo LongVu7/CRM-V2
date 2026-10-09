@@ -26,6 +26,7 @@ backend/uploads/
 .agents/
 .specify/
 specs/
+skills-lock.json
 
 # Tests & Docs
 test/

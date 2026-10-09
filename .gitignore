@@ -7,3 +7,5 @@ node_modules/*
 test/*
 .specify/*
 specs/*
+skills-lock.json
+.archify/*

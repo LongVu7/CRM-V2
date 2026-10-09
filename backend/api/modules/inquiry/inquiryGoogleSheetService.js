@@ -1,7 +1,7 @@
 const { google } = require('googleapis');
 const xlsx = require('xlsx');
 const auth = require('../../../config/googleAuth');
-const { previewImportInquiry, confirmImportInquiry } = require('./inquiryImportService');
+const { validateInquiryRows, insertInquiryRows } = require('./inquiryImportService');
 
 const HEADER_MAP_WEB_HCM = {
   'Name': 'Full Name',
@@ -27,45 +27,48 @@ const HEADER_MAP_MULTIPLE_CHOICE = {
 
 
 /**
- * Export a Google Sheet to an xlsx Buffer using the Drive API
+ * Fetch rows from a Google Sheet using the Sheets API
  * @param {string} sheetId - The ID of the Google Sheet
  * @param {object} auth - The google.auth.JWT client
- * @returns {Promise<Buffer>}
+ * @returns {Promise<Array<Object>>}
  */
-async function exportSheetToXlsx(sheetId, auth) {
-  const drive = google.drive({ version: 'v3', auth });
+async function fetchSheetRows(sheetId, auth) {
+  const sheets = google.sheets({ version: 'v4', auth });
 
-  const response = await drive.files.export(
-    {
-      fileId: sheetId,
-      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    },
-    { responseType: 'arraybuffer' }
-  );
+  const sheetInfo = await sheets.spreadsheets.get({ spreadsheetId: sheetId });
+  const sheetName = sheetInfo.data.sheets[0].properties.title;
 
-  return Buffer.from(response.data);
+  const response = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: sheetName,
+  });
+
+  const values = response.data.values;
+  if (!values || values.length === 0) return [];
+
+  const headers = values[0];
+  const rows = [];
+  for (let i = 1; i < values.length; i++) {
+    const rowArray = values[i];
+    const rowObj = {};
+    headers.forEach((header, index) => {
+      rowObj[header] = rowArray[index] !== undefined ? rowArray[index] : '';
+    });
+    rows.push(rowObj);
+  }
+
+  return rows;
 }
 
 /**
- * Reads an xlsx buffer, remaps columns, injects static fields, and returns a new xlsx buffer
- * @param {Buffer} xlsxBuffer - The original xlsx file buffer
+ * Remaps raw sheet JSON headers to standard CRM headers, injects static fields.
+ * @param {Array<Object>} rows - The raw JSON rows from fetchSheetRows
  * @param {object} headerMap - Object mapping original header names to new header names
  * @param {object} injectedFields - Key-value pairs to inject into every row
- * @returns {Buffer} - The new xlsx file buffer
+ * @returns {Array<Object>} - The new JSON rows
  */
-function remapHeaders(xlsxBuffer, headerMap, injectedFields = {}) {
-  // Read the workbook from buffer
-  const workbook = xlsx.read(xlsxBuffer, { type: 'buffer' });
-
-  // Assume the first sheet is the one we want
-  const sheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[sheetName];
-
-  // Convert sheet to JSON array of objects
-  const rows = xlsx.utils.sheet_to_json(worksheet, { defval: '' });
-
-  // Process each row
-  const remappedRows = rows.map(row => {
+function remapHeaders(rows, headerMap, injectedFields = {}) {
+  return rows.map(row => {
     const newRow = {};
 
     // Map existing columns
@@ -82,16 +85,6 @@ function remapHeaders(xlsxBuffer, headerMap, injectedFields = {}) {
 
     return newRow;
   });
-
-  // Convert JSON back to a new worksheet
-  const newWorksheet = xlsx.utils.json_to_sheet(remappedRows);
-
-  // Create a new workbook and append the new worksheet
-  const newWorkbook = xlsx.utils.book_new();
-  xlsx.utils.book_append_sheet(newWorkbook, newWorksheet, 'Sheet1');
-
-  // Write the workbook to a buffer
-  return xlsx.write(newWorkbook, { type: 'buffer', bookType: 'xlsx' });
 }
 
 // Automated sync for Google Sheets to Inquiries
@@ -136,74 +129,39 @@ async function syncGoogleSheetsToInquiries() {
     }
 
     try {
-      // 1. Export as XLSX
-      // const xlsxBuffer = await exportSheetToXlsx(sheet.id, auth);
-
-      // // 2. Remap headers
-      // const remappedBuffer = remapHeaders(xlsxBuffer, sheet.headerMap, { Source: sheet.source });
-
-      // // 3. Preview Import
-      // const { importToken } = await previewImportInquiry(
-      //   { buffer: remappedBuffer, originalname: `${sheet.name}.xlsx` },
-      //   systemAccountId
-      // );
-
-      // 1. Export as XLSX
-      const xlsxBuffer = await exportSheetToXlsx(sheet.id, auth);
+      // 1. Fetch JSON rows directly
+      const rawRows = await fetchSheetRows(sheet.id, auth);
 
       console.log(JSON.stringify({
         severity: 'INFO',
-        message: 'Google Sheet exported',
+        message: 'Google Sheet fetched',
         sheet: sheet.name,
-        exportedBytes: xlsxBuffer?.length,
-        isBuffer: Buffer.isBuffer(xlsxBuffer),
+        totalRawRows: rawRows.length,
         timestamp: new Date().toISOString()
       }));
 
-      // // 2. Remap headers
-      const remappedBuffer = remapHeaders(
-        xlsxBuffer,
+      // 2. Remap headers
+      const remappedRows = remapHeaders(
+        rawRows,
         sheet.headerMap,
         { Source: sheet.source }
       );
 
-      // 3. Preview Import
       console.log(JSON.stringify({
         severity: 'INFO',
         message: 'Headers remapped',
         sheet: sheet.name,
-        remappedBytes: remappedBuffer?.length,
-        isBuffer: Buffer.isBuffer(remappedBuffer),
+        remappedRowsCount: remappedRows.length,
         timestamp: new Date().toISOString()
       }));
 
-      const file = {
-        buffer: remappedBuffer,
-        originalname: `${sheet.name}.xlsx`,
-        mimetype:
-          'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        size: remappedBuffer.length
-      };
+      // 3. Validate rows
+      const { summary, rows: previewRows } = await validateInquiryRows(remappedRows);
 
+      // Log validation classification breakdown
       console.log(JSON.stringify({
         severity: 'INFO',
-        message: 'Preparing import file',
-        sheet: sheet.name,
-        fileSize: file.size,
-        originalname: file.originalname,
-        mimetype: file.mimetype,
-        timestamp: new Date().toISOString()
-      }));
-
-      const { importToken, summary, rows: previewRows } = await previewImportInquiry(
-        file.buffer,
-        systemAccountId
-      );
-
-      // Log preview classification breakdown so we know WHY rows are skipped
-      console.log(JSON.stringify({
-        severity: 'INFO',
-        message: 'Preview classification breakdown',
+        message: 'Validation classification breakdown',
         sheet: sheet.name,
         totalRows: summary.total,
         readyNew: summary.readyNew,
@@ -249,8 +207,11 @@ async function syncGoogleSheetsToInquiries() {
         }));
       }
 
-      // 4. Confirm Import
-      const result = await confirmImportInquiry(importToken, systemAccountId);
+      // 4. Insert records
+      const result = await insertInquiryRows(previewRows, {
+        type: 'SYSTEM',
+        name: 'Google Sheets Background Sync'
+      });
 
       console.log(JSON.stringify({
         severity: 'INFO',
@@ -261,6 +222,7 @@ async function syncGoogleSheetsToInquiries() {
         skipped: result.skipped,
         timestamp: new Date().toISOString()
       }));
+
 
     } catch (error) {
       console.error(JSON.stringify({
@@ -275,7 +237,7 @@ async function syncGoogleSheetsToInquiries() {
 }
 
 module.exports = {
-  exportSheetToXlsx,
+  fetchSheetRows,
   remapHeaders,
   syncGoogleSheetsToInquiries
 };
