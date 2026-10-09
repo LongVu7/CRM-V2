@@ -6,11 +6,11 @@ const dateString = z.string().refine((val) => !isNaN(Date.parse(val)), {
 
 
 
-const { EnglishCertificate, GPA, ProgramScore, SchoolType, ProvinceGroup, Priority, StudentClass } = require('@prisma/client');
+const { EnglishCertificate, GPA, ProgramScore, SchoolType, ProvinceGroup, StudentClass } = require('@prisma/client');
 
 const capitalizeName = (str) => {
   if (typeof str !== 'string' || !str.trim()) return str;
-  return str.trim().split(/\s+/).map(word => 
+  return str.trim().split(/\s+/).map(word =>
     word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
   ).join(' ');
 };
