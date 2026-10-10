@@ -89,17 +89,6 @@ function remapHeaders(rows, headerMap, injectedFields = {}) {
 
 // Automated sync for Google Sheets to Inquiries
 async function syncGoogleSheetsToInquiries() {
-  const systemAccountId = process.env.SYSTEM_ACCOUNT_ID;
-
-  if (!systemAccountId) {
-    console.error(JSON.stringify({
-      severity: 'ERROR',
-      message: 'SYSTEM_ACCOUNT_ID is not set in the environment variables',
-      error: 'SYSTEM_ACCOUNT_ID is not set in the environment variables',
-      timestamp: new Date().toISOString()
-    }));
-    return;
-  }
 
   const sheetsToSync = [
     {
