@@ -16,12 +16,12 @@ const { resolveHierarchy } = require('../../utils/hierarchyUtils');
 const importTokens = require('../../utils/importTokenManager');
 
 /**
- * @typedef {Object} ImportContext
- * @property {'USER' | 'SYSTEM'} type - The actor type executing the import
- * @property {number} [accountId] - The ID of the user (if type is 'USER')
- * @property {string} [name] - The name of the automated job (if type is 'SYSTEM')
+ * {'USER' | 'SYSTEM'} type - The actor type executing the import
+ * For audit log 
  */
 
+// RequiredStruct => Required in struct file (columm Header)
+// RequiredNew => Required when create new student (Value in Row)
 const COLUMN_MAP = {
   'Full Name': { key: 'fullName', requiredStruct: true, requiredNew: true },
   'Gender': { key: 'gender', requiredStruct: false, requiredNew: false },
@@ -33,8 +33,8 @@ const COLUMN_MAP = {
   'Primary Address': { key: 'primaryAddress', requiredStruct: false, requiredNew: false },
   'Priority': { key: 'priority', requiredStruct: false, requiredNew: false },
 
-  'Old Province': { key: 'oldProvince', requiredStruct: true, requiredNew: false },
-  'School': { key: 'school', requiredStruct: true, requiredNew: true },
+  'Old Province': { key: 'oldProvince', requiredStruct: false, requiredNew: false },
+  'School': { key: 'school', requiredStruct: false, requiredNew: false },
   'New Province': { key: 'newProvince', requiredStruct: false, requiredNew: false },
   'Country': { key: 'country', requiredStruct: false, requiredNew: false },
   'Province Group': { key: 'provinceGroup', requiredStruct: false, requiredNew: false },
@@ -338,13 +338,8 @@ const validateInquiryRows = async (rawData) => {
   return { summary, rows: parsedRows };
 };
 
-const previewImportInquiry = async (fileBuffer, accountId) => {
-  const workbook = xlsx.read(fileBuffer, { type: 'buffer' });
-  const sheetName = workbook.SheetNames[0];
-  const sheet = workbook.Sheets[sheetName];
-  const rawData = xlsx.utils.sheet_to_json(sheet, { defval: '' });
-
-  const { summary, rows: parsedRows } = await validateInquiryRows(rawData);
+const previewImportInquiry = async (parsedData, accountId) => {
+  const { summary, rows: parsedRows } = await validateInquiryRows(parsedData);
 
   // Create Token
   const importToken = crypto.randomUUID();

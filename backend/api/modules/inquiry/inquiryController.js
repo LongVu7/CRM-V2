@@ -225,6 +225,7 @@ const searchAccounts = async (req, res) => {
 
 const fs = require('fs');
 const inquiryImportService = require('./inquiryImportService');
+const { parseExcelFiles } = require('../../utils/excelParser');
 
 // ─── Import Endpoints
 
@@ -245,11 +246,12 @@ const previewImportInquiry = async (req, res) => {
       return res.status(400).json({ error: 'No file uploaded' });
     }
 
-    const fileBuffer = fs.readFileSync(req.file.path);
-    const result = await inquiryImportService.previewImportInquiry(fileBuffer, req.user.accountId);
-
+    const parsedData = parseExcelFiles([req.file]);
+    
     // Clean up uploaded file
     if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+
+    const result = await inquiryImportService.previewImportInquiry(parsedData, req.user.accountId);
 
     res.status(200).json({
       message: 'Preview generated successfully',

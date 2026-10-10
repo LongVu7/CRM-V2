@@ -11,5 +11,5 @@ if (process.env.ENABLE_SHEETS_CRON !== 'false') {
     message: 'Google Sheets cron scheduled',
     schedule
   }));
-  // syncGoogleSheetsToInquiries();
+  syncGoogleSheetsToInquiries();
 }
