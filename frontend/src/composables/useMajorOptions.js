@@ -1,5 +1,5 @@
 import { ref, shallowRef } from 'vue'
-import { getRootMajors, getMajorChildrenById } from '@/services/majorDataService'
+import { getStudentOptions } from '@/services/studentService'
 
 export function useMajorOptions() {
   const interestedMajors = ref([])
@@ -10,7 +10,8 @@ export function useMajorOptions() {
   const fetchInterestedMajors = async () => {
     loadingInterested.value = true
     try {
-      interestedMajors.value = await getRootMajors()
+      const data = await getStudentOptions()
+      interestedMajors.value = data.majors || []
     } catch {
       interestedMajors.value = []
     } finally {
@@ -25,7 +26,12 @@ export function useMajorOptions() {
     }
     loadingSpecific.value = true
     try {
-      specificMajors.value = await getMajorChildrenById(parentId)
+      if (!interestedMajors.value.length) {
+        const data = await getStudentOptions()
+        interestedMajors.value = data.majors || []
+      }
+      const parent = interestedMajors.value.find((m) => m.id === Number(parentId))
+      specificMajors.value = parent?.children || []
     } catch {
       specificMajors.value = []
     } finally {

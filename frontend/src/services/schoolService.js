@@ -1,26 +1,27 @@
 import api from '@/services/apiClient'
+import { getStudentOptions } from '@/services/studentService'
 
 const prefix = '/schools'
-
-export const getAllOldProvinces = async () => {
-  const response = await api.get('/old-provinces/')
-  return response.data.data
-}
-
-export const getAllNewProvinces = async () => {
-  const response = await api.get('/new-provinces/')
-  return response.data.data
-}
-
-export const getAllCountries = async () => {
-  const response = await api.get('/countries/')
-  return response.data.data
-}
 
 export const getSchoolOptions = async (oldProvinceId) => {
   const params = {}
   if (oldProvinceId) params.oldProvinceId = oldProvinceId
   const response = await api.get(`${prefix}/options`, { params })
+  return response.data.data
+}
+
+export const getAllOldProvinces = async () => {
+  const data = await getSchoolOptions()
+  return data.oldProvinces || []
+}
+
+export const getAllNewProvinces = async () => {
+  const data = await getStudentOptions()
+  return data.newProvinces || []
+}
+
+export const getAllCountries = async () => {
+  const response = await api.get('/countries/')
   return response.data.data
 }
 

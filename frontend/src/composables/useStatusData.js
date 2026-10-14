@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { getRootOptions, getChildrenById } from '@/services/statusDataService'
+import { getInquiryOptions } from '@/services/inquiryService'
 
 export function useStatusData() {
   const interactions = ref([])
@@ -12,7 +12,8 @@ export function useStatusData() {
   const fetchInteractions = async () => {
     loadingInteractions.value = true
     try {
-      interactions.value = await getRootOptions()
+      const data = await getInquiryOptions()
+      interactions.value = data.statuses || []
     } catch {
       interactions.value = []
     } finally {
@@ -27,9 +28,11 @@ export function useStatusData() {
     }
     loadingGenerals.value = true
     try {
-      generals.value = await getChildrenById(interactionId)
-    } catch {
-      generals.value = []
+      if (!interactions.value.length) {
+        await fetchInteractions()
+      }
+      const item = interactions.value.find((i) => i.id === Number(interactionId))
+      generals.value = item?.children || []
     } finally {
       loadingGenerals.value = false
     }
@@ -42,12 +45,25 @@ export function useStatusData() {
     }
     loadingStatusDetails.value = true
     try {
-      details.value = await getChildrenById(generalId)
-    } catch {
-      details.value = []
+      const item = generals.value.find((g) => g.id === Number(generalId))
+      details.value = item?.children || []
     } finally {
       loadingStatusDetails.value = false
     }
+  }
+
+  const findStatusNode = (nodeId) => {
+    const id = Number(nodeId)
+    for (const i of interactions.value) {
+      if (i.id === id) return { node: i, interactionId: i.id, generalId: null, detailId: null }
+      for (const g of i.children || []) {
+        if (g.id === id) return { node: g, interactionId: i.id, generalId: g.id, detailId: null }
+        for (const d of g.children || []) {
+          if (d.id === id) return { node: d, interactionId: i.id, generalId: g.id, detailId: d.id }
+        }
+      }
+    }
+    return null
   }
 
   return {
@@ -59,6 +75,7 @@ export function useStatusData() {
     loadingStatusDetails,
     fetchInteractions,
     fetchGenerals,
-    fetchDetails
+    fetchDetails,
+    findStatusNode
   }
 }

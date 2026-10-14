@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { getAllNewProvinces } from '@/services/schoolService'
+import { getStudentOptions } from '@/services/studentService'
 
 export function useNewProvinceOptions() {
   const newProvinces = ref([])
@@ -8,7 +8,8 @@ export function useNewProvinceOptions() {
   const fetchNewProvinces = async () => {
     loadingNewProvinces.value = true
     try {
-      newProvinces.value = await getAllNewProvinces()
+      const data = await getStudentOptions()
+      newProvinces.value = data.newProvinces || []
     } catch (err) {
       newProvinces.value = []
     } finally {

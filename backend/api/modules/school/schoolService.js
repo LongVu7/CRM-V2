@@ -24,16 +24,27 @@ const getAllSchools = async ({ page, limit, skip, oldProvinceId, search }) => {
   };
 };
 
-// ─── Get school options by old province 
+// ─── Get school options by old province (includes oldProvinces list)
 const getSchoolOptions = async (oldProvinceId) => {
   const where = {};
   if (oldProvinceId) where.oldProvinceId = Number(oldProvinceId);
 
-  return prisma.school.findMany({
-    where,
-    select: { id: true, name: true },
-    orderBy: { name: 'asc' }
-  });
+  const [oldProvinces, schools] = await prisma.$transaction([
+    prisma.oldProvince.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' }
+    }),
+    prisma.school.findMany({
+      where,
+      select: { id: true, name: true, oldProvinceId: true },
+      orderBy: { name: 'asc' }
+    })
+  ]);
+
+  return {
+    oldProvinces,
+    schools
+  };
 };
 
 // ─── Get school by ID

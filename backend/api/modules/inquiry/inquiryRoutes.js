@@ -36,6 +36,9 @@ router.route('/')
     .get(authenticate, authorize('inquiry.read'), inquiryController.getAllInquiries)
     .post(authenticate, authorize('inquiry.create'), validateBody(createInquirySchema), inquiryController.createInquiry);
 
+router.route('/options')
+    .get(authenticate, inquiryController.getInquiryOptions);
+
 router.route('/export')
     .get(authenticate, authorize('inquiry.export'), inquiryController.exportInquiries);
 

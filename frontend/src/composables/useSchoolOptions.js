@@ -1,5 +1,5 @@
-import { ref, watch } from 'vue'
-import { getAllOldProvinces, getSchoolOptions } from '@/services/schoolService'
+import { ref } from 'vue'
+import { getSchoolOptions } from '@/services/schoolService'
 
 export function useSchoolOptions() {
   const oldProvinces = ref([])
@@ -10,7 +10,8 @@ export function useSchoolOptions() {
   const fetchOldProvinces = async () => {
     loadingOldProvinces.value = true
     try {
-      oldProvinces.value = await getAllOldProvinces()
+      const data = await getSchoolOptions()
+      oldProvinces.value = Array.isArray(data) ? data : data.oldProvinces || []
     } catch (err) {
       oldProvinces.value = []
     } finally {
@@ -25,7 +26,8 @@ export function useSchoolOptions() {
     }
     loadingSchools.value = true
     try {
-      schools.value = await getSchoolOptions(oldProvinceId)
+      const data = await getSchoolOptions(oldProvinceId)
+      schools.value = Array.isArray(data) ? data : data.schools || []
     } catch (err) {
       schools.value = []
     } finally {

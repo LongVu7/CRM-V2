@@ -110,9 +110,7 @@ import Select from 'primevue/select'
 import DatePicker from 'primevue/datepicker'
 import MultiSelect from 'primevue/multiselect'
 import { useSourceData } from '@/composables/useSourceData'
-import { getSourceDataById } from '@/services/sourceDataService'
 import { useStatusData } from '@/composables/useStatusData'
-import { getStatusDataById } from '@/services/statusDataService'
 
 const callCountOptions = Array.from({ length: 10 }, (_, i) => ({
   label: `${i + 1} lần`,
@@ -132,7 +130,8 @@ const emit = defineEmits(['update:modelValue'])
 const {
   sources, sourceDetails, approachMethods,
   loadingSources, loadingSourceDetails, loadingMethods,
-  fetchSources, fetchSourceDetails, fetchApproachMethods
+  fetchSources, fetchSourceDetails, fetchApproachMethods,
+  findSourceNode
 } = useSourceData()
 
 // ─── Source Data local selections
@@ -144,7 +143,8 @@ const selectedApproachMethod = shallowRef(null)
 const {
   interactions, generals, details,
   loadingInteractions, loadingGenerals, loadingStatusDetails,
-  fetchInteractions, fetchGenerals, fetchDetails
+  fetchInteractions, fetchGenerals, fetchDetails,
+  findStatusNode
 } = useStatusData()
 
 // ─── Status Data local selections
@@ -232,33 +232,26 @@ watch(selectedApproachMethod, () => {
 
 // ─── Restore status data selections when editing
 async function restoreStatusSelections(statusDataId) {
+  if (!statusDataId) return
   isRestoringStatus = true
 
   try {
-    const node = await getStatusDataById(statusDataId)
-    if (!node) return
+    if (!interactions.value.length) {
+      await fetchInteractions()
+    }
+    const info = findStatusNode(statusDataId)
+    if (!info) return
 
-    if (node.level === 'interaction') {
-      selectedInteraction.value = node.id
+    if (info.interactionId) {
+      selectedInteraction.value = info.interactionId
       await fetchGenerals(selectedInteraction.value)
-    } else if (node.level === 'general') {
-      if (node.parent) {
-        selectedInteraction.value = node.parent.id
-        await fetchGenerals(selectedInteraction.value)
-      }
-      selectedGeneral.value = node.id
+    }
+    if (info.generalId) {
+      selectedGeneral.value = info.generalId
       await fetchDetails(selectedGeneral.value)
-    } else if (node.level === 'detail') {
-      if (node.parent) {
-        const parentNode = await getStatusDataById(node.parent.id)
-        if (parentNode?.parent) {
-          selectedInteraction.value = parentNode.parent.id
-          await fetchGenerals(selectedInteraction.value)
-        }
-        selectedGeneral.value = parentNode.id
-        await fetchDetails(selectedGeneral.value)
-      }
-      selectedDetail.value = node.id
+    }
+    if (info.detailId) {
+      selectedDetail.value = info.detailId
     }
   } catch {
     // Silently fail — dropdown simply won't be pre-populated
@@ -270,33 +263,26 @@ async function restoreStatusSelections(statusDataId) {
 
 // ─── Restore source data selections when editing
 async function restoreSourceSelections(sourceDataId) {
+  if (!sourceDataId) return
   isRestoringSource = true
 
   try {
-    const node = await getSourceDataById(sourceDataId)
-    if (!node) return
+    if (!sources.value.length) {
+      await fetchSources()
+    }
+    const info = findSourceNode(sourceDataId)
+    if (!info) return
 
-    if (node.level === 'source') {
-      selectedSource.value = node.id
+    if (info.sourceId) {
+      selectedSource.value = info.sourceId
       await fetchSourceDetails(selectedSource.value)
-    } else if (node.level === 'sourceDetail') {
-      if (node.parent) {
-        selectedSource.value = node.parent.id
-        await fetchSourceDetails(selectedSource.value)
-      }
-      selectedSourceDetail.value = node.id
+    }
+    if (info.detailId) {
+      selectedSourceDetail.value = info.detailId
       await fetchApproachMethods(selectedSourceDetail.value)
-    } else if (node.level === 'approachMethod') {
-      if (node.parent) {
-        const parentNode = await getSourceDataById(node.parent.id)
-        if (parentNode?.parent) {
-          selectedSource.value = parentNode.parent.id
-          await fetchSourceDetails(selectedSource.value)
-        }
-        selectedSourceDetail.value = parentNode.id
-        await fetchApproachMethods(selectedSourceDetail.value)
-      }
-      selectedApproachMethod.value = node.id
+    }
+    if (info.methodId) {
+      selectedApproachMethod.value = info.methodId
     }
   } catch {
     // Silently fail — dropdown simply won't be pre-populated

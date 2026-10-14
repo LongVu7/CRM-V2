@@ -1,11 +1,37 @@
 const prisma = require('../../../config/db');
 const { buildInquiryScope } = require('../../../authorization/scope/inquiryScope');
 const { applyStatusTransition } = require('../../utils/statusTransition');
+const { buildHierarchyTree } = require('../../utils/hierarchyUtils');
+
 // ─── Error factory
 const handleError = (message, status) => {
   const err = new Error(message);
   err.status = status;
   return err;
+};
+
+// ─── Get options for inquiry form (sources tree & statuses tree)
+const getInquiryOptions = async () => {
+  const [sourcesRaw, statusesRaw] = await prisma.$transaction([
+    prisma.sourceData.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, label: true, level: true, parentId: true, sortOrder: true },
+      orderBy: { sortOrder: 'asc' }
+    }),
+    prisma.statusData.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, label: true, level: true, parentId: true, sortOrder: true },
+      orderBy: { sortOrder: 'asc' }
+    })
+  ]);
+
+  const sources = buildHierarchyTree(sourcesRaw);
+  const statuses = buildHierarchyTree(statusesRaw);
+
+  return {
+    sources,
+    statuses
+  };
 };
 
 // ─── Shared query 
@@ -546,5 +572,6 @@ module.exports = {
   assignAccountToInquiry,
   searchStudents,
   searchAccounts,
-  exportInquiries
+  exportInquiries,
+  getInquiryOptions
 };

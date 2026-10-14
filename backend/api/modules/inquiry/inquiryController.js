@@ -303,6 +303,18 @@ const importFromGoogleSheets = async (req, res) => {
   }
 };
 
+const getInquiryOptions = async (req, res) => {
+  try {
+    const data = await inquiryService.getInquiryOptions();
+    res.status(200).json({
+      message: 'Inquiry options retrieved successfully',
+      data
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
 module.exports = {
   getAllInquiries,
   exportInquiries,
@@ -318,5 +330,6 @@ module.exports = {
   downloadTemplate,
   previewImportInquiry,
   confirmImportInquiry,
-  importFromGoogleSheets
+  importFromGoogleSheets,
+  getInquiryOptions
 };

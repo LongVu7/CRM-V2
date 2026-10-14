@@ -21,7 +21,7 @@ const resolveHierarchy = (nodes, levelNames, levelsProvided) => {
           if (!currNode.parentId) break;
           const parentNode = nodes.find(n => n.id === currNode.parentId);
           if (parentNode) {
-             if (!filled[j]) { // Only auto-fill if the parent was not explicitly provided
+             if (!filled[j]) { // Only auto fill if the parent node was not explicitly provided
                filled[j] = parentNode.label || parentNode.name;
              }
              currNode = parentNode;
@@ -68,6 +68,27 @@ const resolveHierarchy = (nodes, levelNames, levelsProvided) => {
   return { resolvedId, resolvedIds };
 };
 
+const buildHierarchyTree = (nodes) => {
+  const nodeMap = new Map();
+  const roots = [];
+
+  nodes.forEach(node => {
+    nodeMap.set(node.id, { ...node, children: [] });
+  });
+
+  nodes.forEach(node => {
+    const current = nodeMap.get(node.id);
+    if (node.parentId && nodeMap.has(node.parentId)) {
+      nodeMap.get(node.parentId).children.push(current);
+    } else {
+      roots.push(current);
+    }
+  });
+
+  return roots;
+};
+
 module.exports = {
-  resolveHierarchy
+  resolveHierarchy,
+  buildHierarchyTree
 };

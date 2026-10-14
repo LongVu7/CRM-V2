@@ -55,7 +55,6 @@ import MultiSelect from 'primevue/multiselect'
 import Button from 'primevue/button'
 
 import { useSourceData } from '@/composables/useSourceData'
-import { getChildrenById } from '@/services/sourceDataService'
 import { useSchoolOptions } from '@/composables/useSchoolOptions'
 import { provinceGroupOptions } from '@/constants/region'
 import { majorInterestOptions } from '@/constants/report'
@@ -69,7 +68,8 @@ const emit = defineEmits(['filter-change'])
 
 const { 
   sources, 
-  fetchSources
+  fetchSources,
+  getSourceChildren
 } = useSourceData()
 
 const {
@@ -113,7 +113,7 @@ watch(() => filters.value.sourceIds, async (newVal) => {
   // Fetch details for all selected root sources
   const details = []
   for (const sourceId of newVal) {
-    const children = await getChildrenById(sourceId)
+    const children = getSourceChildren(sourceId)
     details.push(...children)
   }
   sourceDetails.value = details

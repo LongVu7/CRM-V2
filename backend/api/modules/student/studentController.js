@@ -177,6 +177,18 @@ const confirmImport = async (req, res) => {
   }
 };
 
+const getStudentOptions = async (req, res) => {
+  try {
+    const data = await studentService.getStudentOptions();
+    res.status(200).json({
+      message: 'Student options retrieved successfully',
+      data
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
 module.exports = {
   createStudent,
   getAllStudents,
@@ -185,5 +197,6 @@ module.exports = {
   deleteStudent,
   previewImport,
   confirmImport,
-  getStudentById
+  getStudentById,
+  getStudentOptions
 };

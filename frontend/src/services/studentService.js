@@ -65,3 +65,8 @@ export const exportStudents = async (paramsObj = {}) => {
   })
   return response.data
 }
+
+export const getStudentOptions = async () => {
+  const response = await api.get(`${prefix}/options`)
+  return response.data.data
+}

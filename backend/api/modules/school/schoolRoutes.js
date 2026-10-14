@@ -13,7 +13,7 @@ router.route('/')
     .post(authenticate, authorize('school.create'), validateBody(createSchoolSchema), schoolController.createSchool);
 
 router.route('/options')
-    .get(authenticate, authorizeLookup('school.options'), schoolController.getSchoolOptions);
+    .get(authenticate, schoolController.getSchoolOptions);
 
 router.route('/statistics')
     .get(authenticate, authorize('school.read'), schoolController.getStatistics);

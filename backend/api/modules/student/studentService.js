@@ -12,6 +12,29 @@ const {
   ENGLISH_CERT_MAP
 } = require('../../utils/enumMapper');
 const { ProvinceGroup, SchoolType, StudentClass, EnglishCertificate, GPA, ProgramScore } = require('@prisma/client');
+const { buildHierarchyTree } = require('../../utils/hierarchyUtils');
+
+// ─── Get options for student form (majors & new Provinces)
+const getStudentOptions = async () => {
+  const [majorsRaw, newProvinces] = await prisma.$transaction([
+    prisma.majorData.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true, label: true, parentId: true, sortOrder: true },
+      orderBy: { sortOrder: 'asc' }
+    }),
+    prisma.newProvince.findMany({
+      select: { id: true, name: true },
+      orderBy: { name: 'asc' }
+    })
+  ]);
+
+  const majors = buildHierarchyTree(majorsRaw);
+
+  return {
+    majors,
+    newProvinces
+  };
+};
 
 // ─── Create a student
 const createStudent = async (data) => {
@@ -681,5 +704,6 @@ module.exports = {
   deleteStudent,
   previewImportStudents,
   confirmImportStudents,
-  exportStudents
-}; 
+  exportStudents,
+  getStudentOptions
+};
