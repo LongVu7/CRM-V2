@@ -1,3 +1,14 @@
+const { removeVietnameseTones } = require('./enumMapper');
+
+const normalizeHierarchyText = (str) => {
+  if (!str) return '';
+  return removeVietnameseTones(String(str))
+    .toLowerCase()
+    .replace(/y/g, 'i')
+    .replace(/[\s\-_]+/g, ' ')
+    .trim();
+};
+
 const resolveHierarchy = (nodes, levelNames, levelsProvided) => {
   // nodes: list of all nodes for a tree (For statusData and sourceData tree)
   // levelNames: ['interaction', 'general', 'detail'] (statusData)
@@ -10,9 +21,10 @@ const resolveHierarchy = (nodes, levelNames, levelsProvided) => {
   for (let i = levelNames.length - 1; i >= 0; i--) {
     const val = filled[i];
     if (val) {
+      const valNorm = normalizeHierarchyText(val);
       const node = nodes.find(n =>
         n.level === levelNames[i] &&
-        (n.label ? n.label.toLowerCase() === val.toLowerCase() : n.name.toLowerCase() === val.toLowerCase())
+        (normalizeHierarchyText(n.label) === valNorm || normalizeHierarchyText(n.name) === valNorm)
       );
       
       if (node) {
@@ -51,10 +63,11 @@ const resolveHierarchy = (nodes, levelNames, levelsProvided) => {
       break; 
     }
 
+    const valNorm = normalizeHierarchyText(val);
     const node = nodes.find(n =>
       n.level === levelName &&
       n.parentId === currentParentId &&
-      (n.label ? n.label.toLowerCase() === val.toLowerCase() : n.name.toLowerCase() === val.toLowerCase())
+      (normalizeHierarchyText(n.label) === valNorm || normalizeHierarchyText(n.name) === valNorm)
     );
 
     if (!node) {
@@ -90,5 +103,6 @@ const buildHierarchyTree = (nodes) => {
 
 module.exports = {
   resolveHierarchy,
-  buildHierarchyTree
+  buildHierarchyTree,
+  normalizeHierarchyText
 };

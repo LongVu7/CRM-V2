@@ -141,6 +141,6 @@ const importStudentsPayloadSchema = z.object({
   students: z.array(importStudentSchema).min(1, 'At least one student must be provided for import')
 });
 
-module.exports = { createStudentSchema, updateStudentSchema, importStudentsPayloadSchema };
+module.exports = { createStudentSchema, updateStudentSchema, importStudentsPayloadSchema, capitalizeName };
 
 

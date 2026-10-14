@@ -101,6 +101,55 @@ const ENGLISH_CERT_MAP = {
   'KHAC': 'other'
 };
 
+const PROVINCE_ALIASES = {
+  // Ho Chi Minh City variations
+  'tp ho chi minh': 'thanh pho ho chi minh',
+  'tp. ho chi minh': 'thanh pho ho chi minh',
+  'tp.hcm': 'thanh pho ho chi minh',
+  'tphcm': 'thanh pho ho chi minh',
+  'ho chi minh': 'thanh pho ho chi minh',
+  'hcm': 'thanh pho ho chi minh',
+  'sai gon': 'thanh pho ho chi minh',
+  // Ha Noi variations
+  'tp ha noi': 'ha noi',
+  'tp. ha noi': 'ha noi',
+  'thanh pho ha noi': 'ha noi',
+  // Da Nang variations
+  'tp da nang': 'da nang',
+  'tp. da nang': 'da nang',
+  'thanh pho da nang': 'da nang',
+  // Can Tho variations
+  'tp can tho': 'can tho',
+  'tp. can tho': 'can tho',
+  'thanh pho can tho': 'can tho',
+  // Hai Phong variations
+  'tp hai phong': 'hai phong',
+  'tp. hai phong': 'hai phong',
+  'thanh pho hai phong': 'hai phong',
+  // Ba Ria - Vung Tau variations
+  'ba ria vung tau': 'ba ria - vung tau',
+  'brvt': 'ba ria - vung tau',
+  'vung tau': 'ba ria - vung tau',
+  // Thua Thien Hue variations
+  'thua thien hue': 'hue',
+  'tt hue': 'hue',
+  // Dak Lak variations
+  'daklak': 'dak lak',
+  'dak lak': 'dak lak',
+  'dac lac': 'dak lak',
+  'daclak': 'dak lak'
+};
+
+const normalizeProvinceName = (val) => {
+  if (!val) return '';
+  let str = removeVietnameseTones(String(val)).toLowerCase();
+  str = str.replace(/[\.\-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (PROVINCE_ALIASES[str]) return PROVINCE_ALIASES[str];
+  const stripped = str.replace(/^(tinh|tp|thanh pho)\s+/i, '').trim();
+  if (PROVINCE_ALIASES[stripped]) return PROVINCE_ALIASES[stripped];
+  return stripped;
+};
+
 module.exports = {
   removeVietnameseTones,
   normalizeEnum,
@@ -108,5 +157,8 @@ module.exports = {
   CLASS_MAP,
   GPA_MAP,
   PROGRAM_SCORE_MAP,
-  ENGLISH_CERT_MAP
+  ENGLISH_CERT_MAP,
+  PROVINCE_ALIASES,
+  normalizeProvinceName
 };
+

@@ -60,10 +60,91 @@ const assignAccountSchema = z.object({
   accountId: z.number().int('accountId must be an integer')
 }).strict();
 
+const { capitalizeName } = require('../student/studentSchemas');
+
+const sanitizeSheetMobile = (val) => {
+  if (val === undefined || val === null || val === '') return undefined;
+  let str = String(val).trim();
+  if (!str) return undefined;
+  let cleaned = str.replace(/\D/g, '');
+  if (cleaned.startsWith('84') && cleaned.length === 11) {
+    cleaned = '0' + cleaned.slice(2);
+  } else if (cleaned.length === 9 && !cleaned.startsWith('0')) {
+    cleaned = '0' + cleaned;
+  }
+  return cleaned;
+};
+
+const sheetMobileSchema = z.preprocess(
+  sanitizeSheetMobile,
+  z.string({ required_error: 'Mobile is required' })
+    .regex(/^0\d{9}$/, 'Số điện thoại không hợp lệ (cần 10 số bắt đầu bằng 0)')
+);
+
+const sheetFullNameSchema = z.string({
+  required_error: 'Full Name is required',
+  invalid_type_error: 'Full Name must be a string'
+})
+  .trim()
+  .min(1, 'Full Name is required')
+  .max(255)
+  .transform(capitalizeName);
+
+const sheetInquirySyncSchema = z.object({
+  fullName: sheetFullNameSchema,
+  mobile: sheetMobileSchema,
+  email: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
+    z.string().email('Email không đúng định dạng').max(255).optional()
+  ),
+  otherPhone: z.preprocess(
+    sanitizeSheetMobile,
+    z.string().regex(/^0\d{9}$/, 'Số điện thoại phụ không hợp lệ').optional()
+  ),
+  primaryAddress: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
+    z.string().max(255).optional()
+  ),
+  oldProvince: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
+    z.string().max(255).optional()
+  ),
+  school: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
+    z.string().max(255).optional()
+  ),
+  specificMajor: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
+    z.string().max(255).optional()
+  ),
+  interestedMajor: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
+    z.string().max(255).optional()
+  ),
+  source: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
+    z.string().max(100).optional()
+  ),
+  sourceDetail: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
+    z.string().max(255).optional()
+  ),
+  approachMethod: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
+    z.string().max(255).optional()
+  ),
+  class: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
+    z.string().max(50).optional()
+  )
+}).passthrough();
+
 module.exports = {
   createInquirySchema,
   updateInquirySchema,
   assignStudentSchema,
-  assignAccountSchema
+  assignAccountSchema,
+  sheetInquirySyncSchema,
+  sanitizeSheetMobile
 };
 

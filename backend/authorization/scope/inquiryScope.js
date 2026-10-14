@@ -15,16 +15,26 @@ const getManagedGroupMemberIds = async (accountId) => {
 
 //Build Prisma WHERE scope for inquiry queries
 const buildInquiryScope = async (user) => {
-  // Full expansion
-  if (user.permissions.has('inquiry.read_all')) return {};
+  // Full expansion for admin or inquiry.read_all
+  if (user?.roleName === 'admin' || user?.permissions?.has('inquiry.read_all')) return {};
 
   // Base scope: own inquiries
-  const validIds = [user.accountId];
+  const validIds = user?.accountId ? [user.accountId] : [];
 
   // Group expansion
-  if (user.permissions.has('inquiry.read_group')) {
+  if (user?.permissions?.has('inquiry.read_group')) {
     const memberIds = await getManagedGroupMemberIds(user.accountId);
     validIds.push(...memberIds);
+  }
+
+  // Allow managers with assign or import capability to see unassigned triage leads
+  if (user?.permissions?.has('inquiry.assign') || user?.permissions?.has('inquiry.import')) {
+    return {
+      OR: [
+        { assignedToId: { in: validIds } },
+        { assignedToId: null }
+      ]
+    };
   }
 
   return { assignedToId: { in: validIds } };

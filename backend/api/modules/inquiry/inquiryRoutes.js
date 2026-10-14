@@ -28,6 +28,9 @@ router.route('/import/preview')
 router.route('/import/confirm')
     .post(authenticate, authorize('inquiry.import'), inquiryController.confirmImportInquiry);
 
+router.route('/import/sheet-sync')
+    .post(authenticate, authorize('inquiry.import'), inquiryController.importFromGoogleSheets);
+
 router.route('/import-sheets')
     .post(authenticate, authorize('inquiry.import'), inquiryController.importFromGoogleSheets);
 
