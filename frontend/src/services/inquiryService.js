@@ -27,6 +27,10 @@ export const deleteInquiry = async (id) => {
   return response.data
 }
 
+export const deleteInquiries = async (ids = []) => {
+  return Promise.all(ids.map(id => api.delete(`${prefix}/${id}`)))
+}
+
 
 export const unassignStudent = async (inquiryId, studentId) => {
   const response = await api.delete(`${prefix}/${inquiryId}/assign-student`, { data: { studentId } })

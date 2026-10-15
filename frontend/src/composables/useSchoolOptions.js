@@ -11,8 +11,8 @@ export function useSchoolOptions() {
     loadingOldProvinces.value = true
     try {
       const data = await getSchoolOptions()
-      oldProvinces.value = Array.isArray(data) ? data : data.oldProvinces || []
-    } catch (err) {
+      oldProvinces.value = data?.oldProvinces || (Array.isArray(data) && (!data.length || !('oldProvinceId' in data[0])) ? data : [])
+    } catch {
       oldProvinces.value = []
     } finally {
       loadingOldProvinces.value = false
@@ -27,8 +27,8 @@ export function useSchoolOptions() {
     loadingSchools.value = true
     try {
       const data = await getSchoolOptions(oldProvinceId)
-      schools.value = Array.isArray(data) ? data : data.schools || []
-    } catch (err) {
+      schools.value = data?.schools || (Array.isArray(data) ? data : [])
+    } catch {
       schools.value = []
     } finally {
       loadingSchools.value = false

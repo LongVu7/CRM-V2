@@ -107,6 +107,20 @@ export function useInquiry() {
     }
   }
 
+  const deleteInquiries = async (ids) => {
+    loading.value = true
+    error.value = null
+    try {
+      const response = await api.deleteInquiries(ids)
+      return response
+    } catch (err) {
+      error.value = err.response?.data?.error || err.response?.data?.details || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     inquiries,
     inquiry,
@@ -118,6 +132,7 @@ export function useInquiry() {
     createInquiry,
     updateInquiry,
     deleteInquiry,
+    deleteInquiries,
     assignStudent,
     unassignStudent
   }

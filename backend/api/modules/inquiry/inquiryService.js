@@ -535,11 +535,8 @@ const exportInquiries = async (filters, user) => {
     'Mobile': i.student?.mobile || '',
     'Other Phone': i.student?.otherPhone || '',
     'Email': i.student?.email || '',
-    'Other Email': i.student?.otherEmail || '',
     'Parent Phone': i.student?.parentPhone || '',
     'Primary Address': i.student?.primaryAddress || '',
-    'Other Phone': i.student?.otherPhone || '',
-    'Other Email': i.student?.otherEmail || '',
     // Inquiry basic details
     'Description': i.description || '',
     'Data Received': i.dataReceived ? i.dataReceived.toISOString().split('T')[0] : '',
