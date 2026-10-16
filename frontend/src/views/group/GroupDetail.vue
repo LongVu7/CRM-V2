@@ -22,11 +22,12 @@
         <GroupMembers
           :members="linkedMembers"
           :allAccounts="accounts"
+          :groupLeaderId="existingGroup.groupLeaderId"
           :isAdding="isAddingMember"
           @add-member="handleAddMember"
           @remove-member="handleRemoveMember"
         />
-        <!-- GroupForm - specify priviledge to group -->
+        <!-- GroupForm - specify privilege to group -->
         <GroupForm
           :group="existingGroup"
           :accounts="accounts"

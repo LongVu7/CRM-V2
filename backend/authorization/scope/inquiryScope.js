@@ -1,9 +1,10 @@
 const prisma = require('../../config/db');
 
-//Helper to get managed group member's account IDs for a manager
+// Helper to get managed group member's account IDs for a manager/leader
 const getManagedGroupMemberIds = async (accountId) => {
+  if (!accountId) return [];
   const groups = await prisma.userGroup.findMany({
-    where: { groupLeaderId: accountId },
+    where: { groupLeaderId: Number(accountId) },
     select: {
       accounts: { select: { id: true } }
     }
@@ -13,39 +14,97 @@ const getManagedGroupMemberIds = async (accountId) => {
   return [...new Set(memberIds)];
 };
 
-//Build Prisma WHERE scope for inquiry queries
-const buildInquiryScope = async (user) => {
-  // Full expansion for admin or inquiry.read_all
-  if (user?.roleName === 'admin' || user?.permissions?.has('inquiry.read_all')) return {};
+// ─── Build Prisma WHERE scope for inquiry read queries
+const buildInquiryReadScope = async (user) => {
+  if (user?.roleName === 'admin' || user?.permissions?.has('inquiry.read_all')) {
+    return {};
+  }
 
-  // Base scope: own inquiries
-  const validIds = user?.accountId ? [user.accountId] : [];
+  const validIds = [];
 
-  // Group expansion
-  if (user?.permissions?.has('inquiry.read_group')) {
+  if (user?.permissions?.has('inquiry.read_assigned') && user?.accountId) {
+    validIds.push(user.accountId);
+  }
+
+  if (user?.permissions?.has('inquiry.read_group') && user?.accountId) {
+    // if (!validIds.includes(user.accountId))
+    //    validIds.push(user.accountId);
     const memberIds = await getManagedGroupMemberIds(user.accountId);
     validIds.push(...memberIds);
   }
 
-  // Allow managers with assign or import capability to see unassigned triage leads
+  const uniqueIds = [...new Set(validIds)];
+
+  // Allow triage staff with assign or import capability to see unassigned leads
   if (user?.permissions?.has('inquiry.assign') || user?.permissions?.has('inquiry.import')) {
     return {
       OR: [
-        { assignedToId: { in: validIds } },
+        ...(uniqueIds.length > 0 ? [{ assignedToId: { in: uniqueIds } }] : []),
         { assignedToId: null }
       ]
     };
   }
 
-  return { assignedToId: { in: validIds } };
+  if (uniqueIds.length === 0) {
+    return { id: -1 };
+  }
+
+  return { assignedToId: { in: uniqueIds } };
 };
 
-//Ownership resolver for single inquiry access
+// ─── Build Prisma WHERE scope for inquiry update queries
+const buildInquiryUpdateScope = async (user) => {
+  if (user?.roleName === 'admin' || user?.permissions?.has('inquiry.update_all')) {
+    return {};
+  }
+
+  const validIds = [];
+
+  if (user?.permissions?.has('inquiry.update_assigned') && user?.accountId) {
+    validIds.push(user.accountId);
+  }
+
+  if (user?.permissions?.has('inquiry.update_group') && user?.accountId) {
+    // if (!validIds.includes(user.accountId)) 
+    //   validIds.push(user.accountId);
+    const memberIds = await getManagedGroupMemberIds(user.accountId);
+    validIds.push(...memberIds);
+  }
+
+  const uniqueIds = [...new Set(validIds)];
+  if (uniqueIds.length === 0) {
+    return { id: -1 };
+  }
+
+  return { assignedToId: { in: uniqueIds } };
+};
+
+// ─── Build Prisma WHERE scope for inquiry delete queries
+const buildInquiryDeleteScope = async (user) => {
+  if (user?.roleName === 'admin' || user?.permissions?.has('inquiry.delete_all')) {
+    return {};
+  }
+
+  const validIds = [];
+
+  if (user?.permissions?.has('inquiry.delete_assigned') && user?.accountId) {
+    validIds.push(user.accountId);
+  }
+
+  const uniqueIds = [...new Set(validIds)];
+  if (uniqueIds.length === 0) {
+    return { id: -1 };
+  }
+
+  return { assignedToId: { in: uniqueIds } };
+};
+
+// ─── Ownership resolver for single inquiry access
 const resolveInquiryOwnership = async (req) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id)) return null;
 
-  const scope = await buildInquiryScope(req.user);
+  const scope = await buildInquiryReadScope(req.user);
 
   return prisma.inquiry.findFirst({
     where: { id, ...scope },
@@ -85,7 +144,10 @@ const resolveInquiryOwnership = async (req) => {
 };
 
 module.exports = {
-  buildInquiryScope,
+  buildInquiryScope: buildInquiryReadScope,
+  buildInquiryReadScope,
+  buildInquiryUpdateScope,
+  buildInquiryDeleteScope,
   resolveInquiryOwnership,
   getManagedGroupMemberIds
 };

@@ -54,7 +54,7 @@ const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 import { useAbility } from '@casl/vue'
-import { parsePermission } from '@/services/ability'
+import { parsePermission, canAccessPermission } from '@/services/ability'
 
 const { can } = useAbility()
 const sidebarCollapsed = ref(false)
@@ -62,22 +62,22 @@ const sidebarCollapsed = ref(false)
 const navigationItems = [
   { label: 'Home',       icon: 'pi pi-home',           to: '/',           permission: null },
   { label: 'Students',   icon: 'pi pi-graduation-cap', to: '/students',   permission: 'student.read' },
-  { label: 'Inquiries',  icon: 'pi pi-ticket',         to: '/inquiries',  permission: 'inquiry.read' },
+  { label: 'Inquiries',  icon: 'pi pi-ticket',         to: '/inquiries',  permission: ['inquiry.read', 'inquiry.read_all', 'inquiry.read_group', 'inquiry.read_assigned'] },
   { label: 'Schools',    icon: 'pi pi-building',        to: '/schools',    permission: 'school.read' },
   { label: 'Campaigns',  icon: 'pi pi-send',            to: '/campaigns',  permission: 'campaign.read' },
   { label: 'Templates',  icon: 'pi pi-file-edit',       to: '/campaign-templates', permission: 'campaign_template.read' },
-  { label: 'Groups',     icon: 'pi pi-folder',          to: '/groups',     permission: 'group.read' },
+  { label: 'Groups',     icon: 'pi pi-folder',          to: '/groups',     permission: ['group.read', 'group.read_all', 'group.read_managed'] },
   { label: 'Roles',      icon: 'pi pi-shield',          to: '/roles',      permission: 'role.read' },
   { label: 'Accounts',   icon: 'pi pi-users',           to: '/accounts',   permission: 'account.read' },
-  { label: 'Dashboard',  icon: 'pi pi-chart-bar',       to: '/dashboard',  permission: 'report.read' },
+  { label: 'Dashboard',  icon: 'pi pi-chart-bar',       to: '/dashboard',  permission: ['report.read', 'report.read_all', 'report.read_group'] },
   { label: 'Error Reports', icon: 'pi pi-flag',         to: '/reports',    permission: null },
 ]
 
 const navItems = computed(() =>
   navigationItems.filter(item => {
     if (!item.permission) return true
-    const { action, subject } = parsePermission(item.permission)
-    return can(action, subject)
+    const isAdmin = authStore.user?.roleName === 'admin'
+    return isAdmin || canAccessPermission(item.permission)
   })
 )
 

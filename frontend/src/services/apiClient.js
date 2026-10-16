@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { parsePermission } from '@/services/ability'
+import { canAccessPermission } from '@/services/ability'
 
 // Root API instance for the application
 const api = axios.create({
@@ -45,9 +45,10 @@ export function setupInterceptors(apiInstance, authStore, router, ability) {
               await authStore.refreshPermissions()
               
               const currentRoute = router.currentRoute.value
-              if (currentRoute.meta?.permission) {
-                const { action, subject } = parsePermission(currentRoute.meta.permission)
-                if (!ability.can(action, subject)) {
+              const permission = currentRoute.meta?.permission || currentRoute.meta?.permissions
+              if (permission) {
+                const isAdmin = authStore.user?.roleName === 'admin'
+                if (!isAdmin && !canAccessPermission(permission)) {
                   router.push('/forbidden')
                 }
               }

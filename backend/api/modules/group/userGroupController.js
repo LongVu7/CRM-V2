@@ -59,7 +59,7 @@ const createGroup = async (req, res) => {
 const updateGroup = async (req, res) => {
   try {
     const { name, groupLeaderId, permissionIds } = req.body;
-    const data = await userGroupService.updateGroup(req.params.id, { name, groupLeaderId, permissionIds });
+    const data = await userGroupService.updateGroup(req.params.id, { name, groupLeaderId, permissionIds }, req.user);
     res.status(200).json({
       message: 'Group updated successfully',
       requestedByRole: req.user?.roleName,
@@ -74,7 +74,7 @@ const updateGroup = async (req, res) => {
 // ─── Delete group
 const deleteGroup = async (req, res) => {
   try {
-    await userGroupService.deleteGroup(req.params.id);
+    await userGroupService.deleteGroup(req.params.id, req.user);
     res.status(200).json({
       message: 'Group deleted successfully. Member accounts were preserved.',
       requestedByRole: req.user?.roleName,
@@ -94,7 +94,7 @@ const addMemberToGroup = async (req, res) => {
       return res.status(400).json({ error: 'accountId is required in the request body' });
     }
 
-    const data = await userGroupService.addMemberToGroup(req.params.id, accountId);
+    const data = await userGroupService.addMemberToGroup(req.params.id, accountId, req.user);
     res.status(200).json({
       message: 'Member added to group successfully',
       requestedByRole: req.user?.roleName,
@@ -115,7 +115,7 @@ const removeMemberFromGroup = async (req, res) => {
       return res.status(400).json({ error: 'accountId is required in the request body' });
     }
 
-    const memberDeleted = await userGroupService.removeMemberFromGroup(req.params.id, accountId);
+    const memberDeleted = await userGroupService.removeMemberFromGroup(req.params.id, accountId, req.user);
     res.status(200).json({
       message: 'Member removed from group successfully',
       requestedByRole: req.user?.roleName,

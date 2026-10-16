@@ -5,7 +5,7 @@
         <h1><i class="pi pi-folder"></i> Group Management</h1>
         <Tag :value="`${groupCount} groups`" severity="info" rounded />
       </div>
-      <div class="header-actions">
+      <div class="header-actions" v-if="canCreateGroup">
         <Button label="New Group" icon="pi pi-plus" @click="$router.push('/groups/new')" />
       </div>
     </div>
@@ -20,8 +20,16 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import GroupList from '@/components/group/GroupList.vue'
 import { useGroup } from '@/composables/useGroup'
+import { useAuthStore } from '@/stores/auth'
+import { useAbility } from '@casl/vue'
 
+const authStore = useAuthStore()
+const { can } = useAbility()
 const { groups, fetchGroups } = useGroup()
+
+const canCreateGroup = computed(() => {
+  return authStore.user?.roleName === 'admin' || can('create', 'group')
+})
 
 onMounted(async () => {
   try {

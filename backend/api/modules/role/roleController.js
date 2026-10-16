@@ -41,10 +41,11 @@ const getRoleById = async (req, res) => {
     }
 
     // Flatten permission codes for easier frontend consumption
+    const validPermissions = (role.permissions || []).filter(rp => rp.permission);
     const data = {
       ...role,
-      permissionIds: role.permissions.map(rp => rp.permissionId),
-      permissionCodes: role.permissions.map(rp => rp.permission.code)
+      permissionIds: validPermissions.map(rp => rp.permissionId),
+      permissionCodes: validPermissions.map(rp => rp.permission.code).filter(Boolean)
     };
 
     res.status(200).json({

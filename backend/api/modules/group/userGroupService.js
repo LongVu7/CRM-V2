@@ -1,5 +1,6 @@
 const prisma = require('../../../config/db');
 const { buildGroupScope } = require('../../../authorization/scope/groupScope');
+const { validatePermissionIdsScopeConsistency } = require('./userGroupSchemas');
 
 // Shared include shapes
 const groupInclude = {
@@ -26,6 +27,25 @@ const groupIncludeWithRole = {
   },
   permissions: {
     include: { permission: true }
+  }
+};
+
+// Validates account is assigned to at one group (1:1 relationship).
+const validateSingleGroupLeadership = async (leaderId, currentGroupId = null) => {
+  if (!leaderId) return;
+
+  const existing = await prisma.userGroup.findFirst({
+    where: {
+      groupLeaderId: Number(leaderId),
+      ...(currentGroupId ? { id: { not: Number(currentGroupId) } } : {})
+    },
+    select: { id: true, name: true }
+  });
+
+  if (existing) {
+    const err = new Error(`Account is already assigned as leader to group "${existing.name}"`);
+    err.status = 400;
+    throw err;
   }
 };
 
@@ -58,7 +78,7 @@ const getGroupById = async (id) => {
 };
 
 // ─── Create group
-const createGroup = async (name, groupLeaderId, user, permissionIds) => {
+const createGroup = async (name, groupLeaderId, user, permissionIds = []) => {
   if (!name?.trim()) {
     const err = new Error('Group name is required');
     err.status = 400;
@@ -68,12 +88,36 @@ const createGroup = async (name, groupLeaderId, user, permissionIds) => {
   const leaderId = groupLeaderId ? Number(groupLeaderId) : null;
 
   if (leaderId) {
+    // Only administrators or accounts with group.leader.assign can assign a group leader
+    const canAssignLeader = user?.roleName === 'admin' || user?.permissions?.has('group.leader.assign');
+    if (!canAssignLeader) {
+      const err = new Error('Only administrators can assign a Group Leader');
+      err.status = 403;
+      throw err;
+    }
+
     const leader = await prisma.account.findUnique({ where: { id: leaderId } });
     if (!leader) {
       const err = new Error('Group leader account not found');
       err.status = 404;
       throw err;
     }
+
+    // 1:1 single-group leader constraint
+    await validateSingleGroupLeadership(leaderId);
+  }
+
+  // Validate permission assignment authority
+  if (Array.isArray(permissionIds) && permissionIds.length > 0) {
+    const canAssignPerms = user?.roleName === 'admin' || user?.permissions?.has('group.permission.assign');
+    if (!canAssignPerms) {
+      const err = new Error('Only administrators can configure group permissions');
+      err.status = 403;
+      throw err;
+    }
+
+    // Scope Consistency Rule
+    await validatePermissionIdsScopeConsistency(permissionIds);
   }
 
   return prisma.$transaction(async (tx) => {
@@ -81,7 +125,7 @@ const createGroup = async (name, groupLeaderId, user, permissionIds) => {
       data: {
         name: name.trim(),
         ...(leaderId && { groupLeader: { connect: { id: leaderId } } }),
-        ...(user.accountId && { createdBy: { connect: { id: user.accountId } } })
+        ...(user?.accountId && { createdBy: { connect: { id: user.accountId } } })
       }
     });
 
@@ -103,20 +147,52 @@ const createGroup = async (name, groupLeaderId, user, permissionIds) => {
 };
 
 // ─── Update group (name, leader, and/or permissions)
-const updateGroup = async (id, { name, groupLeaderId, permissionIds }) => {
-  const existing = await prisma.userGroup.findUnique({ where: { id: Number(id) } });
+const updateGroup = async (id, { name, groupLeaderId, permissionIds }, user) => {
+  const existing = await prisma.userGroup.findUnique({
+    where: { id: Number(id) },
+    include: { groupLeader: true }
+  });
+
   if (!existing) {
     const err = new Error('Group not found');
     err.status = 404;
     throw err;
   }
 
-  if (groupLeaderId !== undefined && groupLeaderId !== null) {
-    const leader = await prisma.account.findUnique({ where: { id: Number(groupLeaderId) } });
-    if (!leader) {
-      const err = new Error('Group leader account not found');
-      err.status = 404;
+  const isAdminOrLeaderAssigner = user?.roleName === 'admin' || user?.permissions?.has('group.leader.assign');
+  const isAdminOrPermAssigner = user?.roleName === 'admin' || user?.permissions?.has('group.permission.assign');
+
+  // Leadership modification check
+  if (groupLeaderId !== undefined) {
+    if (!isAdminOrLeaderAssigner) {
+      const err = new Error('Only administrators can assign, change, or remove a Group Leader');
+      err.status = 403;
       throw err;
+    }
+
+    if (groupLeaderId !== null) {
+      const leader = await prisma.account.findUnique({ where: { id: Number(groupLeaderId) } });
+      if (!leader) {
+        const err = new Error('Group leader account not found');
+        err.status = 404;
+        throw err;
+      }
+
+      // Enforce 1:1 leadership constraint
+      await validateSingleGroupLeadership(Number(groupLeaderId), Number(id));
+    }
+  }
+
+  // Permission modification check
+  if (permissionIds !== undefined) {
+    if (!isAdminOrPermAssigner) {
+      const err = new Error('Only administrators can configure or modify group permissions');
+      err.status = 403;
+      throw err;
+    }
+
+    if (Array.isArray(permissionIds) && permissionIds.length > 0) {
+      await validatePermissionIdsScopeConsistency(permissionIds);
     }
   }
 
@@ -155,7 +231,7 @@ const updateGroup = async (id, { name, groupLeaderId, permissionIds }) => {
 };
 
 // ─── Delete group
-const deleteGroup = async (id) => {
+const deleteGroup = async (id, user) => {
   const existing = await prisma.userGroup.findUnique({
     where: { id: Number(id) },
     select: { id: true }
@@ -167,17 +243,36 @@ const deleteGroup = async (id) => {
     throw err;
   }
 
+  // Only administrators can delete groups
+  const isAdmin = user?.roleName === 'admin' || user?.permissions?.has('group.delete');
+  if (!isAdmin) {
+    const err = new Error('Only administrators can delete groups');
+    err.status = 403;
+    throw err;
+  }
+
   await prisma.$transaction(async (tx) => {
+    // 1. Unassign all members to preserve account records
     await tx.account.updateMany({
       where: { groupId: Number(id) },
       data: { groupId: null }
     });
+    // 2. Clear group leader link
+    await tx.userGroup.update({
+      where: { id: Number(id) },
+      data: { groupLeaderId: null }
+    });
+    // 3. Delete group permission links
+    await tx.groupPermission.deleteMany({
+      where: { groupId: Number(id) }
+    });
+    // 4. Delete the group record
     await tx.userGroup.delete({ where: { id: Number(id) } });
   });
 };
 
 // ─── Add member to group
-const addMemberToGroup = async (groupId, accountId) => {
+const addMemberToGroup = async (groupId, accountId, user) => {
   const group = await prisma.userGroup.findUnique({ where: { id: Number(groupId) } });
   if (!group) {
     const err = new Error('Group not found');
@@ -185,10 +280,27 @@ const addMemberToGroup = async (groupId, accountId) => {
     throw err;
   }
 
+  // Two-tier access check: admin or leader of this group
+  const isAuthorized = user?.roleName === 'admin' ||
+    user?.permissions?.has('group.read_all') ||
+    (group.groupLeaderId && group.groupLeaderId === user?.accountId);
+
+  if (!isAuthorized) {
+    const err = new Error('Forbidden: You can only manage members of your designated group');
+    err.status = 403;
+    throw err;
+  }
+
   const account = await prisma.account.findUnique({ where: { id: Number(accountId) } });
   if (!account) {
     const err = new Error('Account not found');
     err.status = 404;
+    throw err;
+  }
+
+  if (!account.isActive) {
+    const err = new Error('Cannot add deactivated account to group');
+    err.status = 400;
     throw err;
   }
 
@@ -205,13 +317,14 @@ const addMemberToGroup = async (groupId, accountId) => {
       id: true,
       fullName: true,
       email: true,
+      isActive: true,
       group: { select: { id: true, name: true } }
     }
   });
 };
 
 // ─── Remove member from group
-const removeMemberFromGroup = async (groupId, accountId) => {
+const removeMemberFromGroup = async (groupId, accountId, user) => {
   const group = await prisma.userGroup.findUnique({ where: { id: Number(groupId) } });
   if (!group) {
     const err = new Error('Group not found');
@@ -219,7 +332,27 @@ const removeMemberFromGroup = async (groupId, accountId) => {
     throw err;
   }
 
-  const account = await prisma.account.findUnique({ where: { id: Number(accountId) } });
+  // Two-tier access check: admin or leader of this group
+  const isAuthorized = user?.roleName === 'admin' ||
+    user?.permissions?.has('group.read_all') ||
+    (group.groupLeaderId && group.groupLeaderId === user?.accountId);
+
+  if (!isAuthorized) {
+    const err = new Error('Forbidden: You can only manage members of your designated group');
+    err.status = 403;
+    throw err;
+  }
+
+  const targetAccountId = Number(accountId);
+
+  // Leader removal guard
+  if (group.groupLeaderId === targetAccountId) {
+    const err = new Error('Cannot remove member who is the designated group leader; reassign or clear leadership first');
+    err.status = 400;
+    throw err;
+  }
+
+  const account = await prisma.account.findUnique({ where: { id: targetAccountId } });
   if (!account) {
     const err = new Error('Account not found');
     err.status = 404;
@@ -233,12 +366,13 @@ const removeMemberFromGroup = async (groupId, accountId) => {
   }
 
   return prisma.account.update({
-    where: { id: Number(accountId) },
+    where: { id: targetAccountId },
     data: { groupId: null },
     select: {
       id: true,
       fullName: true,
       email: true,
+      isActive: true,
       group: { select: { id: true, name: true } }
     }
   });
@@ -251,6 +385,7 @@ module.exports = {
   updateGroup,
   deleteGroup,
   addMemberToGroup,
-  removeMemberFromGroup
+  removeMemberFromGroup,
+  validateSingleGroupLeadership
 };
 

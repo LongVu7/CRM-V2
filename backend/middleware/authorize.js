@@ -12,12 +12,15 @@ const authorize = (permission, options = {}) => {
       });
     }
 
-    if (!req.user.permissions.has(permission)) {
+    const perms = Array.isArray(permission) ? permission : [permission];
+    const hasPermission = perms.some(p => req.user.permissions.has(p));
+
+    if (!hasPermission) {
       return res.status(403).json({
         error: 'Forbidden',
         reason: 'MISSING_PERMISSION',
         requiredPermission: permission,
-        message: `You do not have the required permission: ${permission}`
+        message: `You do not have the required permission: ${Array.isArray(permission) ? permission.join(' or ') : permission}`
       });
     }
 

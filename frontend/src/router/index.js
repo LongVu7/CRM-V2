@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
-import { ability, parsePermission } from '@/services/ability'
+import { canAccessPermission } from '@/services/ability'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -13,7 +12,7 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/dashboard/DashboardView.vue'),
-      meta: { permission: 'report.read' }
+      meta: { permission: ['report.read', 'report.read_all', 'report.read_group'] }
     },
     {
       path: '/students',
@@ -37,7 +36,7 @@ const router = createRouter({
       path: '/inquiries',
       name: 'inquiries',
       component: () => import('../views/inquiry/Inquiry.vue'),
-      meta: { permission: 'inquiry.read' }
+      meta: { permission: ['inquiry.read', 'inquiry.read_all', 'inquiry.read_group', 'inquiry.read_assigned'] }
     },
     {
       path: '/inquiries/new',
@@ -49,7 +48,8 @@ const router = createRouter({
       path: '/inquiries/:id',
       name: 'inquiry-detail',
       component: () => import('../views/inquiry/InquiryDetail.vue'),
-      meta: { permission: 'inquiry.read' }
+      // meta: { permission: ['inquiry.read', 'inquiry.read_all', 'inquiry.read_group', 'inquiry.read_assigned'] }
+      meta : { permission: 'inquiry.update' }
     },
     {
       path: '/accounts',
@@ -73,7 +73,7 @@ const router = createRouter({
       path: '/groups',
       name: 'groups',
       component: () => import('../views/group/Group.vue'),
-      meta: { permission: 'group.read' }
+      meta: { permission: ['group.read', 'group.read_all', 'group.read_managed'] }
     },
     {
       path: '/groups/new',
@@ -85,7 +85,7 @@ const router = createRouter({
       path: '/groups/:id',
       name: 'group-detail',
       component: () => import('../views/group/GroupDetail.vue'),
-      meta: { permission: 'group.read' }
+      meta: { permission: ['group.read', 'group.read_all', 'group.read_managed'] }
     },
     {
       path: '/roles',
@@ -195,9 +195,10 @@ router.beforeEach((to) => {
   }
 
   // Permission guard — local CASL check, no API call
-  if (to.meta.permission) {
-    const { action, subject } = parsePermission(to.meta.permission)
-    if (!ability.can(action, subject)) {
+  const permission = to.meta.permission || to.meta.permissions
+  if (permission) {
+    const isAdmin = authStore.user?.roleName === 'admin'
+    if (!isAdmin && !canAccessPermission(permission)) {
       return '/forbidden'
     }
   }

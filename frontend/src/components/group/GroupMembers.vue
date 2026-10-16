@@ -1,13 +1,12 @@
 
 <template>
   <div class="card-splitter">
-      <h2><i class="pi pi-users"></i> Group Members</h2>
-    </div>
+    <h2><i class="pi pi-users"></i> Group Members ({{ members.length }})</h2>
+  </div>
   <div class="members-section">
-
-      <!-- Add Member Row -->
-      <div class="add-member-bar">
-        <Select
+    <!-- Add Member Row -->
+    <div class="add-member-bar">
+      <Select
         v-model="selectedAccount"
         :options="accountOptions"
         optionLabel="label"
@@ -15,59 +14,73 @@
         placeholder="Search active account to add..."
         filter
         class="add-select"
-        />
-        <Button
+      />
+      <Button
         label="Add Member"
         icon="pi pi-user-plus"
         :disabled="!selectedAccount"
         :loading="isAdding"
         @click="handleAddMember"
-        />
-      </div>
+      />
+    </div>
 
-      <!-- Members Table -->
-      <DataTable
+    <!-- Members Table (Read-Only Columns) -->
+    <DataTable
       :value="members"
       stripedRows
       showGridlines
       class="members-table"
-      >
-        <template #empty>
-          <div class="empty-state-simple">
-            <p>No members currently in this group.</p>
+    >
+      <template #empty>
+        <div class="empty-state-simple">
+          <p>No members currently in this group.</p>
+        </div>
+      </template>
+
+      <Column field="fullName" header="Full Name">
+        <template #body="{ data }">
+          <div class="member-identity">
+            <span class="member-name">{{ data.fullName || '—' }}</span>
+            <span v-if="isLeader(data.id)" class="leader-badge-pill">
+              <i class="pi pi-shield"></i> Leader
+            </span>
           </div>
         </template>
-
-        <Column field="fullName" header="Full Name">
-          <template #body="{ data }"><span class="member-name">{{ data.fullName || '—' }}</span></template>
-        </Column>
-        <Column field="email" header="Email">
-          <template #body="{ data }"><span class="member-email">{{ data.email }}</span></template>
-        </Column>
-        <Column field="role.name" header="Role" style="width: 150px">
-          <template #body="{ data }">
-            <Tag v-if="data.role" :value="data.role.name" :severity="data.role.name === 'admin' ? 'danger' : 'info'" />
-            <span v-else class="null-text">—</span>
-          </template>
-        </Column>
-        <Column header="Action" style="width: 100px; text-align: center;">
-          <template #body="{ data }">
-            <Button
+      </Column>
+      <Column field="email" header="Email">
+        <template #body="{ data }"><span class="member-email">{{ data.email }}</span></template>
+      </Column>
+      <Column field="role.name" header="Role" style="width: 160px">
+        <template #body="{ data }">
+          <Tag v-if="data.role" :value="data.role.name" :severity="data.role.name === 'admin' ? 'danger' : 'info'" />
+          <span v-else class="null-text">—</span>
+        </template>
+      </Column>
+      <Column field="isActive" header="Status" style="width: 120px; text-align: center;">
+        <template #body="{ data }">
+          <Tag :value="data.isActive ? 'Active' : 'Inactive'" :severity="data.isActive ? 'success' : 'warn'" />
+        </template>
+      </Column>
+      <Column header="Action" style="width: 100px; text-align: center;">
+        <template #body="{ data }">
+          <Button
             icon="pi pi-user-minus"
             severity="danger"
             text
             rounded
             size="small"
-            v-tooltip.top="'Remove member'"
-            @click="$emit('remove-member', data.id)"
-            />
-          </template>
-        </Column>
-      </DataTable>
+            :disabled="isLeader(data.id)"
+            v-tooltip.top="isLeader(data.id) ? 'Cannot remove designated Group Leader' : 'Remove member'"
+            @click="confirmRemove(data)"
+          />
+        </template>
+      </Column>
+    </DataTable>
+
+    <ConfirmDialog />
   </div>
   <div class="card-splitter"></div>
 </template>
-
 
 <script setup>
 import { ref, computed } from 'vue'
@@ -76,16 +89,24 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
+import ConfirmDialog from 'primevue/confirmdialog'
+import { useConfirm } from 'primevue/useconfirm'
 
 const props = defineProps({
   members: { type: Array, default: () => [] },
   allAccounts: { type: Array, default: () => [] },
+  groupLeaderId: { type: [Number, null], default: null },
   isAdding: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['add-member', 'remove-member'])
 
+const confirm = useConfirm()
 const selectedAccount = ref(null)
+
+const isLeader = (accountId) => {
+  return props.groupLeaderId && Number(props.groupLeaderId) === Number(accountId)
+}
 
 const availableAccounts = computed(() => {
   const memberIds = new Set(props.members.map(m => m.id))
@@ -105,20 +126,26 @@ const handleAddMember = () => {
     selectedAccount.value = null
   }
 }
+
+const confirmRemove = (member) => {
+  confirm.require({
+    message: `Are you sure you want to remove "${member.fullName || member.email}" from this group? Their operational permissions will be updated.`,
+    header: 'Remove Member',
+    icon: 'pi pi-exclamation-triangle',
+    rejectLabel: 'Cancel',
+    rejectProps: { severity: 'secondary', text: true },
+    acceptLabel: 'Remove',
+    acceptProps: { severity: 'danger' },
+    accept: () => {
+      emit('remove-member', member.id)
+    }
+  })
+}
 </script>
 
-
 <style scoped>
-  .members-section {
-  margin-top: 1.5rem;
-}
-
-.section-card { 
-  background: var(--p-content-background); 
-  border: 1px solid var(--p-surface-200); 
-  border-radius: 12px; 
-  padding: 1.5rem; 
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06); 
+.members-section {
+  margin-top: 1rem;
 }
 
 .card-splitter {
@@ -159,8 +186,27 @@ const handleAddMember = () => {
   overflow: hidden;
 }
 
+.member-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .member-name {
   font-weight: 600;
+}
+
+.leader-badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  background: var(--p-primary-50);
+  color: var(--p-primary-700);
+  border: 1px solid var(--p-primary-200);
 }
 
 .member-email {

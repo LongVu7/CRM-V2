@@ -24,6 +24,7 @@ const authenticate = async (req, res, next) => {
         email: true,
         fullName: true,
         isActive: true,
+        groupId: true,
         role: {
           select: {
             name: true,
@@ -34,6 +35,8 @@ const authenticate = async (req, res, next) => {
         },
         group: {
           select: {
+            id: true,
+            name: true,
             permissions: {
               select: { permission: { select: { code: true } } }
             }
@@ -51,6 +54,7 @@ const authenticate = async (req, res, next) => {
       email: account.email,
       fullName: account.fullName,
       roleName: account.role?.name || null,
+      groupId: account.groupId || null,
       permissions: new Set(resolveEffectivePermissions(account))
     };
 

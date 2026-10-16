@@ -44,6 +44,7 @@ const login = (req, res, next) => {
         email: account.email,
         fullName: account.fullName,
         roleName: account.role?.name || null,
+        groupId: account.groupId || null,
         permissions: resolveEffectivePermissions(account)
       }
     });
@@ -64,6 +65,7 @@ const getMe = (req, res) => {
       email: req.user.email,
       fullName: req.user.fullName,
       roleName: req.user.roleName,
+      groupId: req.user.groupId || null,
       permissions: Array.from(req.user.permissions || [])
     }
   });
@@ -96,6 +98,7 @@ const refreshToken = (req, res) => {
       email: req.user.email,
       fullName: req.user.fullName,
       roleName: req.user.roleName,
+      groupId: req.user.groupId || null,
       permissions: Array.from(req.user.permissions || [])
     }
   });

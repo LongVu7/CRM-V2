@@ -7,8 +7,11 @@
         <small v-if="errors.name" class="form-error">{{ errors.name }}</small>
       </div>
 
-      <div class="form-field">
-        <label for="gf-leader">Group Leader</label>
+      <div class="form-field" v-tooltip="!canManageLeader ? 'Only System Administrators can assign or replace a Group Leader' : null">
+        <label for="gf-leader">
+          Group Leader
+          <span v-if="!canManageLeader" class="admin-only-tag"><i class="pi pi-lock"></i> Admin Only</span>
+        </label>
         <Select
           id="gf-leader"
           v-model="form.groupLeaderId"
@@ -16,21 +19,31 @@
           optionLabel="label"
           optionValue="value"
           placeholder="Select a group leader"
+          :disabled="!canManageLeader"
           showClear
           fluid
         />
+        <small v-if="!canManageLeader" class="field-hint">
+          Only System Administrators can designate or replace a Group Leader.
+        </small>
       </div>
     </div>
 
     <div class="form-section">
-      <h3><i class="pi pi-shield"></i> Group Privileges (Optional)</h3>
-      <p class="section-hint">Assign additional privileges to all members of this group.</p>
-      <PermissionMatrix v-model="form.permissionIds" />
+      <h3>
+        <i class="pi pi-shield"></i> Group Privileges (Optional)
+        <span v-if="!canManagePermissions" class="admin-only-tag"><i class="pi pi-lock"></i> Read-Only</span>
+      </h3>
+      <p class="section-hint" v-if="canManagePermissions">Assign operational permissions to all members of this group.</p>
+      <p class="section-hint" v-else>Group permissions are governed exclusively by System Administrators and are displayed here as read-only.</p>
+      <PermissionMatrix v-model="form.permissionIds" :disabled="!canManagePermissions" />
     </div>
 
     <div class="form-actions">
       <Button type="submit" :label="buttonText" icon="pi pi-check" :loading="isSubmitting" />
     </div>
+
+    <ConfirmDialog />
   </form>
 </template>
 
@@ -39,7 +52,11 @@ import { ref, watch, computed } from 'vue'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
+import ConfirmDialog from 'primevue/confirmdialog'
+import { useConfirm } from 'primevue/useconfirm'
 import PermissionMatrix from '@/components/shared/PermissionMatrix.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useAbility } from '@casl/vue'
 
 const props = defineProps({
   group: { type: Object, required: true },
@@ -49,6 +66,18 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['submit'])
+
+const confirm = useConfirm()
+const authStore = useAuthStore()
+const { can } = useAbility()
+
+const canManageLeader = computed(() => {
+  return authStore.user?.roleName === 'admin' || can('leader.assign', 'group')
+})
+
+const canManagePermissions = computed(() => {
+  return authStore.user?.roleName === 'admin' || can('permission.assign', 'group')
+})
 
 const form = ref({ ...props.group, permissionIds: [...(props.group.permissionIds || [])] })
 const errors = ref({})
@@ -77,13 +106,38 @@ const validate = () => {
 const getPayload = () => {
   const payload = {}
   payload.name = form.value.name.trim()
-  payload.groupLeaderId = form.value.groupLeaderId || null
-  payload.permissionIds = form.value.permissionIds || []
+  if (canManageLeader.value) {
+    payload.groupLeaderId = form.value.groupLeaderId || null
+  }
+  if (canManagePermissions.value) {
+    payload.permissionIds = form.value.permissionIds || []
+  }
   return payload
 }
 
 const onSubmit = () => {
   if (!validate()) return
+
+  // Check if replacing an existing leader
+  const initialLeaderId = props.group?.groupLeaderId || props.group?.groupLeader?.id || null
+  const newLeaderId = form.value.groupLeaderId || null
+
+  if (initialLeaderId && newLeaderId !== initialLeaderId && canManageLeader.value) {
+    confirm.require({
+      message: 'Are you sure you want to change the designated Group Leader? This will transfer group leadership immediately.',
+      header: 'Confirm Leader Replacement',
+      icon: 'pi pi-exclamation-triangle',
+      rejectLabel: 'Cancel',
+      rejectProps: { severity: 'secondary', text: true },
+      acceptLabel: 'Confirm Replacement',
+      acceptProps: { severity: 'warn' },
+      accept: () => {
+        emit('submit', getPayload())
+      }
+    })
+    return
+  }
+
   emit('submit', getPayload())
 }
 </script>
@@ -112,6 +166,21 @@ const onSubmit = () => {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--p-text-color);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-only-tag {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--p-text-muted-color);
+  background: var(--p-surface-100);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .required {
@@ -121,6 +190,12 @@ const onSubmit = () => {
 .form-error {
   color: var(--p-red-400);
   font-size: 0.75rem;
+}
+
+.field-hint {
+  color: var(--p-text-muted-color);
+  font-size: 0.75rem;
+  font-style: italic;
 }
 
 .form-actions {
