@@ -9,7 +9,12 @@ const {
   CLASS_MAP,
   GPA_MAP,
   PROGRAM_SCORE_MAP,
-  ENGLISH_CERT_MAP
+  ENGLISH_CERT_MAP,
+  CLASS_LABELS,
+  PROVINCE_GROUP_LABELS,
+  SCHOOL_TYPE_LABELS,
+  GPA_LABELS,
+  PROGRAM_SCORE_LABELS
 } = require('../../utils/enumMapper');
 const { ProvinceGroup, SchoolType, StudentClass, EnglishCertificate, GPA, ProgramScore } = require('@prisma/client');
 const { buildHierarchyTree } = require('../../utils/hierarchyUtils');
@@ -649,8 +654,8 @@ const exportStudents = async (filters) => {
     include: {
       specializedRegister: {
         include: {
-          interestedMajor: true,
-          specificMajor: true
+          interestedMajor: {select: { id: true, name: true, label: true }},
+          specificMajor: {select: { id: true, name: true, label: true } }
         }
       },
       education: {
@@ -679,17 +684,17 @@ const exportStudents = async (filters) => {
     'School City': s.education?.school?.oldProvince?.name || '',
     'New Province': s.education?.newProvince?.name || '',
     'Country': s.education?.country?.name || '',
-    'Province Group': s.education?.provinceGroup || '',
-    'School Type': s.education?.schoolType || '',
-    'Class': s.education?.class || '',
+    'Province Group': PROVINCE_GROUP_LABELS[s.education?.provinceGroup] || s.education?.provinceGroup || '',
+    'School Type': SCHOOL_TYPE_LABELS[s.education?.schoolType] || s.education?.schoolType || '',
+    'Class': CLASS_LABELS[s.education?.class] || s.education?.class || '',
     
     // Specialized Register
-    'GPA': s.specializedRegister?.gpa || '',
+    'GPA': GPA_LABELS[s.specializedRegister?.gpa] || s.specializedRegister?.gpa || '',
     'English Certificate': s.specializedRegister?.englishCertificate || '',
-    'Program Score': s.specializedRegister?.programScore || '',
+    'Program Score': PROGRAM_SCORE_LABELS[s.specializedRegister?.programScore] || s.specializedRegister?.programScore || '',
     'Admission Year': s.specializedRegister?.admissionYear || '',
-    'Interested Major': s.specializedRegister?.interestedMajor?.name || '',
-    'Specific Major': s.specializedRegister?.specificMajor?.name || '',
+    'Interested Major': s.specializedRegister?.interestedMajor?.label || '',
+    'Specific Major': s.specializedRegister?.specificMajor?.label || '',
     
     'Created At': s.createdAt ? s.createdAt.toISOString().split('T')[0] : '',
     'Updated At': s.updatedAt ? s.updatedAt.toISOString().split('T')[0] : ''

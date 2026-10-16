@@ -504,7 +504,15 @@ const exportInquiries = async (filters, user) => {
     include: {
       student: true,
       assignedTo: true,
-      sourceData: true,
+      sourceData: {
+        include: {
+          parent: {
+            include: {
+              parent: true
+            }
+          }
+        }
+      },
       statusData: {
         include: {
           parent: {
@@ -523,11 +531,12 @@ const exportInquiries = async (filters, user) => {
     'Assigned Staff': i.assignedTo?.fullName || '',
     'Assigned Staff Email': i.assignedTo?.email || '',
     // Source and Status
-    'Lead Source': i.sourceData?.label || '',
+    'Lead Source': i.sourceData?.parent?.parent?.label || '',
+    'Source Detail': i.sourceData?.parent?.label || '',
+    'Approach Method': i.sourceData?.label || '',
+    'Interaction Status': i.statusData?.parent?.parent?.label || '',
     'Status General': i.statusData?.parent?.label || '',
     'Status Detail': i.statusData?.label || '',
-    'Interaction Status': i.statusData?.parent?.parent?.label || '',
-
     // Student Details
     'Full Name': i.student?.fullName || '',
     'Gender': i.student?.gender || '',

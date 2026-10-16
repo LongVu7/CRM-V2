@@ -150,6 +150,51 @@ const normalizeProvinceName = (val) => {
   return stripped;
 };
 
+// Display labels for readable output
+const CLASS_LABELS = {
+  GRADE_11: 'Lớp 11',
+  GRADE_12: 'Lớp 12',
+  FREELANCE: 'Thí sinh tự do'
+};
+
+const PROVINCE_GROUP_LABELS = {
+  HO_CHI_MINH: 'TP HCM',
+  CORE_PROVINCE: 'Tỉnh ruột',
+  OTHER_PROVINCE: 'Tỉnh ngoài',
+  FOREIGN: 'Nước ngoài'
+};
+
+const SCHOOL_TYPE_LABELS = {
+  A_STAR: 'A*',
+  A: 'A',
+  B: 'B',
+  C: 'C',
+  D: 'D'
+};
+
+const GPA_LABELS = {
+  LOWER_21: '3 môn <21đ',
+  G11_21_TO_23: '3 môn lớp 11 từ 21-23đ',
+  G12_SEM1_21_TO_23: '3 môn HK1 12 từ 21-23đ',
+  G12_21_TO_23: '3 môn cả năm 12 từ 21-23đ',
+  G11_24_TO_26: '3 môn lớp 11 từ 24-26đ',
+  G12_SEM1_24_TO_26: '3 môn HK1 12 từ 24-26đ',
+  G12_24_TO_26: '3 môn cả năm 12 từ 24-26đ',
+  G11_HIGHER_26: '3 môn lớp 11 > 26đ',
+  G12_SEM1_HIGHER_26: '3 môn HK1 12 >26đ',
+  G12_HIGHER_26: '3 môn cả năm 12 >26đ',
+  OTHER: 'Khác'
+};
+
+const PROGRAM_SCORE_LABELS = {
+  TALENT_SCHOLARSHIP: 'Đạt xét HB Talent',
+  OTHER_SCHOLARSHIP: 'Đạt xét HB khác',
+  ELIGIBLE_NO_SCHOLARSHIP: 'Đạt - không có HB',
+  PENDING_REVIEW: 'Đang chờ xét duyệt',
+  NOT_ELIGIBLE: 'Chưa đủ điểm đầu vào',
+  OTHER: 'Khác'
+};
+
 module.exports = {
   removeVietnameseTones,
   normalizeEnum,
@@ -159,6 +204,12 @@ module.exports = {
   PROGRAM_SCORE_MAP,
   ENGLISH_CERT_MAP,
   PROVINCE_ALIASES,
-  normalizeProvinceName
+  normalizeProvinceName,
+  CLASS_LABELS,
+  PROVINCE_GROUP_LABELS,
+  SCHOOL_TYPE_LABELS,
+  GPA_LABELS,
+  PROGRAM_SCORE_LABELS
 };
+
 

@@ -1,283 +1,265 @@
 <template>
-  <div class="table-card-wrapper">
-    <!-- Top Action Toolbar (Freya Crud pattern) -->
-    <Toolbar class="table-action-toolbar">
-      <template #start>
-        <div class="toolbar-start">
-          <Button 
-            v-if="$can('create', 'inquiry')" 
-            label="New" 
-            icon="pi pi-plus" 
-            severity="primary" 
-            class="action-btn-new"
-            @click="router.push('/inquiries/new')" 
-          />
-          <Button 
-            v-if="$can('delete', 'inquiry')" 
-            :label="selectedInquiries.length > 0 ? `Delete (${selectedInquiries.length})` : 'Delete'" 
-            icon="pi pi-trash" 
-            severity="danger" 
-            outlined 
-            :disabled="!selectedInquiries || selectedInquiries.length === 0" 
-            class="action-btn-delete"
-            @click="confirmDeleteSelected" 
-          />
-        </div>
-      </template>
-
-      <template #end>
-        <Button 
-          v-if="$can('export', 'inquiry')" 
-          label="Export" 
-          icon="pi pi-download" 
-          severity="secondary" 
-          outlined 
-          class="action-btn-export"
-          :loading="exporting" 
-          @click="emit('export')" 
-        />
-      </template>
-    </Toolbar>
-
-    <!-- Data Table Container -->
-    <div class="table-container">
-      <DataTable 
-        :value="inquiries" 
-        lazy 
-        :paginator="true" 
-        :rows="pagination?.limit || 20"
-        :first="((pagination?.page || 1) - 1) * (pagination?.limit || 20)" 
-        :totalRecords="pagination?.totalCount || 0"
-        :rowsPerPageOptions="[10, 20, 50, 100]" 
-        :loading="loading" 
-        @page="onPage" 
-        @sort="onSort" 
-        v-model:selection="selectedInquiries" 
-        dataKey="id" 
-        removableSort 
-        stripedRows
-        showGridlines
-        paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
-        currentPageReportTemplate="Showing {first} to {last} of {totalRecords} inquiries"
-        class="inquiry-datatable"
-      >
-        <!-- Table Sub-header (Search + Filter + Title) -->
-        <template #header>
-          <div class="table-sub-header">
-            <div class="header-title-section">
-              <h2 class="table-heading">Manage Inquiries</h2>
-              <div v-if="selectedInquiries.length > 0" class="selection-pill">
-                <Badge :value="selectedInquiries.length" severity="info" />
-                <span class="selection-msg">{{ selectedInquiries.length }} selected</span>
-                <Button label="Clear" text size="small" class="clear-btn" @click="selectedInquiries = []" />
-              </div>
-              <span v-else class="total-count-text">
-                {{ pagination?.totalCount || 0 }} total inquiries
-              </span>
-            </div>
-
-            <div class="header-controls-section">
-              <Button 
-                label="Filter" 
-                icon="pi pi-filter" 
-                outlined 
-                severity="secondary"
-                @click="toggleFilterPopover" 
-                class="filter-btn"
-                :badge="activeFilterCount > 0 ? String(activeFilterCount) : undefined" 
-                badgeSeverity="danger" 
+  <div class="table-container">
+    <DataTable 
+      :value="inquiries" 
+      lazy 
+      :paginator="true" 
+      :rows="pagination?.limit || 20"
+      :first="((pagination?.page || 1) - 1) * (pagination?.limit || 20)" 
+      :totalRecords="pagination?.totalCount || 0"
+      :rowsPerPageOptions="[10, 20, 50, 100]" 
+      :loading="loading" 
+      @page="onPage" 
+      @sort="onSort" 
+      v-model:selection="selectedInquiries" 
+      dataKey="id" 
+      :removableSort="true" 
+      :scrollable="true"
+      :scrollHeight="'calc(100vh - 200px)'" 
+      class="inquiry-datatable"
+      paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
+      currentPageReportTemplate="Showing {first} to {last} of {totalRecords}"
+      :paginatorLeft="true" 
+      :paginatorRight="true"
+    >
+      <template #header>
+        <!-- Primary Toolbar -->
+        <div class="primary-toolbar">
+          <div class="toolbar-spacer">
+            <IconField>
+              <InputIcon class="pi pi-search" />
+              <InputText 
+                placeholder="Search inquiries..." 
+                @input="onSearch" 
+                :value="searchQuery" 
+                class="search-input" 
               />
-              <IconField>
-                <InputIcon class="pi pi-search" />
-                <InputText 
-                  placeholder="Search inquiries (desc, student)..." 
-                  @input="onSearch" 
-                  :value="searchQuery"
-                  class="search-input" 
-                />
-              </IconField>
+            </IconField>
+          </div>
+          <div class="toolbar-actions">
+            <Button 
+              v-if="selectedInquiries.length > 0 && $can('delete', 'inquiry')" 
+              :label="`Delete (${selectedInquiries.length})`" 
+              icon="pi pi-trash" 
+              severity="danger" 
+              text 
+              @click="confirmDeleteSelected" 
+              class="delete-btn" 
+            />
+            <Button 
+              v-if="$can('export', 'inquiry')" 
+              label="Export" 
+              icon="pi pi-download" 
+              text
+              @click="emit('export')" 
+              class="export-btn" 
+              :loading="exporting" 
+            />
+            <Button 
+              v-if="$can('create', 'inquiry')" 
+              label="New Inquiry" 
+              icon="pi pi-plus"
+              @click="router.push('/inquiries/new')" 
+            />
+          </div>
+        </div>
+
+        <!-- Secondary Toolbar -->
+        <div class="secondary-toolbar">
+          <div class="secondary-left">
+            <Button 
+              label="Filter" 
+              icon="pi pi-filter" 
+              outlined 
+              @click="toggleFilterPopover" 
+              class="filter-btn"
+              :badge="activeFilterCount > 0 ? String(activeFilterCount) : undefined" 
+              badgeSeverity="danger" 
+            />
+
+            <span v-if="selectedInquiries.length > 0" class="selection-count">
+              {{ selectedInquiries.length }} Selected
+            </span>
+
+            <span v-if="selectedInquiries.length === 0" class="result-count">
+              {{ pagination?.totalCount || 0 }} Results
+            </span>
+          </div>
+        </div>
+
+        <!-- Filter Popover -->
+        <Popover ref="filterPopover" class="filter-popover">
+          <div class="popover-content">
+            <div class="filter-group">
+              <label>Birth Year</label>
+              <Select 
+                v-model="pendingFilters.birthYear" 
+                :options="birthYearOptions" 
+                optionLabel="label"
+                optionValue="value" 
+                placeholder="Select..." 
+                showClear 
+                appendTo="self" 
+                class="w-full" 
+              />
+            </div>
+            <div class="filter-group">
+              <label>School Old Province</label>
+              <Select 
+                v-model="pendingFilters.oldProvinceId" 
+                :options="oldProvinces" 
+                optionLabel="name" 
+                optionValue="id"
+                placeholder="Select old province..." 
+                filter
+                showClear 
+                appendTo="self" 
+                class="w-full" 
+              />
+            </div>
+            <div class="popover-actions">
+              <Button label="Reset" text severity="secondary" size="small" @click="resetFilters" />
+              <Button label="Apply" size="small" @click="applyFilters" />
             </div>
           </div>
+        </Popover>
+      </template>
 
-          <!-- Filter Popover -->
-          <Popover ref="filterPopover" class="filter-popover">
-            <div class="popover-content">
-              <div class="filter-group">
-                <label>Birth Year</label>
-                <Select 
-                  v-model="pendingFilters.birthYear" 
-                  :options="birthYearOptions" 
-                  optionLabel="label"
-                  optionValue="value" 
-                  placeholder="Select..." 
-                  showClear 
-                  appendTo="self" 
-                  class="w-full" 
-                />
-              </div>
-              <div class="filter-group">
-                <label>School Old Province</label>
-                <Select 
-                  v-model="pendingFilters.oldProvinceId" 
-                  :options="oldProvinces" 
-                  optionLabel="name" 
-                  optionValue="id"
-                  placeholder="Select old province..." 
-                  filter
-                  showClear 
-                  appendTo="self" 
-                  class="w-full" 
-                />
-              </div>
-              <div class="popover-actions">
-                <Button label="Reset" text severity="secondary" size="small" @click="resetFilters" />
-                <Button label="Apply" size="small" @click="applyFilters" />
-              </div>
-            </div>
-          </Popover>
-        </template>
-
-        <!-- Empty State -->
-        <template #empty>
-          <div class="empty-state">
-            <i class="pi pi-inbox empty-icon"></i>
-            <h3>No inquiries found</h3>
-            <p>Create a new inquiry or adjust your search and filters to get started.</p>
+      <!-- Empty State -->
+      <template #empty>
+        <div class="empty-state">
+          <i class="pi pi-inbox"></i>
+          <h3>No inquiries found</h3>
+          <p>Get started by creating a new inquiry or adjust your search and filters.</p>
+          <div class="empty-actions">
             <Button 
               v-if="$can('create', 'inquiry')" 
               label="New Inquiry" 
               icon="pi pi-plus" 
-              severity="primary" 
               @click="router.push('/inquiries/new')" 
             />
           </div>
+        </div>
+      </template>
+
+      <!-- Loading State -->
+      <template #loading>
+        <div class="loading-state">
+          <i class="pi pi-spin pi-spinner" style="font-size: 1.5rem"></i>
+          <p>Loading inquiries...</p>
+        </div>
+      </template>
+
+      <!-- Multi-select Checkbox Column -->
+      <Column 
+        selectionMode="multiple" 
+        headerStyle="width: 2.5rem" 
+        bodyStyle="width: 2.5rem" 
+        :exportable="false" 
+      />
+
+      <!-- Data Columns -->
+      <Column field="assignedTo.fullName" header="Assigned Staff" sortable style="min-width: 160px">
+        <template #body="{ data }">
+          <span v-if="data.assignedTo" class="user-name">{{ data.assignedTo.fullName }}</span>
+          <span v-else class="null-text">—</span>
         </template>
+      </Column>
 
-        <!-- Multi-select Checkbox Column -->
-        <Column 
-          selectionMode="multiple" 
-          headerStyle="width: 3.5rem; text-align: center" 
-          bodyStyle="text-align: center" 
-          :exportable="false" 
-        />
+      <Column field="student.fullName" header="Student" sortable style="min-width: 160px">
+        <template #body="{ data }">
+          <span v-if="data.student" class="student-name">{{ data.student.fullName }}</span>
+          <span v-else class="null-text">—</span>
+        </template>
+      </Column>
 
-        <!-- Data Columns -->
-        <Column field="assignedTo.fullName" header="Assigned Account" sortable style="min-width: 170px">
-          <template #body="{ data }">
-            <div v-if="data.assignedTo" class="user-cell">
-              <i class="pi pi-user user-icon"></i>
-              <span class="user-name">{{ data.assignedTo.fullName }}</span>
-            </div>
-            <span v-else class="null-text">—</span>
-          </template>
-        </Column>
+      <Column header="Interaction Status" style="min-width: 150px">
+        <template #body="{ data }">
+          <Tag 
+            v-if="getStatusLevel(data.statusData, 'interaction') !== '—'" 
+            :value="getStatusLevel(data.statusData, 'interaction')" 
+            :severity="getStatusTagSeverity(getStatusLevel(data.statusData, 'interaction'))" 
+            rounded 
+            class="status-tag"
+          />
+          <span v-else class="null-text">—</span>
+        </template>
+      </Column>
 
-        <Column field="student.fullName" header="Student" sortable style="min-width: 160px">
-          <template #body="{ data }">
-            <div v-if="data.student" class="student-cell">
-              <i class="pi pi-id-card student-icon"></i>
-              <span class="student-name">{{ data.student.fullName }}</span>
-            </div>
-            <span v-else class="null-text">—</span>
-          </template>
-        </Column>
+      <Column header="General Status" style="min-width: 150px">
+        <template #body="{ data }">
+          <Tag 
+            v-if="getStatusLevel(data.statusData, 'general') !== '—'" 
+            :value="getStatusLevel(data.statusData, 'general')" 
+            :severity="getStatusTagSeverity(getStatusLevel(data.statusData, 'general'))" 
+            rounded 
+            class="status-tag"
+          />
+          <span v-else class="null-text">—</span>
+        </template>
+      </Column>
 
-        <Column header="Interaction Status" style="min-width: 160px">
-          <template #body="{ data }">
-            <Tag 
-              v-if="getStatusLevel(data.statusData, 'interaction') !== '—'" 
-              :value="getStatusLevel(data.statusData, 'interaction')" 
-              :severity="getStatusTagSeverity(getStatusLevel(data.statusData, 'interaction'))" 
+      <Column header="Detail Status" style="min-width: 150px">
+        <template #body="{ data }">
+          <Tag 
+            v-if="getStatusLevel(data.statusData, 'detail') !== '—'" 
+            :value="getStatusLevel(data.statusData, 'detail')" 
+            :severity="getStatusTagSeverity(getStatusLevel(data.statusData, 'detail'))" 
+            rounded 
+            class="status-tag"
+          />
+          <span v-else class="null-text">—</span>
+        </template>
+      </Column>
+
+      <Column field="description" header="Description" sortable style="min-width: 180px">
+        <template #body="{ data }">
+          <span 
+            v-if="data.description" 
+            class="desc-cell" 
+            v-tooltip.top="data.description"
+          >
+            {{ data.description }}
+          </span>
+          <span v-else class="null-text">—</span>
+        </template>
+      </Column>
+
+      <Column field="createdAt" header="Created" sortable style="width: 110px">
+        <template #body="{ data }">
+          <div class="created-cell">
+            <span>{{ formatCompactDate(data.createdAt) }}</span>
+            <span class="created-time">{{ formatCompactTime(data.createdAt) }}</span>
+          </div>
+        </template>
+      </Column>
+
+      <!-- Actions Column -->
+      <Column header="Actions" style="width: 90px" :exportable="false" frozen alignFrozen="right">
+        <template #body="{ data }">
+          <div class="action-buttons">
+            <Button 
+              v-if="$can('read', 'inquiry')" 
+              icon="pi pi-eye" 
               rounded 
-              class="status-tag"
+              text 
+              severity="info" 
+              aria-label="Show Inquiry" 
+              @click="emit('show', data.id)" 
             />
-            <span v-else class="null-text">—</span>
-          </template>
-        </Column>
-
-        <Column header="General Status" style="min-width: 160px">
-          <template #body="{ data }">
-            <Tag 
-              v-if="getStatusLevel(data.statusData, 'general') !== '—'" 
-              :value="getStatusLevel(data.statusData, 'general')" 
-              :severity="getStatusTagSeverity(getStatusLevel(data.statusData, 'general'))" 
+            <Button 
+              v-if="$can('delete', 'inquiry')" 
+              icon="pi pi-trash" 
               rounded 
-              class="status-tag"
+              text 
+              severity="danger" 
+              aria-label="Delete Inquiry" 
+              @click="confirmDeleteAction(data)" 
             />
-            <span v-else class="null-text">—</span>
-          </template>
-        </Column>
-
-        <Column header="Detail Status" style="min-width: 160px">
-          <template #body="{ data }">
-            <Tag 
-              v-if="getStatusLevel(data.statusData, 'detail') !== '—'" 
-              :value="getStatusLevel(data.statusData, 'detail')" 
-              :severity="getStatusTagSeverity(getStatusLevel(data.statusData, 'detail'))" 
-              rounded 
-              class="status-tag"
-            />
-            <span v-else class="null-text">—</span>
-          </template>
-        </Column>
-
-        <Column field="description" header="Description" sortable style="min-width: 220px">
-          <template #body="{ data }">
-            <span 
-              v-if="data.description" 
-              class="desc-text" 
-              v-tooltip.top="data.description.length > 50 ? data.description : undefined"
-            >
-              {{ data.description.length > 50 ? data.description.substring(0, 50) + '...' : data.description }}
-            </span>
-            <span v-else class="null-text">—</span>
-          </template>
-        </Column>
-
-        <Column field="createdAt" header="Created" sortable style="width: 140px">
-          <template #body="{ data }">
-            <span class="date-text">{{ formatCompactDate(data.createdAt) }}</span>
-          </template>
-        </Column>
-
-        <!-- Actions Column -->
-        <Column header="Actions" style="width: 130px; text-align: center" bodyStyle="text-align: center" :exportable="false" frozen alignFrozen="right">
-          <template #body="{ data }">
-            <div class="action-buttons">
-              <Button 
-                icon="pi pi-eye" 
-                rounded 
-                text 
-                severity="info" 
-                size="small" 
-                v-tooltip.top="'View Details'"
-                @click="emit('show', data.id)" 
-              />
-              <Button 
-                v-if="$can('update', 'inquiry')" 
-                icon="pi pi-pencil" 
-                rounded 
-                text 
-                severity="secondary" 
-                size="small" 
-                v-tooltip.top="'Edit Inquiry'"
-                @click="router.push(`/inquiries/${data.id}`)" 
-              />
-              <Button 
-                v-if="$can('delete', 'inquiry')" 
-                icon="pi pi-trash" 
-                rounded 
-                text 
-                severity="danger" 
-                size="small" 
-                v-tooltip.top="'Delete Inquiry'"
-                @click="confirmDeleteAction(data)" 
-              />
-            </div>
-          </template>
-        </Column>
-      </DataTable>
-    </div>
+          </div>
+        </template>
+      </Column>
+    </DataTable>
 
     <!-- Confirmation Dialog -->
     <ConfirmDialog />
@@ -287,7 +269,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import Toolbar from 'primevue/toolbar'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -297,12 +278,11 @@ import InputIcon from 'primevue/inputicon'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Select from 'primevue/select'
 import Popover from 'primevue/popover'
-import Badge from 'primevue/badge'
 import Tag from 'primevue/tag'
 import { useConfirm } from 'primevue/useconfirm'
 import { useSchoolOptions } from '@/composables/useSchoolOptions'
 import { getStatusLevel } from '@/utils/inquiryLabels'
-import { formatCompactDate } from '@/utils/dateUtils'
+import { formatCompactDate, formatCompactTime } from '@/utils/dateUtils'
 
 defineProps({
   inquiries: { type: Array, default: () => [] },
@@ -445,190 +425,87 @@ const getStatusTagSeverity = (label) => {
 </script>
 
 <style scoped>
-/* Card Wrapper matching Freya design */
-.table-card-wrapper {
-  background: var(--p-content-background);
-  border-radius: 14px;
-  border: 1px solid var(--p-surface-200);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-/* Freya Top Toolbar */
-.table-action-toolbar {
-  background: transparent;
-  border: none;
-  padding: 0;
-}
-
-.toolbar-start {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.action-btn-new {
-  font-weight: 600;
-  padding: 0.55rem 1.15rem;
-  border-radius: 8px;
-}
-
-.action-btn-delete {
-  font-weight: 500;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-}
-
-.action-btn-export {
-  font-weight: 500;
-  border-radius: 8px;
-  padding: 0.55rem 1.15rem;
-}
-
-/* DataTable Wrapper */
 .table-container {
-  border-radius: 10px;
+  background: var(--p-content-background);
+  border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--p-surface-200);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
-/* Table Sub-header (Search + Filter + Title) */
-.table-sub-header {
+/* Toolbars */
+.primary-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding: 0.5rem 0.25rem;
+  padding: 0.75rem 1rem 0.5rem 1rem;
 }
 
-.header-title-section {
+.toolbar-spacer {
+  flex: 1;
+}
+
+.toolbar-actions {
   display: flex;
+  gap: 0.75rem;
   align-items: center;
-  gap: 0.85rem;
-}
-
-.table-heading {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--p-text-color);
-  margin: 0;
-  letter-spacing: -0.01em;
-}
-
-.selection-pill {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: var(--p-surface-100);
-  border: 1px solid var(--p-surface-200);
-  padding: 0.2rem 0.6rem;
-  border-radius: 20px;
-}
-
-.selection-msg {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--p-text-color);
-}
-
-.clear-btn {
-  padding: 0 0.25rem;
-  font-size: 0.8rem;
-  color: var(--p-primary-color);
-}
-
-.total-count-text {
-  font-size: 0.85rem;
-  color: var(--p-text-muted-color);
-  font-weight: 500;
-}
-
-.header-controls-section {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
 }
 
 .search-input {
   width: 280px;
 }
 
-/* Cell typography & icons */
-.user-cell,
-.student-cell {
+.secondary-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem 0.75rem 1rem;
+}
+
+.secondary-left {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 1rem;
 }
 
-.user-icon,
-.student-icon {
-  font-size: 0.9rem;
-  color: var(--p-text-muted-color);
-  opacity: 0.75;
+.filter-btn {
+  position: relative;
 }
 
-.user-name,
-.student-name {
-  font-weight: 500;
-  color: var(--p-text-color);
-}
-
-.null-text {
-  color: var(--p-text-muted-color);
-  opacity: 0.6;
-}
-
-.desc-text {
-  font-size: 0.88rem;
-  color: var(--p-text-color);
-  display: inline-block;
-  max-width: 260px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: default;
-}
-
-.date-text {
+.result-count,
+.selection-count {
   font-size: 0.85rem;
   color: var(--p-text-muted-color);
+  font-weight: 500;
 }
 
-.status-tag {
-  font-size: 0.8rem;
-  font-weight: 600;
-  padding: 0.2rem 0.65rem;
+.selection-count {
+  color: var(--p-primary-color);
 }
 
-.action-buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.25rem;
+.export-btn,
+.delete-btn {
+  font-size: 0.85rem;
+  padding: 0.25rem 0.75rem;
 }
 
-/* Filter Popover */
+/* Popover */
 .popover-content {
-  padding: 1.15rem;
-  width: 270px;
+  padding: 0.5rem;
+  width: 240px;
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
+  gap: 1rem;
 }
 
 .filter-group {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.25rem;
 }
 
 .filter-group label {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--p-text-color);
 }
@@ -637,59 +514,176 @@ const getStatusTagSeverity = (label) => {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
-  margin-top: 0.25rem;
+  margin-top: 0.5rem;
+  border-top: 1px solid var(--p-surface-200);
+  padding-top: 1rem;
 }
 
-/* Empty State */
+.w-full {
+  width: 100%;
+}
+
+/* ===== Compact DataTable Overrides matching StudentList ===== */
+.inquiry-datatable :deep(.p-datatable-header) {
+  padding: 0;
+  background: var(--p-content-background);
+  border-bottom: 1px solid var(--p-surface-200);
+}
+
+.inquiry-datatable :deep(.p-datatable-thead > tr > th) {
+  padding: 0.65rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--p-text-muted-color);
+  background: var(--p-surface-50);
+  border-bottom: 1px solid var(--p-surface-200);
+  border-right: none;
+  white-space: nowrap;
+}
+
+.inquiry-datatable :deep(.p-datatable-tbody > tr > td) {
+  padding: 0.55rem 0.75rem;
+  font-size: 0.8125rem;
+  border-bottom: 1px solid var(--p-surface-100);
+  border-right: none;
+  vertical-align: middle;
+  line-height: 1.4;
+}
+
+.inquiry-datatable :deep(.p-datatable-tbody > tr:hover) {
+  background: var(--p-surface-50) !important;
+}
+
+.inquiry-datatable :deep(.p-datatable-tbody > tr:nth-child(even)) {
+  background: transparent;
+}
+
+/* Paginator compact */
+.inquiry-datatable :deep(.p-paginator) {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  border-top: 1px solid var(--p-surface-200);
+  justify-content: center;
+}
+
+.inquiry-datatable :deep(.p-paginator .p-paginator-current) {
+  font-size: 0.8rem;
+  color: var(--p-text-muted-color);
+}
+
+/* Frozen column styling */
+.inquiry-datatable :deep(.p-datatable-frozen-column) {
+  background: var(--p-content-background);
+}
+
+/* ===== Cell content styles ===== */
+.user-name,
+.student-name {
+  font-weight: 500;
+  color: var(--p-text-color);
+}
+
+.null-text {
+  color: var(--p-text-muted-color);
+}
+
+.desc-cell {
+  display: inline-block;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.1rem 0.45rem;
+}
+
+.created-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.created-time {
+  font-size: 0.75rem;
+  color: var(--p-text-muted-color);
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0;
+}
+
+.action-buttons :deep(.p-button) {
+  width: 2rem;
+  height: 2rem;
+}
+
+.action-buttons :deep(.p-button .p-button-icon) {
+  font-size: 0.85rem;
+}
+
+/* Empty & Loading */
 .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 3.5rem 1.5rem;
-  gap: 0.6rem;
+  padding: 3rem 1rem;
+  gap: 0.5rem;
   color: var(--p-text-muted-color);
-  text-align: center;
 }
 
-.empty-icon {
-  font-size: 3.25rem;
+.empty-state i {
+  font-size: 2.5rem;
   margin-bottom: 0.5rem;
-  opacity: 0.35;
-  color: var(--p-primary-color);
+  opacity: 0.4;
 }
 
 .empty-state h3 {
   margin: 0;
-  font-size: 1.2rem;
-  font-weight: 700;
+  font-size: 1.1rem;
+  font-weight: 600;
   color: var(--p-text-color);
 }
 
 .empty-state p {
-  margin: 0 0 1.25rem 0;
-  font-size: 0.92rem;
-  max-width: 320px;
+  margin: 0;
+  font-size: 0.85rem;
 }
 
-/* Responsive adjustments */
+.empty-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  gap: 0.75rem;
+  color: var(--p-text-muted-color);
+}
+
 @media (max-width: 768px) {
-  .table-card-wrapper {
-    padding: 0.85rem;
-  }
-  
-  .table-sub-header {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .header-controls-section {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
   .search-input {
     width: 100%;
+  }
+
+  .toolbar-actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .primary-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
   }
 }
 </style>
