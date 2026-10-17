@@ -6,6 +6,6 @@ const permissionController = require('./permissionController');
 
 // ─── List all system permissions (admin only — used for PermissionMatrix)
 router.route('/')
-    .get(authenticate, authorize('role.read'), permissionController.getAllPermissions);
+  .get(authenticate, authorize('role.read'), permissionController.getAllPermissions);
 
 module.exports = router;

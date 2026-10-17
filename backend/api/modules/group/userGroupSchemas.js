@@ -1,6 +1,6 @@
 const { z } = require('zod');
 const prisma = require('../../../config/db');
-const { validateReadGatedMutations } = require('../../../authorization/readGatedMutation');
+const { validateReadGatedMutations } = require('../../../authorization/permissionScopePolicy');
 
 const createGroupSchema = z.object({
   name: z.string().trim().min(1, 'Group name is required').max(255, 'Group name cannot exceed 255 characters'),
@@ -19,11 +19,8 @@ const memberActionSchema = z.object({
 });
 
 /**
- * Validates Scope Consistency Rule for a list of permission IDs:
+ * Validate Scope Consistency Rule for a list of permission IDs:
  * Maps IDs to codes and asserts mutation scope <= read scope.
- *
- * @param {number[]} permissionIds
- * @throws {Error} if scope consistency is violated
  */
 async function validatePermissionIdsScopeConsistency(permissionIds) {
   if (!Array.isArray(permissionIds) || permissionIds.length === 0) {

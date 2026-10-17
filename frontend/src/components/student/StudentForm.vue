@@ -249,17 +249,13 @@ defineExpose({
         <InputText id="sf-otherPhone" v-model="form.otherPhone" placeholder="Alternative phone" fluid />
       </div>
       <div class="form-field">
-        <label for="sf-parentPhone">Parent Phone</label>
-        <InputText id="sf-parentPhone" v-model="form.parentPhone" placeholder="Parent contact" fluid />
+        <label for="sf-birthDate">Birth Date</label>
+        <DatePicker id="sf-birthDate" v-model="form.birthDate" dateFormat="dd-mm-yy" placeholder="Select date" :showIcon="true" fluid />
       </div>
     </div>
 
     <div class="form-grid">
-      <div class="form-field">
-        <label for="sf-birthDate">Birth Date</label>
-        <DatePicker id="sf-birthDate" v-model="form.birthDate" dateFormat="dd-mm-yy" placeholder="Select date" :showIcon="true" fluid />
-      </div>
-      <div class="form-field">
+      <div class="form-field" style="grid-column: span 2;">
         <label for="sf-primaryAddress">Primary address</label>
         <InputText id="sf-primaryAddress" v-model="form.primaryAddress" placeholder="Primary address" fluid />
       </div>

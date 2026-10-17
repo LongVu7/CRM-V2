@@ -65,7 +65,6 @@ const createStudentSchema = z.object({
   mobile: mobileString,
   otherPhone: optionalMobileString,
   birthDate: dateString.nullable().optional(),
-  parentPhone: optionalMobileString,
   primaryAddress: z.string().max(255).nullable().optional(),
   education: educationSchema,
   specializedRegister: specializedRegisterSchema,
@@ -79,7 +78,6 @@ const updateStudentSchema = z.object({
   mobile: mobileString.optional(),
   otherPhone: optionalMobileString.optional(),
   birthDate: dateString.nullable().optional(),
-  parentPhone: optionalMobileString.optional(),
   primaryAddress: z.string().max(255).nullable().optional(),  education: educationSchema.optional(),
   specializedRegister: specializedRegisterSchema.optional(),
 
@@ -104,7 +102,6 @@ const importStudentSchema = z.object({
   mobile: mobileString,
   otherPhone: optionalMobileString.optional(),
   birthDate: dateString.optional(),
-  parentPhone: optionalMobileString.optional(),
   primaryAddress: z.string().max(255).optional(),
   education: educationSchema.optional(),
   specializedRegister: specializedRegisterSchema.optional(),

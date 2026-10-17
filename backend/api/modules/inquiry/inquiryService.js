@@ -125,7 +125,7 @@ const buildInquiryWhere = async (filters, user) => {
   // Student specific filters
   if (filters.birthYear || filters.oldProvinceId) {
     where.student = { ...(where.student || {}) };
-    
+
     if (filters.birthYear) {
       const year = parseInt(filters.birthYear, 10);
       where.student.birthDate = {
@@ -133,7 +133,7 @@ const buildInquiryWhere = async (filters, user) => {
         lt: new Date(`${year + 1}-01-01T00:00:00.000Z`)
       };
     }
-    
+
     if (filters.oldProvinceId) {
       where.student.education = {
         school: { oldProvinceId: parseInt(filters.oldProvinceId, 10) }
@@ -459,17 +459,22 @@ const assignAccountToInquiry = async (inquiryId, accountId) => {
 };
 
 // ─── Search students (for assignment UI)
-const searchStudents = async (query) =>
-  prisma.student.findMany({
-    where: {
-      OR: [
-        { fullName: { contains: query, mode: 'insensitive' } },
-        { email: { contains: query, mode: 'insensitive' } }
-      ]
-    },
-    take: 20,
+const searchStudents = async (query) => {
+  const q = query ? query.trim() : '';
+  const where = q.length > 0 ? {
+    OR: [
+      { fullName: { contains: q, mode: 'insensitive' } },
+      { email: { contains: q, mode: 'insensitive' } },
+      { mobile: { contains: q } }
+    ]
+  } : {};
+
+  return prisma.student.findMany({
+    where,
+    take: 30,
     orderBy: { fullName: 'asc' }
   });
+};
 
 // ─── Search staff accounts (for assignment UI)
 const searchAccounts = async (query) =>
@@ -544,7 +549,6 @@ const exportInquiries = async (filters, user) => {
     'Mobile': i.student?.mobile || '',
     'Other Phone': i.student?.otherPhone || '',
     'Email': i.student?.email || '',
-    'Parent Phone': i.student?.parentPhone || '',
     'Primary Address': i.student?.primaryAddress || '',
     // Inquiry basic details
     'Description': i.description || '',

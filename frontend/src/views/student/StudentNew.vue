@@ -42,7 +42,6 @@ const studentTemplate = ref({
   mobile: '',
   otherPhone: '',
   birthDate: null,
-  parentPhone: '',
   primaryAddress: '',
   schoolId: null,
 

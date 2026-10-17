@@ -29,7 +29,6 @@ const COLUMN_MAP = {
   'Mobile': { key: 'mobile', requiredStruct: true, requiredNew: true },
   'Other Phone': { key: 'otherPhone', requiredStruct: false, requiredNew: false },
   'Birth Date': { key: 'birthDate', requiredStruct: false, requiredNew: false },
-  'Parent Phone': { key: 'parentPhone', requiredStruct: false, requiredNew: false },
   'Primary Address': { key: 'primaryAddress', requiredStruct: false, requiredNew: false },
   'Priority': { key: 'priority', requiredStruct: false, requiredNew: false },
 
@@ -360,7 +359,7 @@ const insertInquiryRows = async (rows, context) => {
   let newStudentsCreated = 0;
   let newInquiriesForExisting = 0;
   let skipped = 0;
-  
+
   for (const row of rows) {
     if (row._meta.classification === 'READY_NEW_STUDENT_AND_INQUIRY') {
       try {
@@ -390,7 +389,6 @@ const insertInquiryRows = async (rows, context) => {
               mobile: row.mobile,
               otherPhone: row.otherPhone || null,
               birthDate: row.birthDate || null,
-              parentPhone: row.parentPhone || null,
               primaryAddress: row.primaryAddress || null,
               specializedRegisterId: srId
             }

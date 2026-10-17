@@ -8,7 +8,13 @@ const groupInclude = {
     select: { id: true, fullName: true, email: true }
   },
   accounts: {
-    select: { id: true, fullName: true, email: true, isActive: true }
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      isActive: true,
+      role: { select: { id: true, name: true } }
+    }
   }
 };
 
@@ -318,6 +324,7 @@ const addMemberToGroup = async (groupId, accountId, user) => {
       fullName: true,
       email: true,
       isActive: true,
+      role: { select: { id: true, name: true } },
       group: { select: { id: true, name: true } }
     }
   });
@@ -378,6 +385,32 @@ const removeMemberFromGroup = async (groupId, accountId, user) => {
   });
 };
 
+// ─── Query candidate accounts for group leader and member assignment
+const getCandidateAccounts = async () => {
+  return prisma.account.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      isActive: true,
+      groupId: true,
+      role: { select: { id: true, name: true } },
+      leadingGroups: { select: { id: true, name: true } }
+    },
+    orderBy: { fullName: 'asc' }
+  });
+};
+
+// ─── Query system permissions for group permission configuration
+const getGroupPermissions = async () => {
+  const permissions = await prisma.permission.findMany({
+    orderBy: [{ resource: 'asc' }, { action: 'asc' }]
+  });
+  const uniqueActions = [...new Set(permissions.map(p => p.action))].sort();
+  return { permissions, actions: uniqueActions };
+};
+
 module.exports = {
   getAllGroups,
   getGroupById,
@@ -386,6 +419,8 @@ module.exports = {
   deleteGroup,
   addMemberToGroup,
   removeMemberFromGroup,
-  validateSingleGroupLeadership
+  validateSingleGroupLeadership,
+  getCandidateAccounts,
+  getGroupPermissions
 };
 

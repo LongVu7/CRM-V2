@@ -54,7 +54,7 @@ export const englishCertOptions = [
 ]
 
 export const ALLOWED_STUDENT_FIELDS = [
-  'fullName', 'gender', 'email', 'mobile', 'otherPhone', 'birthDate', 'parentPhone', 'primaryAddress'
+  'fullName', 'gender', 'email', 'mobile', 'otherPhone', 'birthDate', 'primaryAddress'
 ]
 
 export const ALLOWED_EDUCATION_FIELDS = [

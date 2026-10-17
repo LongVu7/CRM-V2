@@ -9,7 +9,7 @@
           severity="secondary" 
           size="small" 
           icon="pi pi-search" 
-          @click="isCreatingStudent = false" 
+          @click="switchToSelectStudent" 
         />
         <Button 
           v-else 
@@ -59,6 +59,7 @@
           showClear
           :loading="loadingStudents"
           fluid
+          @filter="onFilterStudents"
           @change="onStudentSelect"
         />
         <div v-if="selectedStudent" class="entity-info" style="margin-top: 0.75rem;">
@@ -90,7 +91,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import StudentForm from '@/components/student/StudentForm.vue'
-import { getAllStudents } from '@/services/studentService'
+import { searchStudents } from '@/services/inquiryService'
 
 const props = defineProps({
   readonly: {
@@ -117,7 +118,6 @@ const newStudentForm = ref({
   email: '',
   mobile: '',
   otherPhone: '',
-  parentPhone: '',
   birthDate: null,
   primaryAddress: '',
   newSchoolCity: null,
@@ -133,23 +133,37 @@ const newStudentForm = ref({
 })
 
 const studentOptions = computed(() =>
-  allStudents.value.map(s => ({
-    label: s.fullName
-      ? `${s.fullName} (${s.email || s.mobile || 'No contact'})`
-      : s.email || s.mobile || `Student #${s.id}`,
-    value: s.id
-  }))
+  allStudents.value.map(s => {
+    const contactParts = []
+    if (s.email) contactParts.push(s.email)
+    if (s.mobile) contactParts.push(s.mobile)
+    const contactInfo = contactParts.length > 0 ? contactParts.join(' | ') : 'No contact'
+    return {
+      label: s.fullName
+        ? `${s.fullName} (${contactInfo})`
+        : `Student #${s.id} (${contactInfo})`,
+      value: s.id
+    }
+  })
 )
 
 const selectedStudent = computed(() =>
   allStudents.value.find(s => s.id === selectedStudentId.value) || null
 )
 
-const fetchAllStudents = async () => {
+let debounceTimer = null
+
+const fetchStudents = async (query = '') => {
   loadingStudents.value = true
   try {
-    const response = await getAllStudents({ page: 1, limit: 1000 })
-    allStudents.value = response.data || []
+    const results = await searchStudents(query)
+    allStudents.value = results || []
+
+    if (selectedStudent.value && !allStudents.value.some(s => s.id === selectedStudent.value.id)) {
+      allStudents.value.unshift(selectedStudent.value)
+    } else if (props.initialStudent && !allStudents.value.some(s => s.id === props.initialStudent.id)) {
+      allStudents.value.unshift(props.initialStudent)
+    }
   } catch {
     allStudents.value = []
   } finally {
@@ -157,9 +171,24 @@ const fetchAllStudents = async () => {
   }
 }
 
+const onFilterStudents = (event) => {
+  const query = event?.value || ''
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(() => {
+    fetchStudents(query)
+  }, 300)
+}
+
+const switchToSelectStudent = () => {
+  isCreatingStudent.value = false
+  if (allStudents.value.length === 0) {
+    fetchStudents()
+  }
+}
+
 onMounted(() => {
   if (!props.readonly) {
-    fetchAllStudents()
+    fetchStudents()
   }
 })
 
@@ -168,6 +197,9 @@ watch(
     if (newStudent) {
       isCreatingStudent.value = false
       selectedStudentId.value = newStudent.id
+      if (!allStudents.value.some(s => s.id === newStudent.id)) {
+        allStudents.value.push(newStudent)
+      }
     }
   },
   { immediate: true }

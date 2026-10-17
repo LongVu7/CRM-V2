@@ -186,11 +186,7 @@ const searchStudents = async (req, res) => {
   try {
     const { q } = req.query;
 
-    if (!q || q.trim().length === 0) {
-      return res.status(400).json({ error: "Query parameter 'q' is required" });
-    }
-
-    const results = await inquiryService.searchStudents(q);
+    const results = await inquiryService.searchStudents(q || '');
     res.status(200).json({
       message: 'Students search results',
       requestedByRole: req.user?.roleName,

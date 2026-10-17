@@ -26,12 +26,12 @@ import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import GroupForm from '@/components/group/GroupForm.vue'
 import { useGroup } from '@/composables/useGroup'
-import { useAccount } from '@/composables/useAccount'
+import { getGroupCandidateAccounts } from '@/services/groupService'
 
 const router = useRouter()
 const toast = useToast()
 const { createGroup } = useGroup()
-const { accounts, fetchAccounts } = useAccount()
+const accounts = ref([])
 
 const newGroup = ref({
   name: '',
@@ -42,7 +42,7 @@ const isSubmitting = ref(false)
 
 onMounted(async () => {
   try {
-    await fetchAccounts()
+    accounts.value = await getGroupCandidateAccounts()
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load accounts for selection', life: 5000 })
   }

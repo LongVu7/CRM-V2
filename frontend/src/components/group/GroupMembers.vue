@@ -77,7 +77,7 @@
       </Column>
     </DataTable>
 
-    <ConfirmDialog />
+    <ConfirmDialog group="removeMember" />
   </div>
   <div class="card-splitter"></div>
 </template>
@@ -129,6 +129,7 @@ const handleAddMember = () => {
 
 const confirmRemove = (member) => {
   confirm.require({
+    group: 'removeMember',
     message: `Are you sure you want to remove "${member.fullName || member.email}" from this group? Their operational permissions will be updated.`,
     header: 'Remove Member',
     icon: 'pi pi-exclamation-triangle',

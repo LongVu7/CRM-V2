@@ -36,14 +36,14 @@
       </h3>
       <p class="section-hint" v-if="canManagePermissions">Assign operational permissions to all members of this group.</p>
       <p class="section-hint" v-else>Group permissions are governed exclusively by System Administrators and are displayed here as read-only.</p>
-      <PermissionMatrix v-model="form.permissionIds" :disabled="!canManagePermissions" />
+      <PermissionMatrix v-model="form.permissionIds" :disabled="!canManagePermissions" :fetchFn="getGroupPermissions" />
     </div>
 
     <div class="form-actions">
       <Button type="submit" :label="buttonText" icon="pi pi-check" :loading="isSubmitting" />
     </div>
 
-    <ConfirmDialog />
+    <ConfirmDialog group="replaceLeader" />
   </form>
 </template>
 
@@ -55,6 +55,7 @@ import Button from 'primevue/button'
 import ConfirmDialog from 'primevue/confirmdialog'
 import { useConfirm } from 'primevue/useconfirm'
 import PermissionMatrix from '@/components/shared/PermissionMatrix.vue'
+import { getGroupPermissions } from '@/services/groupService'
 import { useAuthStore } from '@/stores/auth'
 import { useAbility } from '@casl/vue'
 
@@ -124,6 +125,7 @@ const onSubmit = () => {
 
   if (initialLeaderId && newLeaderId !== initialLeaderId && canManageLeader.value) {
     confirm.require({
+      group: 'replaceLeader',
       message: 'Are you sure you want to change the designated Group Leader? This will transfer group leadership immediately.',
       header: 'Confirm Leader Replacement',
       icon: 'pi pi-exclamation-triangle',

@@ -52,7 +52,8 @@ import { getAllPermissions } from '@/services/permissionService'
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
-  disabled: { type: Boolean, default: false }
+  disabled: { type: Boolean, default: false },
+  fetchFn: { type: Function, default: null }
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -64,9 +65,9 @@ const loading = ref(false)
 onMounted(async () => {
   loading.value = true
   try {
-    const data = await getAllPermissions()
-    allPermissions.value = data.permissions || []
-    apiActions.value = data.actions || []
+    const data = props.fetchFn ? await props.fetchFn() : await getAllPermissions()
+    allPermissions.value = Array.isArray(data) ? data : (data?.permissions || [])
+    apiActions.value = data?.actions || []
   } catch {
     allPermissions.value = []
     apiActions.value = []

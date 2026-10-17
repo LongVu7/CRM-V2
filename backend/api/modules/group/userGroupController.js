@@ -127,6 +127,36 @@ const removeMemberFromGroup = async (req, res) => {
   }
 };
 
+// ─── Query candidate accounts for group selection
+const getCandidateAccounts = async (req, res) => {
+  try {
+    const accounts = await userGroupService.getCandidateAccounts();
+    res.status(200).json({
+      message: 'Candidate accounts retrieved successfully',
+      requestedByRole: req.user?.roleName,
+      requestedByAccountId: req.user?.accountId,
+      accounts
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+// ─── Query system permissions for group matrix
+const getGroupPermissions = async (req, res) => {
+  try {
+    const data = await userGroupService.getGroupPermissions();
+    res.status(200).json({
+      message: 'Group permissions retrieved successfully',
+      requestedByRole: req.user?.roleName,
+      requestedByAccountId: req.user?.accountId,
+      ...data
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
 module.exports = {
   getAllGroups,
   getGroupById,
@@ -134,5 +164,7 @@ module.exports = {
   updateGroup,
   deleteGroup,
   addMemberToGroup,
-  removeMemberFromGroup
+  removeMemberFromGroup,
+  getCandidateAccounts,
+  getGroupPermissions
 };

@@ -48,14 +48,14 @@ import { useToast } from 'primevue/usetoast'
 import GroupForm from '@/components/group/GroupForm.vue'
 import GroupMembers from '@/components/group/GroupMembers.vue'
 import { useGroup } from '@/composables/useGroup'
-import { useAccount } from '@/composables/useAccount'
+import { getGroupCandidateAccounts } from '@/services/groupService'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 
 const { fetchGroupById, updateGroup, addMember, removeMember } = useGroup()
-const { accounts, fetchAccounts } = useAccount()
+const accounts = ref([])
 
 const existingGroup = ref({
   name: '',
@@ -67,6 +67,14 @@ const loadingGroup = ref(true)
 const notFound = ref(false)
 const isSubmitting = ref(false)
 const isAddingMember = ref(false)
+
+const fetchAccounts = async () => {
+  try {
+    accounts.value = await getGroupCandidateAccounts()
+  } catch (err) {
+    accounts.value = []
+  }
+}
 
 const loadGroupData = async () => {
   try {
@@ -119,6 +127,7 @@ const handleAddMember = async (accountId) => {
     await addMember(route.params.id, accountId)
     toast.add({ severity: 'success', summary: 'Success', detail: 'Member added to group successfully', life: 3000 })
     await loadGroupData() // refresh members
+    await fetchAccounts() // refresh candidate accounts list
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Error', detail: error.response?.data?.error || error.message || 'Failed to add member', life: 5000 })
   } finally {
@@ -131,6 +140,7 @@ const handleRemoveMember = async (accountId) => {
     await removeMember(route.params.id, accountId)
     toast.add({ severity: 'success', summary: 'Success', detail: 'Member removed from group successfully', life: 3000 })
     await loadGroupData() // refresh members
+    await fetchAccounts() // refresh candidate accounts list
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Error', detail: error.response?.data?.error || error.message || 'Failed to remove member', life: 5000 })
   }

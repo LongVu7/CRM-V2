@@ -1,6 +1,6 @@
 const prisma = require('../../config/db');
 
-// Helper to get managed group member's account IDs for a manager/leader
+// Helper to get managed group member's account IDs for a group leader only
 const getManagedGroupMemberIds = async (accountId) => {
   if (!accountId) return [];
   const groups = await prisma.userGroup.findMany({
@@ -20,6 +20,7 @@ const buildInquiryReadScope = async (user) => {
     return {};
   }
 
+  // get list of user's account ID and their group leader's account ID
   const validIds = [];
 
   if (user?.permissions?.has('inquiry.read_assigned') && user?.accountId) {
@@ -143,7 +144,23 @@ const resolveInquiryOwnership = async (req) => {
   });
 };
 
+const inquiryPermissions = {
+  READ: ['inquiry.read', 'inquiry.read_all', 'inquiry.read_group', 'inquiry.read_assigned'],
+  UPDATE: ['inquiry.update', 'inquiry.update_all', 'inquiry.update_group', 'inquiry.update_assigned'],
+  DELETE: ['inquiry.delete', 'inquiry.delete_all', 'inquiry.delete_assigned'],
+  CREATE: 'inquiry.create',
+  ASSIGN: 'inquiry.assign',
+  IMPORT: 'inquiry.import',
+  EXPORT: 'inquiry.export',
+  SEARCH: ['student.read', 'inquiry.create', 'inquiry.assign', 'inquiry.update', 'inquiry.read', 'inquiry.read_all', 'inquiry.read_group', 'inquiry.read_assigned']
+};
+
+const withInquiryOwnership = { ownership: { resolver: resolveInquiryOwnership } };
+
 module.exports = {
+  inquiryPermissions,
+  withInquiryOwnership,
+  withOwnership: withInquiryOwnership,
   buildInquiryScope: buildInquiryReadScope,
   buildInquiryReadScope,
   buildInquiryUpdateScope,

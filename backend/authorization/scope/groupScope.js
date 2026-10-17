@@ -107,7 +107,17 @@ const resolveGroupManageOwnership = async (req) => {
   return group;
 };
 
+const groupPermissions = {
+  READ: ['group.read', 'group.read_all', 'group.read_managed'],
+  UPDATE: ['group.update'],
+  DELETE: ['group.delete'],
+  CREATE: ['group.create'],
+  ASSIGN_LEADER: ['group.leader.assign'],
+  ASSIGN_PERMISSION: ['group.permission.assign']
+};
+
 module.exports = {
+  groupPermissions,
   buildGroupScope,
   buildGroupManageScope,
   resolveGroupOwnership,

@@ -10,11 +10,24 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../../../middleware/auth');
 const authorize = require('../../../middleware/authorize');
-const { resolveGroupOwnership, resolveGroupManageOwnership } = require('../../../authorization/scope/groupScope');
+const { resolveGroupOwnership, resolveGroupManageOwnership, groupPermissions } = require('../../../authorization/scope/groupScope');
 const userGroupController = require('./userGroupController');
 
 const withReadOwnership = { ownership: { resolver: resolveGroupOwnership } };
 const withManageOwnership = { ownership: { resolver: resolveGroupManageOwnership } };
+
+const canAccessGroupHelpers = [
+  ...groupPermissions.READ,
+  ...groupPermissions.UPDATE,
+  ...groupPermissions.CREATE
+];
+
+// ─── Helper routes (candidate accounts & permissions for group management)
+router.route('/accounts')
+  .get(authenticate, authorize(canAccessGroupHelpers), userGroupController.getCandidateAccounts);
+
+router.route('/permissions')
+  .get(authenticate, authorize(canAccessGroupHelpers), userGroupController.getGroupPermissions);
 
 router.route('/')
   .get(authenticate, authorize('group.read'), userGroupController.getAllGroups)
