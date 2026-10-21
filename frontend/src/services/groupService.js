@@ -37,8 +37,8 @@ export const removeMemberFromGroup = async (groupId, accountId) => {
   return response.data
 }
 
-export const getGroupCandidateAccounts = async () => {
-  const response = await api.get(`${prefix}/accounts`)
+export const getGroupCandidateAccounts = async (params = {}) => {
+  const response = await api.get(`${prefix}/accounts`, { params })
   return response.data.accounts
 }
 

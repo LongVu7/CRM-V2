@@ -1,7 +1,6 @@
 /**
  * Group Management API Routes
- *
- * Implements two-tier authorization:
+
  * - Administrators: Global group management (CRUD, leader assignment, permission configuration)
  * - Group Leaders: Delegated roster management for assigned groups only (add/remove active members)
  */
@@ -16,25 +15,22 @@ const userGroupController = require('./userGroupController');
 const withReadOwnership = { ownership: { resolver: resolveGroupOwnership } };
 const withManageOwnership = { ownership: { resolver: resolveGroupManageOwnership } };
 
-const canAccessGroupHelpers = [
-  ...groupPermissions.READ,
-  ...groupPermissions.UPDATE,
-  ...groupPermissions.CREATE
-];
+
 
 // ─── Helper routes (candidate accounts & permissions for group management)
 router.route('/accounts')
-  .get(authenticate, authorize(canAccessGroupHelpers), userGroupController.getCandidateAccounts);
+  .get(authenticate, authorize(groupPermissions.GET_PERMISSIONS), userGroupController.getCandidateAccounts);
 
 router.route('/permissions')
-  .get(authenticate, authorize(canAccessGroupHelpers), userGroupController.getGroupPermissions);
+  .get(authenticate, authorize(groupPermissions.GET_PERMISSIONS), userGroupController.getGroupPermissions);
 
+// CRUD Routes
 router.route('/')
-  .get(authenticate, authorize('group.read'), userGroupController.getAllGroups)
+  .get(authenticate, authorize(groupPermissions.READ), userGroupController.getAllGroups)
   .post(authenticate, authorize('group.create'), userGroupController.createGroup);
 
 router.route('/:id')
-  .get(authenticate, authorize('group.read', withReadOwnership), userGroupController.getGroupById)
+  .get(authenticate, authorize(groupPermissions.READ, withReadOwnership), userGroupController.getGroupById)
   .put(authenticate, authorize('group.update', withManageOwnership), userGroupController.updateGroup)
   .delete(authenticate, authorize('group.delete', withManageOwnership), userGroupController.deleteGroup);
 

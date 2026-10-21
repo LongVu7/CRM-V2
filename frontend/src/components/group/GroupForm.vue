@@ -42,8 +42,6 @@
     <div class="form-actions">
       <Button type="submit" :label="buttonText" icon="pi pi-check" :loading="isSubmitting" />
     </div>
-
-    <ConfirmDialog group="replaceLeader" />
   </form>
 </template>
 
@@ -52,8 +50,6 @@ import { ref, watch, computed } from 'vue'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
-import ConfirmDialog from 'primevue/confirmdialog'
-import { useConfirm } from 'primevue/useconfirm'
 import PermissionMatrix from '@/components/shared/PermissionMatrix.vue'
 import { getGroupPermissions } from '@/services/groupService'
 import { useAuthStore } from '@/stores/auth'
@@ -68,7 +64,6 @@ const props = defineProps({
 
 const emit = defineEmits(['submit'])
 
-const confirm = useConfirm()
 const authStore = useAuthStore()
 const { can } = useAbility()
 
@@ -89,10 +84,16 @@ watch(() => props.group, (newVal) => {
 }, { deep: true })
 
 const leaderOptions = computed(() =>
-  props.accounts.map(acc => ({
-    label: acc.fullName ? `${acc.fullName} (${acc.email})` : acc.email,
-    value: acc.id
-  }))
+  props.accounts.map(acc => {
+    const currentGroupBadge = acc.group?.name ? ` [Group: ${acc.group.name}]` : ' (Unassigned)'
+    const leadingGroup = acc.leadingGroups?.find(g => g.id !== Number(props.group?.id))
+
+    return {
+      label: `Account: ${acc.fullName || 'Account #' + acc.id}${currentGroupBadge}`,
+      value: acc.id,
+      disabled: Boolean(leadingGroup)
+    }
+  })
 )
 
 const validate = () => {
@@ -118,28 +119,6 @@ const getPayload = () => {
 
 const onSubmit = () => {
   if (!validate()) return
-
-  // Check if replacing an existing leader
-  const initialLeaderId = props.group?.groupLeaderId || props.group?.groupLeader?.id || null
-  const newLeaderId = form.value.groupLeaderId || null
-
-  if (initialLeaderId && newLeaderId !== initialLeaderId && canManageLeader.value) {
-    confirm.require({
-      group: 'replaceLeader',
-      message: 'Are you sure you want to change the designated Group Leader? This will transfer group leadership immediately.',
-      header: 'Confirm Leader Replacement',
-      icon: 'pi pi-exclamation-triangle',
-      rejectLabel: 'Cancel',
-      rejectProps: { severity: 'secondary', text: true },
-      acceptLabel: 'Confirm Replacement',
-      acceptProps: { severity: 'warn' },
-      accept: () => {
-        emit('submit', getPayload())
-      }
-    })
-    return
-  }
-
   emit('submit', getPayload())
 }
 </script>

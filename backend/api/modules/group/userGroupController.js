@@ -130,7 +130,8 @@ const removeMemberFromGroup = async (req, res) => {
 // ─── Query candidate accounts for group selection
 const getCandidateAccounts = async (req, res) => {
   try {
-    const accounts = await userGroupService.getCandidateAccounts();
+    const unassignedOnly = req.query.unassigned === 'true';
+    const accounts = await userGroupService.getCandidateAccounts({ unassignedOnly });
     res.status(200).json({
       message: 'Candidate accounts retrieved successfully',
       requestedByRole: req.user?.roleName,

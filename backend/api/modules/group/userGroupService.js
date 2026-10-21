@@ -135,6 +135,13 @@ const createGroup = async (name, groupLeaderId, user, permissionIds = []) => {
       }
     });
 
+    if (leaderId) {
+      await tx.account.update({
+        where: { id: leaderId },
+        data: { groupId: group.id }
+      });
+    }
+
     // Link permissions if provided
     if (Array.isArray(permissionIds) && permissionIds.length > 0) {
       await tx.groupPermission.createMany({
@@ -215,6 +222,13 @@ const updateGroup = async (id, { name, groupLeaderId, permissionIds }, user) => 
       where: { id: Number(id) },
       data: updateData
     });
+
+    if (groupLeaderId) {
+      await tx.account.update({
+        where: { id: Number(groupLeaderId) },
+        data: { groupId: Number(id) }
+      });
+    }
 
     // Replace permission links if provided
     if (Array.isArray(permissionIds)) {
@@ -310,8 +324,13 @@ const addMemberToGroup = async (groupId, accountId, user) => {
     throw err;
   }
 
-  if (account.groupId === Number(groupId)) {
-    const err = new Error('Account is already a member of this group');
+  if (account.groupId !== null) {
+    const isSameGroup = account.groupId === Number(groupId);
+    const err = new Error(
+      isSameGroup
+        ? 'Account is already a member of this group'
+        : 'Account is already assigned to another group'
+    );
     err.status = 409;
     throw err;
   }
@@ -386,23 +405,29 @@ const removeMemberFromGroup = async (groupId, accountId, user) => {
 };
 
 // ─── Query candidate accounts for group leader and member assignment
-const getCandidateAccounts = async () => {
+const getCandidateAccounts = async (filter = {}) => {
+  const where = { isActive: true };
+  if (filter.unassignedOnly) {
+    where.groupId = null;
+  }
+
   return prisma.account.findMany({
-    where: { isActive: true },
+    where,
     select: {
       id: true,
       fullName: true,
-      email: true,
+      // email: true,
       isActive: true,
       groupId: true,
       role: { select: { id: true, name: true } },
+      group: { select: { id: true, name: true } },
       leadingGroups: { select: { id: true, name: true } }
     },
     orderBy: { fullName: 'asc' }
   });
 };
 
-// ─── Query system permissions for group permission configuration
+// ─── Query system permissions for group permission specification
 const getGroupPermissions = async () => {
   const permissions = await prisma.permission.findMany({
     orderBy: [{ resource: 'asc' }, { action: 'asc' }]

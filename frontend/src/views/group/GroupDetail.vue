@@ -21,7 +21,7 @@
         <!-- GroupMembers - Add member to group -->
         <GroupMembers
           :members="linkedMembers"
-          :allAccounts="accounts"
+          :allAccounts="candidateMemberAccounts"
           :groupLeaderId="existingGroup.groupLeaderId"
           :isAdding="isAddingMember"
           @add-member="handleAddMember"
@@ -30,7 +30,7 @@
         <!-- GroupForm - specify privilege to group -->
         <GroupForm
           :group="existingGroup"
-          :accounts="accounts"
+          :accounts="allLeaderAccounts"
           :isSubmitting="isSubmitting"
           @submit="handleSubmit"
         />
@@ -55,7 +55,8 @@ const router = useRouter()
 const toast = useToast()
 
 const { fetchGroupById, updateGroup, addMember, removeMember } = useGroup()
-const accounts = ref([])
+const candidateMemberAccounts = ref([])
+const allLeaderAccounts = ref([])
 
 const existingGroup = ref({
   name: '',
@@ -70,9 +71,15 @@ const isAddingMember = ref(false)
 
 const fetchAccounts = async () => {
   try {
-    accounts.value = await getGroupCandidateAccounts()
+    const [unassigned, all] = await Promise.all([
+      getGroupCandidateAccounts({ unassigned: true }),
+      getGroupCandidateAccounts()
+    ])
+    candidateMemberAccounts.value = unassigned
+    allLeaderAccounts.value = all
   } catch (err) {
-    accounts.value = []
+    candidateMemberAccounts.value = []
+    allLeaderAccounts.value = []
   }
 }
 

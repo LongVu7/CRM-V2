@@ -114,10 +114,13 @@ const availableAccounts = computed(() => {
 })
 
 const accountOptions = computed(() =>
-  availableAccounts.value.map(acc => ({
-    label: acc.fullName ? `${acc.fullName} (${acc.email})` : acc.email,
-    value: acc.id
-  }))
+  availableAccounts.value.map(acc => {
+    const roleBadge = acc.role?.name ? ` [${acc.role.name}]` : ''
+    return {
+      label: `Account: ${acc.fullName || 'Account #' + acc.id} | Role: ${roleBadge}`,
+      value: acc.id
+    }
+  })
 )
 
 const handleAddMember = () => {

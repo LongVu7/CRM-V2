@@ -10,7 +10,7 @@ const buildGroupScope = (user) => {
   const scopeConditions = [];
 
   // Groups where they are designated as groupLeader
-  if (user?.accountId) {
+  if ((user?.permissions?.has('group.read_managed') || user?.permissions?.has('group.read')) && user?.accountId) {
     scopeConditions.push({ groupLeaderId: user.accountId });
   }
 
@@ -113,7 +113,8 @@ const groupPermissions = {
   DELETE: ['group.delete'],
   CREATE: ['group.create'],
   ASSIGN_LEADER: ['group.leader.assign'],
-  ASSIGN_PERMISSION: ['group.permission.assign']
+  ASSIGN_PERMISSION: ['group.permission.assign'],
+  GET_PERMISSIONS: ['group.read', 'group.read_all', 'group.read_managed', 'group.update', 'group.create', 'group.permission.assign', 'group.leader.assign']
 };
 
 module.exports = {
