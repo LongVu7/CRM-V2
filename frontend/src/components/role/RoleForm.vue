@@ -13,7 +13,11 @@
 
     <div class="form-section">
       <h3><i class="pi pi-shield"></i> Privileges</h3>
-      <PermissionMatrix v-model="localForm.permissionIds" />
+      <PermissionMatrix
+        v-model="localForm.permissionIds"
+        defaultScope="ALL"
+        :allowAllScope="true"
+      />
     </div>
 
     <div class="form-actions">

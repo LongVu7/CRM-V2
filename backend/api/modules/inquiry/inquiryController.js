@@ -23,7 +23,7 @@ const getAllInquiries = async (req, res) => {
     const sortField = req.query.sortField || null;
     const sortOrder = req.query.sortOrder || null;
 
-    const { inquiries, pagination } = await inquiryService.getAllInquiries({ page, limit, skip, search, user: req.user, hasStudent, statusGeneral, assignedTo, birthYear, oldProvinceId, sortField, sortOrder });
+    const { inquiries, pagination } = await inquiryService.getAllInquiries({ page, limit, skip, search, user: req.user, permissionScope: req.permissionScope, unassignedOnly: req.query.unassignedOnly, hasStudent, statusGeneral, assignedTo, birthYear, oldProvinceId, sortField, sortOrder });
 
     res.status(200).json({
       message: 'Inquiries retrieved successfully',
@@ -49,7 +49,7 @@ const exportInquiries = async (req, res) => {
       oldProvinceId: req.query.oldProvinceId || null
     };
 
-    const data = await inquiryService.exportInquiries(filters, req.user);
+    const data = await inquiryService.exportInquiries(filters, req.permissionScope);
     const buffer = generateExcelBuffer(data, 'Inquiries');
     
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

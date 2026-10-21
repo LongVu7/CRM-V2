@@ -37,9 +37,28 @@ function buildFilters(filters) {
 
 //Build scope condition
 function buildScopeCondition(scope) {
+  if (!scope || scope.mode === 'none') return Prisma.sql`FALSE`;
   if (scope.mode === 'all') return Prisma.sql`TRUE`;
-  if (!scope.assignedToIds || scope.assignedToIds.length === 0) return Prisma.sql`FALSE`;
-  return Prisma.sql`i.assigned_to_id IN (${Prisma.join(scope.assignedToIds)})`;
+
+  const conditions = [];
+
+  if (scope.teamIds && scope.teamIds.length > 0) {
+    conditions.push(Prisma.sql`i.team_id IN (${Prisma.join(scope.teamIds)})`);
+  }
+
+  if (scope.assignedToIds && scope.assignedToIds.length > 0) {
+    conditions.push(Prisma.sql`i.assigned_to_id IN (${Prisma.join(scope.assignedToIds)})`);
+  }
+
+  if (conditions.length === 0) {
+    return Prisma.sql`FALSE`;
+  }
+
+  if (conditions.length === 1) {
+    return conditions[0];
+  }
+
+  return Prisma.sql`(${conditions[0]} OR ${conditions[1]})`;
 }
 
 //Base cte for report

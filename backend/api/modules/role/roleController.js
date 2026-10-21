@@ -1,15 +1,9 @@
-const prisma = require('../../../config/db');
+const roleService = require('./roleService');
 
-// ─── List all roles (with permission count)
+// ─── List all roles
 const getAllRoles = async (req, res) => {
   try {
-    const roles = await prisma.role.findMany({
-      orderBy: { id: 'asc' },
-      include: {
-        _count: { select: { accounts: true, permissions: true } }
-      }
-    });
-
+    const roles = await roleService.getAllRoles();
     res.status(200).json({
       message: 'Roles retrieved successfully',
       requestedByRole: req.user?.roleName,
@@ -17,7 +11,8 @@ const getAllRoles = async (req, res) => {
       roles
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch roles', details: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ error: error.message });
   }
 };
 
@@ -25,88 +20,28 @@ const getAllRoles = async (req, res) => {
 const getRoleById = async (req, res) => {
   try {
     const { id } = req.params;
-
-    const role = await prisma.role.findUnique({
-      where: { id: Number(id) },
-      include: {
-        permissions: {
-          include: { permission: true }
-        },
-        _count: { select: { accounts: true } }
-      }
-    });
-
-    if (!role) {
-      return res.status(404).json({ error: 'Role not found' });
-    }
-
-    // Flatten permission codes for easier frontend consumption
-    const data = {
-      ...role,
-      permissionIds: role.permissions.map(rp => rp.permissionId),
-      permissionCodes: role.permissions.map(rp => rp.permission.code)
-    };
-
+    const data = await roleService.getRoleById(id);
     res.status(200).json({
       message: 'Role retrieved successfully',
       data
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch role', details: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ error: error.message });
   }
 };
 
 // ─── Create role with permissions
 const createRole = async (req, res) => {
   try {
-    const { name, description, permissionIds } = req.body;
-
-    if (!name?.trim()) {
-      return res.status(400).json({ error: 'Role name is required' });
-    }
-
-    // Check for duplicate name
-    const existing = await prisma.role.findUnique({ where: { name: name.trim() } });
-    if (existing) {
-      return res.status(409).json({ error: 'A role with this name already exists' });
-    }
-
-    const role = await prisma.$transaction(async (tx) => {
-      const newRole = await tx.role.create({
-        data: {
-          name: name.trim(),
-          description: description || null
-        }
-      });
-
-      // Link permissions if provided
-      if (Array.isArray(permissionIds) && permissionIds.length > 0) {
-        await tx.rolePermission.createMany({
-          data: permissionIds.map(pid => ({
-            roleId: newRole.id,
-            permissionId: Number(pid)
-          }))
-        });
-      }
-
-      return tx.role.findUnique({
-        where: { id: newRole.id },
-        include: {
-          permissions: { include: { permission: true } },
-          _count: { select: { accounts: true } }
-        }
-      });
-    });
-
+    const data = await roleService.createRole(req.body);
     res.status(201).json({
       message: 'Role created successfully',
-      data: {
-        ...role,
-        permissionIds: role.permissions.map(rp => rp.permissionId)
-      }
+      data
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create role', details: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ error: error.message });
   }
 };
 
@@ -114,97 +49,100 @@ const createRole = async (req, res) => {
 const updateRole = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, permissionIds } = req.body;
-
-    const existing = await prisma.role.findUnique({ where: { id: Number(id) } });
-    if (!existing) {
-      return res.status(404).json({ error: 'Role not found' });
-    }
-
-    // Check duplicate name (exclude current)
-    if (name && name.trim() !== existing.name) {
-      const duplicate = await prisma.role.findUnique({ where: { name: name.trim() } });
-      if (duplicate) {
-        return res.status(409).json({ error: 'A role with this name already exists' });
-      }
-    }
-
-    const role = await prisma.$transaction(async (tx) => {
-      const updateData = {};
-      if (name !== undefined) updateData.name = name.trim();
-      if (description !== undefined) updateData.description = description || null;
-
-      await tx.role.update({
-        where: { id: Number(id) },
-        data: updateData
-      });
-
-      // Replace permission links if provided
-      if (Array.isArray(permissionIds)) {
-        await tx.rolePermission.deleteMany({ where: { roleId: Number(id) } });
-        if (permissionIds.length > 0) {
-          await tx.rolePermission.createMany({
-            data: permissionIds.map(pid => ({
-              roleId: Number(id),
-              permissionId: Number(pid)
-            }))
-          });
-        }
-      }
-
-      return tx.role.findUnique({
-        where: { id: Number(id) },
-        include: {
-          permissions: { include: { permission: true } },
-          _count: { select: { accounts: true } }
-        }
-      });
-    });
-
+    const data = await roleService.updateRole(id, req.body);
     res.status(200).json({
       message: 'Role updated successfully',
-      data: {
-        ...role,
-        permissionIds: role.permissions.map(rp => rp.permissionId)
-      }
+      data
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to update role', details: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ error: error.message });
   }
 };
 
-// ─── Delete role (blocked if active accounts are assigned)
+// ─── Delete role
 const deleteRole = async (req, res) => {
   try {
     const { id } = req.params;
-
-    const existing = await prisma.role.findUnique({
-      where: { id: Number(id) },
-      include: { _count: { select: { accounts: true } } }
-    });
-
-    if (!existing) {
-      return res.status(404).json({ error: 'Role not found' });
-    }
-
-    // Block deletion if accounts are assigned to this role
-    if (existing._count.accounts > 0) {
-      return res.status(409).json({
-        error: `Cannot delete role "${existing.name}" because ${existing._count.accounts} account(s) are still assigned to it. Reassign those accounts first.`
-      });
-    }
-
-    await prisma.$transaction(async (tx) => {
-      await tx.rolePermission.deleteMany({ where: { roleId: Number(id) } });
-      await tx.role.delete({ where: { id: Number(id) } });
-    });
-
+    await roleService.deleteRole(id);
     res.status(200).json({
       message: 'Role deleted successfully'
     });
   } catch (error) {
-    res.status(500).json({ error: 'Failed to delete role', details: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ error: error.message });
   }
 };
 
-module.exports = { getAllRoles, getRoleById, createRole, updateRole, deleteRole };
+// ─── Role Permission Management
+const getRolePermissions = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await roleService.getRolePermissions(id);
+    res.status(200).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, error: error.message });
+  }
+};
+
+const updateRolePermissions = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { permissions } = req.body;
+    const data = await roleService.updateRolePermissions(id, permissions);
+    res.status(200).json({
+      success: true,
+      message: 'Role permissions and scopes updated successfully',
+      data
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, error: error.message });
+  }
+};
+
+const assignPermissionToRole = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { permissionId, scope } = req.body;
+    const data = await roleService.assignPermissionToRole(id, permissionId, scope);
+    res.status(201).json({
+      success: true,
+      message: 'Permission assigned with scope successfully',
+      data
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, error: error.message });
+  }
+};
+
+const removePermissionFromRole = async (req, res) => {
+  try {
+    const { id, permissionId } = req.params;
+    await roleService.removePermissionFromRole(id, permissionId);
+    res.status(200).json({
+      success: true,
+      message: 'Permission removed from role successfully'
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, error: error.message });
+  }
+};
+
+module.exports = {
+  getAllRoles,
+  getRoleById,
+  createRole,
+  updateRole,
+  deleteRole,
+  getRolePermissions,
+  updateRolePermissions,
+  assignPermissionToRole,
+  removePermissionFromRole
+};

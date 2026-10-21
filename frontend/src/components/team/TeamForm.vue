@@ -1,0 +1,192 @@
+<template>
+  <form @submit.prevent="onSubmit" class="team-form">
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="tf-name">Team Name <span class="required">*</span></label>
+        <InputText id="tf-name" v-model="form.name" placeholder="Enter team name" :invalid="!!errors.name" fluid />
+        <small v-if="errors.name" class="form-error">{{ errors.name }}</small>
+      </div>
+
+      <div class="form-field">
+        <label for="tf-leader">Team Leader</label>
+        <Select
+          id="tf-leader"
+          v-model="form.leaderId"
+          :options="leaderOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Select a team leader"
+          showClear
+          fluid
+        />
+      </div>
+
+      <div class="form-field full-width">
+        <label for="tf-description">Description</label>
+        <InputText id="tf-description" v-model="form.description" placeholder="Brief description of the team's scope or territory" fluid />
+      </div>
+    </div>
+
+    <div class="form-section">
+      <h3><i class="pi pi-shield"></i> Team Privileges (Optional)</h3>
+      <p class="section-hint">Assign delegated permissions to all members of this team.</p>
+      <PermissionMatrix
+        v-model="form.permissionIds"
+        defaultScope="TEAM_ONLY"
+        :allowAllScope="isAdmin"
+      />
+    </div>
+
+    <div class="form-actions">
+      <Button type="submit" :label="buttonText" icon="pi pi-check" :loading="isSubmitting" />
+    </div>
+  </form>
+</template>
+
+<script setup>
+import { ref, watch, computed } from 'vue'
+import InputText from 'primevue/inputtext'
+import Select from 'primevue/select'
+import Button from 'primevue/button'
+import PermissionMatrix from '@/components/shared/PermissionMatrix.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+const isAdmin = computed(() => {
+  const r = authStore.user?.roleName || authStore.user?.role?.name || ''
+  return r.toLowerCase() === 'admin' || r.toLowerCase() === 'administrator'
+})
+
+const props = defineProps({
+  team: { type: Object, required: true },
+  accounts: { type: Array, default: () => [] },
+  isSubmitting: { type: Boolean, default: false },
+  buttonText: { type: String, default: 'Submit' }
+})
+
+const emit = defineEmits(['submit'])
+
+const form = ref({
+  name: props.team.name || '',
+  description: props.team.description || '',
+  leaderId: props.team.leaderId ?? null,
+  permissionIds: [...(props.team.permissionIds || [])]
+})
+const errors = ref({})
+
+watch(() => props.team, (newVal) => {
+  form.value = {
+    name: newVal.name || '',
+    description: newVal.description || '',
+    leaderId: newVal.leaderId ?? null,
+    permissionIds: [...(newVal.permissionIds || [])]
+  }
+  errors.value = {}
+}, { deep: true })
+
+const leaderOptions = computed(() =>
+  props.accounts.map(acc => ({
+    label: acc.fullName ? `${acc.fullName} (${acc.email})` : acc.email,
+    value: acc.id
+  }))
+)
+
+const validate = () => {
+  const e = {}
+  if (!form.value.name || !form.value.name.trim()) {
+    e.name = 'Team name is required'
+  }
+  errors.value = e
+  return Object.keys(e).length === 0
+}
+
+const getPayload = () => {
+  const payload = {
+    name: form.value.name.trim(),
+    description: form.value.description?.trim() || null,
+    leaderId: form.value.leaderId || null,
+    permissionIds: form.value.permissionIds || []
+  }
+  return payload
+}
+
+const onSubmit = () => {
+  if (!validate()) return
+  emit('submit', getPayload())
+}
+</script>
+
+<style scoped>
+.team-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.form-field.full-width {
+  grid-column: span 2;
+}
+
+.form-field label {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--p-text-color);
+}
+
+.required {
+  color: var(--p-red-500);
+}
+
+.form-error {
+  color: var(--p-red-500);
+  font-size: 0.8rem;
+}
+
+.form-section {
+  border-top: 1px solid var(--p-surface-200);
+  padding-top: 1.25rem;
+}
+
+.form-section h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0 0 0.25rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--p-text-color);
+}
+
+.section-hint {
+  font-size: 0.85rem;
+  color: var(--p-text-muted-color);
+  margin: 0 0 1rem 0;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 0.5rem;
+}
+
+@media (max-width: 640px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .form-field.full-width {
+    grid-column: span 1;
+  }
+}
+</style>

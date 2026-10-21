@@ -1,14 +1,14 @@
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/db');
-const { resolveEffectivePermissions } = require('../utils/resolvePermissions');
+const { defineAbilityFor } = require('../config/ability');
 
-// ─── Verify JWT from cookie and load user
+// ─── Verify JWT from cookie (or Bearer header) and load user with dynamic permissions & CASL ability
 const authenticate = async (req, res, next) => {
-  let token = req.cookies.token;
+  let token = req.cookies?.token;
 
-  // if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-  //   token = req.headers.authorization.split(' ')[1];
-  // }
+  if (!token && req.headers?.authorization && req.headers.authorization.startsWith('Bearer ')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
 
   if (!token) {
     return res.status(401).json({ error: 'Authentication required' });
@@ -24,18 +24,37 @@ const authenticate = async (req, res, next) => {
         email: true,
         fullName: true,
         isActive: true,
+        roleId: true,
         role: {
           select: {
+            id: true,
             name: true,
             permissions: {
-              select: { permission: { select: { code: true } } }
+              select: {
+                scope: true,
+                permission: {
+                  select: { id: true, code: true, action: true, resource: true }
+                }
+              }
             }
           }
         },
-        group: {
+        teamMemberships: {
           select: {
-            permissions: {
-              select: { permission: { select: { code: true } } }
+            teamId: true,
+            team: {
+              select: {
+                id: true,
+                name: true,
+                permissions: {
+                  select: {
+                    scope: true,
+                    permission: {
+                      select: { id: true, code: true, action: true, resource: true }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -46,12 +65,52 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: 'Account not found or deactivated' });
     }
 
+    const rolePermissions = (account.role?.permissions || []).map(rp => ({
+      code: rp.permission.code,
+      action: rp.permission.action,
+      resource: rp.permission.resource,
+      scope: rp.scope
+    }));
+
+    const teamIds = (account.teamMemberships || []).map(tm => tm.teamId);
+    const teamPermissions = [];
+    for (const tm of account.teamMemberships || []) {
+      if (tm.team?.permissions) {
+        for (const tp of tm.team.permissions) {
+          teamPermissions.push({
+            code: tp.permission.code,
+            action: tp.permission.action,
+            resource: tp.permission.resource,
+            scope: tp.scope
+          });
+        }
+      }
+    }
+
+    const ability = defineAbilityFor({
+      accountId: account.id,
+      roleId: account.roleId,
+      roleName: account.role?.name || null,
+      teamIds,
+      rolePermissions,
+      teamPermissions
+    });
+
+    req.ability = ability;
     req.user = {
       accountId: account.id,
+      id: account.id,
       email: account.email,
       fullName: account.fullName,
+      roleId: account.roleId,
       roleName: account.role?.name || null,
-      permissions: new Set(resolveEffectivePermissions(account))
+      teamIds,
+      rolePermissions,
+      teamPermissions,
+      permissions: new Set([
+        ...rolePermissions.map(p => p.code),
+        ...teamPermissions.map(p => p.code)
+      ])
     };
 
     next();
@@ -64,7 +123,7 @@ const authenticate = async (req, res, next) => {
 const checkRole = (allowedRoles) => {
   return (req, res, next) => {
     if (!req.user || !allowedRoles.includes(req.user.roleName)) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         message: "Forbidden: You do not have the correct role to perform this action.",
         yourRole: req.user?.roleName || "None",
         allowedRoles: allowedRoles

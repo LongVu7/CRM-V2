@@ -1,6 +1,5 @@
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
-const { resolveEffectivePermissions } = require('../../../utils/resolvePermissions');
 
 // ─── Login
 const login = (req, res, next) => {
@@ -12,7 +11,6 @@ const login = (req, res, next) => {
       });
     }
 
-
     if (!account) {
       return res.status(401).json({
         error: info?.message || 'Invalid credentials'
@@ -20,9 +18,7 @@ const login = (req, res, next) => {
     }
 
     const payload = {
-      sub: account.id,
-      // groupId: account.groupId,
-      // roleId: account.roleId
+      sub: account.id
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -36,15 +32,48 @@ const login = (req, res, next) => {
       maxAge: 45 * 60 * 1000 // 45 minutes
     });
 
+    const rolePermissions = (account.role?.permissions || []).map(rp => ({
+      id: rp.permission.id,
+      code: rp.permission.code,
+      action: rp.permission.action,
+      resource: rp.permission.resource,
+      scope: rp.scope
+    }));
+
+    const teamMemberships = account.teamMemberships || [];
+    const teamIds = teamMemberships.map(tm => tm.teamId);
+    const teamPermissions = [];
+    for (const tm of teamMemberships) {
+      if (tm.team?.permissions) {
+        for (const tp of tm.team.permissions) {
+          teamPermissions.push({
+            id: tp.permission.id,
+            code: tp.permission.code,
+            action: tp.permission.action,
+            resource: tp.permission.resource,
+            scope: tp.scope,
+            teamId: tm.teamId
+          });
+        }
+      }
+    }
+
+    const permissionCodes = Array.from(new Set([
+      ...rolePermissions.map(p => p.code),
+      ...teamPermissions.map(p => p.code)
+    ]));
+
     res.status(200).json({
       message: 'Login successful',
-      // token,
       user: {
         id: account.id,
         email: account.email,
         fullName: account.fullName,
         roleName: account.role?.name || null,
-        permissions: resolveEffectivePermissions(account)
+        teamIds,
+        permissions: permissionCodes,
+        rolePermissions,
+        teamPermissions
       }
     });
   })(req, res, next);
@@ -64,7 +93,10 @@ const getMe = (req, res) => {
       email: req.user.email,
       fullName: req.user.fullName,
       roleName: req.user.roleName,
-      permissions: Array.from(req.user.permissions || [])
+      teamIds: req.user.teamIds || [],
+      permissions: Array.from(req.user.permissions || []),
+      rolePermissions: req.user.rolePermissions || [],
+      teamPermissions: req.user.teamPermissions || []
     }
   });
 };
@@ -72,9 +104,7 @@ const getMe = (req, res) => {
 // ─── Refresh token (re-issue JWT with current role from DB)
 const refreshToken = (req, res) => {
   const payload = {
-    sub: req.user.accountId,
-    // groupId: account.groupId,
-    // roleId: account.roleId
+    sub: req.user.accountId
   };
 
   const token = jwt.sign(payload, process.env.JWT_SECRET, {
@@ -90,15 +120,22 @@ const refreshToken = (req, res) => {
 
   res.status(200).json({
     message: 'Token refreshed',
-    // token,
     user: {
       id: req.user.accountId,
       email: req.user.email,
       fullName: req.user.fullName,
       roleName: req.user.roleName,
-      permissions: Array.from(req.user.permissions || [])
+      teamIds: req.user.teamIds || [],
+      permissions: Array.from(req.user.permissions || []),
+      rolePermissions: req.user.rolePermissions || [],
+      teamPermissions: req.user.teamPermissions || []
     }
   });
 };
 
-module.exports = { login, logout, getMe, refreshToken };
+module.exports = {
+  login,
+  logout,
+  getMe,
+  refreshToken
+};

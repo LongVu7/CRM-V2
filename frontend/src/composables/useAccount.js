@@ -5,7 +5,7 @@ export function useAccount() {
   const accounts = ref([])
   const account = ref(null)
   const roles = ref([])
-  const groups = ref([])
+  const teams = ref([])
   const loading = ref(false)
   const error = ref(null)
 
@@ -13,7 +13,12 @@ export function useAccount() {
     loading.value = true
     error.value = null
     try {
-      accounts.value = await api.getAllAccounts()
+      const data = await api.getAllAccounts()
+      accounts.value = (data || []).map(acc => ({
+        ...acc,
+        teamId: acc.teamId ?? acc.groupId ?? null,
+        team: acc.team || acc.group || null
+      }))
     } catch (err) {
       error.value = err.response?.data?.details || err.message
       throw err
@@ -26,7 +31,12 @@ export function useAccount() {
     loading.value = true
     error.value = null
     try {
-      account.value = await api.getAccountById(id)
+      const data = await api.getAccountById(id)
+      account.value = data ? {
+        ...data,
+        teamId: data.teamId ?? data.groupId ?? null,
+        team: data.team || data.group || null
+      } : null
       return account.value
     } catch (err) {
       error.value = err.response?.data?.details || err.message
@@ -81,16 +91,16 @@ export function useAccount() {
   const fetchRoles = async () => {
     try {
       roles.value = await api.getAllRoles()
-    } catch (err) {
+    } catch {
       roles.value = []
     }
   }
 
-  const fetchGroups = async () => {
+  const fetchTeams = async () => {
     try {
-      groups.value = await api.getAllGroups()
-    } catch (err) {
-      groups.value = []
+      teams.value = await api.getAllTeams()
+    } catch {
+      teams.value = []
     }
   }
 
@@ -98,7 +108,7 @@ export function useAccount() {
     accounts,
     account,
     roles,
-    groups,
+    teams,
     loading,
     error,
     fetchAccounts,
@@ -107,6 +117,6 @@ export function useAccount() {
     updateAccount,
     deleteAccount,
     fetchRoles,
-    fetchGroups
+    fetchTeams
   }
 }

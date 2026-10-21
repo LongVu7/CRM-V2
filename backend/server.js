@@ -18,6 +18,7 @@ const errorReportRoutes = require('./api/modules/errorReport/errorReportRoutes')
 const permissionRoutes = require('./api/modules/permission/permissionRoutes');
 const countryRoutes = require('./api/modules/country/countryRoutes');
 const reportRoutes = require('./api/modules/report/reportRoutes');
+const teamRoutes = require('./api/modules/team/teamRoutes');
 
 const app = express();
 const port = process.env.PORT || 3003;
@@ -40,6 +41,7 @@ app.use('/api/students', studentRoutes);
 app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/groups', userGroupRoutes);
+app.use('/api/teams', teamRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/countries', countryRoutes);
 app.use('/api/schools', schoolRoutes);

@@ -32,7 +32,7 @@ export const getAllRoles = async () => {
   return response.data.roles
 }
 
-export const getAllGroups = async () => {
-  const response = await api.get('/groups/')
-  return response.data.groups
+export const getAllTeams = async () => {
+  const response = await api.get('/teams/')
+  return response.data.data || []
 }

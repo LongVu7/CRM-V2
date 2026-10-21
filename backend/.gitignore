@@ -15,3 +15,5 @@ uploads/
 npm-debug.log*
 test/
 .env.example
+tests/
+docs/

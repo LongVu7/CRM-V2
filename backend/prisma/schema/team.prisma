@@ -1,0 +1,44 @@
+// !--- Team models ---! //
+model Team {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(255)
+  description String?
+  leaderId    Int?     @map("leader_id")
+  createdById Int?     @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  leader      Account?         @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: SetNull)
+  createdBy   Account?         @relation("TeamCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  members     TeamMember[]
+  permissions TeamPermission[]
+  inquiries   Inquiry[]
+
+  @@index([leaderId])
+  @@map("team")
+}
+
+model TeamMember {
+  teamId    Int      @map("team_id")
+  accountId Int      @map("account_id")
+  joinedAt  DateTime @default(now()) @map("joined_at") @db.Timestamptz()
+
+  team    Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, accountId])
+  @@index([accountId])
+  @@map("team_member")
+}
+
+model TeamPermission {
+  teamId       Int             @map("team_id")
+  permissionId Int             @map("permission_id")
+  scope        PermissionScope @default(TEAM_ONLY)
+
+  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([teamId, permissionId])
+  @@map("team_permission")
+}

@@ -1,5 +1,4 @@
 const prisma = require('../../../config/db');
-const { buildInquiryScope } = require('../../../authorization/scope/inquiryScope');
 const { applyStatusTransition } = require('../../utils/statusTransition');
 const { buildHierarchyTree } = require('../../utils/hierarchyUtils');
 
@@ -93,10 +92,13 @@ const fetchInquiry = (txOrPrisma, id) =>
 const { buildPaginationMeta } = require('../../utils/pagination');
 
 // ─── Build Inquiry Where Clause
-const buildInquiryWhere = async (filters, user) => {
-  // Include data scope authorized
-  const scope = await buildInquiryScope(user);
-  const where = { ...scope };
+const buildInquiryWhere = (filters, permissionScope = {}) => {
+  const where = { ...permissionScope };
+
+  // Optional triage filter for unassigned leads within authorized scope
+  if (filters.unassignedOnly === true || filters.unassignedOnly === 'true') {
+    where.assignedToId = null;
+  }
 
   if (filters.hasStudent) {
     where.studentId = { not: null };
@@ -146,8 +148,8 @@ const buildInquiryWhere = async (filters, user) => {
 
 // ─── List all inquiries
 const getAllInquiries = async (filters) => {
-  const { page, limit, skip, user, sortField, sortOrder } = filters;
-  const where = await buildInquiryWhere(filters, user);
+  const { page, limit, skip, permissionScope, sortField, sortOrder } = filters;
+  const where = buildInquiryWhere(filters, permissionScope);
 
   //Sort column 
   let orderBy = { createdAt: 'desc' };
@@ -188,10 +190,10 @@ const getInquiryById = async (id) => {
   return inquiry;
 };
 
-/** Create inquiry
+/** Create inquiry cases:
  *   1. Create and link an existing student
- *   2. create a new student inline
- *   3. Create with inquiry only
+ *   2. create a new inquiry with new student inline
+ *   3. Create an inquiry alone
  */
 const createInquiry = async ({ studentId, student, assignedToId, ...inquiryFields }, user) => {
   // Auto assign staff who created inquiry 
@@ -496,8 +498,8 @@ const searchAccounts = async (query) =>
   });
 
 // ─── Export Inquiries
-const exportInquiries = async (filters, user) => {
-  const where = await buildInquiryWhere(filters, user);
+const exportInquiries = async (filters, permissionScope = {}) => {
+  const where = buildInquiryWhere(filters, permissionScope);
   const inquiries = await prisma.inquiry.findMany({
     where,
     orderBy: { createdAt: 'desc' },

@@ -3,6 +3,7 @@ model Inquiry {
   id Int @id @default(autoincrement())
 
   assignedToId Int? @map("assigned_to_id")
+  teamId       Int? @map("team_id")
 
   statusDataId Int?        @map("status_data_id")
   statusData   StatusData? @relation(fields: [statusDataId], references: [id])
@@ -34,6 +35,7 @@ model Inquiry {
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
 
   assignedTo Account? @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  team       Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   studentId Int?     @unique @map("student_id")
   student   Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
@@ -45,6 +47,7 @@ model Inquiry {
   @@index([firstProcessedAt])
   @@index([firstInteractedAt])
   @@index([nbAt])
+  @@index([teamId])
   @@map("inquiry")
 }
 

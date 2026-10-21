@@ -33,8 +33,8 @@
         <Select id="af-role" v-model="form.roleId" :options="roleOptions" optionLabel="label" optionValue="value" placeholder="Select role" showClear fluid />
       </div>
       <div class="form-field">
-        <label for="af-group">Group</label>
-        <Select id="af-group" v-model="form.groupId" :options="groupOptions" optionLabel="label" optionValue="value" placeholder="Select group" showClear fluid />
+        <label for="af-team">Team</label>
+        <Select id="af-team" v-model="form.teamId" :options="teamOptions" optionLabel="label" optionValue="value" placeholder="Select team" showClear fluid />
       </div>
     </div>
 
@@ -66,7 +66,7 @@ import { isValidEmail } from '@/utils/validationUtils'
 const props = defineProps({
   account: { type: Object, required: true },
   roles: { type: Array, default: () => [] },
-  groups: { type: Array, default: () => [] },
+  teams: { type: Array, default: () => [] },
   isSubmitting: { type: Boolean, default: false },
   buttonText: { type: String, default: 'Submit' },
   isEditing: { type: Boolean, default: false }
@@ -74,11 +74,17 @@ const props = defineProps({
 
 const emit = defineEmits(['submit'])
 
-const form = ref({ ...props.account })
+const form = ref({
+  ...props.account,
+  teamId: props.account.teamId ?? null
+})
 const errors = ref({})
 
 watch(() => props.account, (newVal) => {
-  form.value = { ...newVal }
+  form.value = {
+    ...newVal,
+    teamId: newVal.teamId ?? null
+  }
   errors.value = {}
 }, { deep: true })
 
@@ -86,8 +92,8 @@ const roleOptions = computed(() =>
   props.roles.map(r => ({ label: r.name, value: r.id }))
 )
 
-const groupOptions = computed(() =>
-  props.groups.map(g => ({ label: g.name, value: g.id }))
+const teamOptions = computed(() =>
+  props.teams.map(t => ({ label: t.name, value: t.id }))
 )
 
 const validate = () => {
@@ -117,7 +123,10 @@ const getPayload = () => {
   if (form.value.email) payload.email = form.value.email.trim()
   if (form.value.password) payload.password = form.value.password
   if (form.value.roleId !== undefined) payload.roleId = form.value.roleId
-  if (form.value.groupId !== undefined) payload.groupId = form.value.groupId
+  if (form.value.teamId !== undefined) {
+    payload.teamId = form.value.teamId
+    payload.groupId = form.value.teamId
+  }
   if (props.isEditing && form.value.isActive !== undefined) payload.isActive = form.value.isActive
   return payload
 }

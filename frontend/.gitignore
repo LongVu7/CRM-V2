@@ -37,3 +37,6 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+src/components/__tests__/*
+src/composables/__tests__/*

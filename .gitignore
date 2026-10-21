@@ -9,3 +9,4 @@ test/*
 specs/*
 skills-lock.json
 .archify/*
+docs/

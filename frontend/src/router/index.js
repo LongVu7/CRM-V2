@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
 import { ability, parsePermission } from '@/services/ability'
 
 const router = createRouter({
@@ -70,22 +69,22 @@ const router = createRouter({
       meta: { permission: 'account.read' }
     },
     {
-      path: '/groups',
-      name: 'groups',
-      component: () => import('../views/group/Group.vue'),
-      meta: { permission: 'group.read' }
+      path: '/teams',
+      name: 'teams',
+      component: () => import('../views/team/Team.vue'),
+      meta: { permission: 'team.read' }
     },
     {
-      path: '/groups/new',
-      name: 'group-new',
-      component: () => import('../views/group/GroupNew.vue'),
-      meta: { permission: 'group.create' }
+      path: '/teams/new',
+      name: 'team-new',
+      component: () => import('../views/team/TeamNew.vue'),
+      meta: { permission: 'team.create' }
     },
     {
-      path: '/groups/:id',
-      name: 'group-detail',
-      component: () => import('../views/group/GroupDetail.vue'),
-      meta: { permission: 'group.read' }
+      path: '/teams/:id',
+      name: 'team-detail',
+      component: () => import('../views/team/TeamDetail.vue'),
+      meta: { permission: 'team.read' }
     },
     {
       path: '/roles',
@@ -197,7 +196,8 @@ router.beforeEach((to) => {
   // Permission guard — local CASL check, no API call
   if (to.meta.permission) {
     const { action, subject } = parsePermission(to.meta.permission)
-    if (!ability.can(action, subject)) {
+    const hasPermission = ability.can(action, subject)
+    if (!hasPermission) {
       return '/forbidden'
     }
   }

@@ -8,13 +8,21 @@ model Permission {
 
   roles  RolePermission[]
   groups GroupPermission[]
+  teams  TeamPermission[]
 
   @@map("permission")
 }
 
+enum PermissionScope {
+  ALL
+  TEAM_ONLY
+  OWNER_ONLY
+}
+
 model RolePermission {
-  roleId       Int @map("role_id")
-  permissionId Int @map("permission_id")
+  roleId       Int             @map("role_id")
+  permissionId Int             @map("permission_id")
+  scope        PermissionScope @default(ALL)
 
   role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
   permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)

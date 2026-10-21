@@ -1,5 +1,11 @@
 const prisma = require('../../../config/db');
-const { buildGroupScope } = require('../../../authorization/scope/groupScope');
+
+// Inlined scope fallback for legacy userGroupService
+const buildGroupScope = (user) => {
+  if (!user || user.roleName === 'admin' || user.roleName === 'Administrator') return {};
+  if (user.teamIds && user.teamIds.length > 0) return { id: { in: user.teamIds } };
+  return { id: -1 };
+};
 
 // Shared include shapes
 const groupInclude = {

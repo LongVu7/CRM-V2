@@ -1,7 +1,40 @@
 const reportRepository = require('./reportRepository');
 const { getIctDateBoundaries, BUSINESS_TZ } = require('./reportDateUtils');
-const { buildReportScope } = require('../../../authorization/scope/reportScope');
 const { REGION_LABELS, STATUS_BUCKETS } = require('./reportConstants');
+
+/**
+ * Builds an SQL-compatible scope object for reportRepository raw queries
+ * based on dynamic CASL role and team scopes.
+ */
+function buildSqlReportScope(user) {
+  if (!user) return { mode: 'none' };
+
+  // Super-administrator or ALL scope on report.read
+  if (user.roleName === 'admin') {
+    return { mode: 'all' };
+  }
+
+  const rolePerms = user.rolePermissions || [];
+  const teamPerms = user.teamPermissions || [];
+  const reportPerms = [...rolePerms, ...teamPerms].filter(
+    p => p.resource === 'report' || p.code === 'report.read' || p.action === 'read'
+  );
+
+  const hasAll = reportPerms.some(p => p.scope === 'ALL');
+  if (hasAll) {
+    return { mode: 'all' };
+  }
+
+  const teamIds = user.teamIds || [];
+  const hasTeamOnly = reportPerms.some(p => p.scope === 'TEAM_ONLY');
+  const hasOwnerOnly = reportPerms.some(p => p.scope === 'OWNER_ONLY');
+
+  return {
+    mode: 'scoped',
+    teamIds: (hasTeamOnly && teamIds.length > 0) ? teamIds : [],
+    assignedToIds: (hasOwnerOnly && user.accountId) ? [user.accountId] : []
+  };
+}
 
 function calcRate(num, den) {
   if (!den || den === 0) return 0;
@@ -28,7 +61,7 @@ async function getDashboard(query, user) {
   const { from, to, sourceIds, sourceDetailIds, majorInterestTypes, regionGroups, oldProvinceIds } = query;
   const { fromInstant, toExclusiveInstant } = getIctDateBoundaries(from, to);
 
-  const scope = await buildReportScope(user);
+  const scope = buildSqlReportScope(user);
   const dateRange = { fromInstant, toExclusiveInstant };
   const filters = { sourceIds, sourceDetailIds, majorInterestTypes, regionGroups, oldProvinceIds };
 

@@ -15,9 +15,13 @@ module.exports = (passport) => {
                 permissions: { include: { permission: true } }
               }
             },
-            group: {
+            teamMemberships: {
               include: {
-                permissions: { include: { permission: true } }
+                team: {
+                  include: {
+                    permissions: { include: { permission: true } }
+                  }
+                }
               }
             }
           }

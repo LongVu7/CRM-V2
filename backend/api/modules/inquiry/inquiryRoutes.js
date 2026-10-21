@@ -5,13 +5,12 @@ const authorize = require('../../../middleware/authorize');
 const { validateBody, validateParams } = require('../../../middleware/validate');
 const { idParamSchema } = require('../../../schemas/commonSchemas');
 const { createInquirySchema, updateInquirySchema, assignStudentSchema, assignAccountSchema } = require('./inquirySchemas');
-const { resolveInquiryOwnership } = require('../../../authorization/scope/inquiryScope');
 const upload = require('../../../middleware/upload');
 const inquiryController = require('./inquiryController');
 
-const withOwnership = { ownership: { resolver: resolveInquiryOwnership } };
+const inquiryIdorCheck = { resourceModel: 'inquiry' };
 
-//Search routes
+// ─── Search routes
 router.route('/search/students')
     .get(authenticate, authorize('inquiry.read'), inquiryController.searchStudents);
 
@@ -46,16 +45,16 @@ router.route('/export')
     .get(authenticate, authorize('inquiry.export'), inquiryController.exportInquiries);
 
 router.route('/:id')
-    .get(authenticate, authorize('inquiry.read', withOwnership), validateParams(idParamSchema), inquiryController.getInquiryById)
-    .put(authenticate, authorize('inquiry.update', withOwnership), validateParams(idParamSchema), validateBody(updateInquirySchema), inquiryController.updateInquiry)
-    .delete(authenticate, authorize('inquiry.delete', withOwnership), validateParams(idParamSchema), inquiryController.deleteInquiry);
+    .get(authenticate, authorize('inquiry.read', inquiryIdorCheck), validateParams(idParamSchema), inquiryController.getInquiryById)
+    .put(authenticate, authorize('inquiry.update', inquiryIdorCheck), validateParams(idParamSchema), validateBody(updateInquirySchema), inquiryController.updateInquiry)
+    .delete(authenticate, authorize('inquiry.delete', inquiryIdorCheck), validateParams(idParamSchema), inquiryController.deleteInquiry);
 
 // ─── Assignment routes
 router.route('/:id/assign-student')
-    .put(authenticate, authorize('inquiry.update', withOwnership), validateParams(idParamSchema), validateBody(assignStudentSchema), inquiryController.assignStudentToInquiry)
-    .delete(authenticate, authorize('inquiry.update', withOwnership), validateParams(idParamSchema), validateBody(assignStudentSchema), inquiryController.unassignStudentFromInquiry);
+    .put(authenticate, authorize('inquiry.update', inquiryIdorCheck), validateParams(idParamSchema), validateBody(assignStudentSchema), inquiryController.assignStudentToInquiry)
+    .delete(authenticate, authorize('inquiry.update', inquiryIdorCheck), validateParams(idParamSchema), validateBody(assignStudentSchema), inquiryController.unassignStudentFromInquiry);
 
 router.route('/:id/assign-account')
-    .put(authenticate, authorize('inquiry.assign'), validateParams(idParamSchema), validateBody(assignAccountSchema), inquiryController.assignAccountToInquiry);
+    .put(authenticate, authorize('inquiry.assign', inquiryIdorCheck), validateParams(idParamSchema), validateBody(assignAccountSchema), inquiryController.assignAccountToInquiry);
 
 module.exports = router;

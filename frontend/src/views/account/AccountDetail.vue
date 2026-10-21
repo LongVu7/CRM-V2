@@ -23,7 +23,7 @@
       <AccountForm
         :account="existingAccount"
         :roles="roles"
-        :groups="groups"
+        :teams="teams"
         :isSubmitting="isSubmitting"
         :isEditing="true"
         @submit="handleSubmit"
@@ -43,13 +43,13 @@ import { useAccount } from '@/composables/useAccount'
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
-const { fetchAccountById, updateAccount, roles, groups, fetchRoles, fetchGroups } = useAccount()
+const { fetchAccountById, updateAccount, roles, teams, fetchRoles, fetchTeams } = useAccount()
 
 const existingAccount = ref({
   fullName: '',
   email: '',
   roleId: null,
-  groupId: null,
+  teamId: null,
   isActive: true
 })
 
@@ -62,14 +62,14 @@ onMounted(async () => {
     const [accData] = await Promise.all([
       fetchAccountById(route.params.id),
       fetchRoles(),
-      fetchGroups()
+      fetchTeams()
     ])
     if (accData) {
       existingAccount.value = {
         fullName: accData.fullName || '',
         email: accData.email || '',
         roleId: accData.roleId || null,
-        groupId: accData.groupId || null,
+        teamId: accData.teamId || null,
         isActive: accData.isActive !== undefined ? accData.isActive : true
       }
     } else {

@@ -117,9 +117,10 @@ const onGlobalFilter = (e) => {
           <span v-else class="null-text">—</span>
         </template>
       </Column>
-      <Column field="group.name" header="Group" sortable style="width: 140px">
+      <Column field="team.name" header="Team" sortable style="width: 140px">
         <template #body="{ data }">
-          <span v-if="data.group">{{ data.group.name }}</span>
+          <span v-if="data.team">{{ data.team.name }}</span>
+          <span v-else-if="data.teamMemberships && data.teamMemberships.length > 0">{{ data.teamMemberships.map(tm => tm.team?.name).filter(Boolean).join(', ') }}</span>
           <span v-else class="null-text">—</span>
         </template>
       </Column>

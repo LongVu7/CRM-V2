@@ -12,7 +12,7 @@
       <AccountForm
         :account="newAccount"
         :roles="roles"
-        :groups="groups"
+        :teams="teams"
         :isSubmitting="isSubmitting"
         @submit="handleSubmit"
       />
@@ -30,14 +30,14 @@ import { useAccount } from '@/composables/useAccount'
 
 const router = useRouter()
 const toast = useToast()
-const { createAccount, roles, groups, fetchRoles, fetchGroups } = useAccount()
+const { createAccount, roles, teams, fetchRoles, fetchTeams } = useAccount()
 
 const newAccount = ref({
   fullName: '',
   email: '',
   password: '',
   roleId: null,
-  groupId: null
+  teamId: null
 })
 
 const isSubmitting = ref(false)
@@ -45,7 +45,7 @@ const isSubmitting = ref(false)
 onMounted(async () => {
   await Promise.all([
     fetchRoles(),
-    fetchGroups()
+    fetchTeams()
   ])
 })
 
