@@ -1,0 +1,60 @@
+model Team {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique @db.VarChar(255)
+  description String?  @db.Text
+  createdById Int?     @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()
+
+  createdBy   Account?         @relation("TeamCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  members     TeamMember[]
+  permissions TeamPermission[]
+  inquiries   Inquiry[]
+
+  @@map("teams")
+}
+
+model TeamMember {
+  id        Int      @id @default(autoincrement())
+  teamId    Int      @map("team_id")
+  accountId Int      @map("account_id")
+  role      String   @default("member") @db.VarChar(50) // "manager" | "member"
+  joinedAt  DateTime @default(now()) @map("joined_at") @db.Timestamptz()
+
+  team        Team                   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  account     Account                @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  permissions TeamMemberPermission[]
+
+  @@unique([teamId, accountId])
+  @@index([accountId])
+  @@index([teamId])
+  @@map("team_members")
+}
+
+model TeamPermission {
+  teamId       Int      @map("team_id")
+  permissionId Int      @map("permission_id")
+  grantedById  Int?     @map("granted_by_id")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  team       Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  grantedBy  Account?   @relation("TeamPermissionGranter", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@id([teamId, permissionId])
+  @@map("team_permissions")
+}
+
+model TeamMemberPermission {
+  teamMemberId Int      @map("team_member_id")
+  permissionId Int      @map("permission_id")
+  grantedById  Int?     @map("granted_by_id")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz()
+
+  teamMember TeamMember @relation(fields: [teamMemberId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  grantedBy  Account?   @relation("MemberPermissionGranter", fields: [grantedById], references: [id], onDelete: SetNull)
+
+  @@id([teamMemberId, permissionId])
+  @@map("team_member_permissions")
+}

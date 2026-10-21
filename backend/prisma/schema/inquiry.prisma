@@ -35,11 +35,16 @@ model Inquiry {
 
   assignedTo Account? @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
 
+  teamId Int?  @map("team_id")
+  team   Team? @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
   studentId Int?     @unique @map("student_id")
   student   Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
 
   campaignRecipients CampaignRecipient[]
 
+  @@index([teamId])
+  @@index([assignedToId])
   @@index([createdAt])
   @@index([sourceDataId])
   @@index([firstProcessedAt])
