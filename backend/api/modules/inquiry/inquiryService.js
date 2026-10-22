@@ -461,41 +461,61 @@ const assignAccountToInquiry = async (inquiryId, accountId) => {
 };
 
 // ─── Search students (for assignment UI)
-const searchStudents = async (query) =>
-  prisma.student.findMany({
-    where: {
-      OR: [
-        { fullName: { contains: query, mode: 'insensitive' } },
-        { email: { contains: query, mode: 'insensitive' } }
-      ]
+const searchStudents = async (query) => {
+  const where = {};
+  if (query && typeof query === 'string' && query.trim().length > 0) {
+    const q = query.trim();
+    where.OR = [
+      { fullName: { contains: q, mode: 'insensitive' } },
+      { email: { contains: q, mode: 'insensitive' } },
+      { mobile: { contains: q, mode: 'insensitive' } }
+    ];
+  }
+
+  return prisma.student.findMany({
+    where,
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      mobile: true,
+      birthDate: true,
+      gender: true,
+      inquiry: {
+        select: { id: true }
+      }
     },
-    take: 20,
+    take: 1000,
     orderBy: { fullName: 'asc' }
   });
+};
 
 // ─── Search staff accounts (for assignment UI)
-const searchAccounts = async (query) =>
-  prisma.account.findMany({
-    where: {
-      AND: [
-        { isActive: true },
-        {
-          OR: [
-            { fullName: { contains: query, mode: 'insensitive' } },
-            { email: { contains: query, mode: 'insensitive' } }
-          ]
-        }
-      ]
-    },
+const searchAccounts = async (query) => {
+  const where = {
+    isActive: true
+  };
+
+  if (query && typeof query === 'string' && query.trim().length > 0) {
+    const q = query.trim();
+    where.OR = [
+      { fullName: { contains: q, mode: 'insensitive' } },
+      { email: { contains: q, mode: 'insensitive' } }
+    ];
+  }
+
+  return prisma.account.findMany({
+    where,
     select: {
       id: true,
       fullName: true,
       email: true,
       role: { select: { name: true } }
     },
-    take: 20,
+    take: 500,
     orderBy: { fullName: 'asc' }
   });
+};
 
 // ─── Export Inquiries
 const exportInquiries = async (filters, permissionScope = {}) => {

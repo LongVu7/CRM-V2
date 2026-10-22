@@ -46,7 +46,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
-import { getAllAccounts } from '@/services/accountService'
+import { searchAccounts } from '@/services/inquiryService'
 
 const props = defineProps({
   initialAccount: {
@@ -75,10 +75,15 @@ const selectedAccount = computed(() =>
 const fetchAccounts = async () => {
   loadingAccounts.value = true
   try {
-    const accounts = await getAllAccounts()
-    allAccounts.value = (accounts || []).filter(a => a.isActive)
-  } catch {
-    allAccounts.value = []
+    const accounts = await searchAccounts()
+    const list = accounts || []
+    if (props.initialAccount && !list.some(a => a.id === props.initialAccount.id)) {
+      list.unshift(props.initialAccount)
+    }
+    allAccounts.value = list
+  } catch (err) {
+    console.error('Failed to load accounts for inquiry assignment:', err)
+    allAccounts.value = props.initialAccount ? [props.initialAccount] : []
   } finally {
     loadingAccounts.value = false
   }
@@ -92,8 +97,8 @@ watch(() => props.initialAccount, (newVal) => {
   if (newVal) {
     selectedAccountId.value = newVal.id
     // Ensure the account is in the list for display
-    if (!allAccounts.value.find(a => a.id === newVal.id)) {
-      allAccounts.value.push(newVal)
+    if (!allAccounts.value.some(a => a.id === newVal.id)) {
+      allAccounts.value.unshift(newVal)
     }
   }
 }, { immediate: true })

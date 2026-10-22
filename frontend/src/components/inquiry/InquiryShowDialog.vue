@@ -1,6 +1,5 @@
 <script setup>
 import { ref, shallowRef, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
 import { useInquiry } from '@/composables/useInquiry'
@@ -19,7 +18,6 @@ const props = defineProps({
 
 defineEmits(['update:visible'])
 
-const router = useRouter()
 const { fetchInquiryById } = useInquiry()
 
 const inquiryData = ref(null)
@@ -40,10 +38,6 @@ watch(
     }
   }
 )
-
-const navigateToEdit = () => {
-  router.push('/inquiries/' + props.inquiryId)
-}
 </script>
 
 <template>
@@ -201,12 +195,6 @@ const navigateToEdit = () => {
     <template #footer>
       <div class="dialog-footer">
         <Button label="Close" severity="secondary" icon="pi pi-times" @click="$emit('update:visible', false)" />
-        <Button
-          v-if="$can('update', 'inquiry')"
-          label="Update"
-          icon="pi pi-pencil"
-          @click="navigateToEdit"
-        />
       </div>
     </template>
   </Dialog>

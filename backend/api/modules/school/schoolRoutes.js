@@ -12,13 +12,15 @@ router.route('/')
     .post(authenticate, authorize('create', 'school'), validateBody(createSchoolSchema), schoolController.createSchool);
 
 router.route('/options')
-    .get(authenticate, authorize('read', 'school'), schoolController.getSchoolOptions);
+    // .get(authenticate, authorize('read', 'school'), schoolController.getSchoolOptions);
+    .get(authenticate, schoolController.getSchoolOptions);
+
 
 router.route('/statistics')
     .get(authenticate, authorize('read', 'school'), schoolController.getStatistics);
 
 router.route('/:id')
-    .get(authenticate, authorize('read', 'school'), validateParams(idParamSchema), schoolController.getSchoolById)
+    .get(authenticate, validateParams(idParamSchema), schoolController.getSchoolById)
     .put(authenticate, authorize('update', 'school'), validateParams(idParamSchema), validateBody(updateSchoolSchema), schoolController.updateSchool)
     .delete(authenticate, authorize('delete', 'school'), validateParams(idParamSchema), schoolController.deleteSchool);
 

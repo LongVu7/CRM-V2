@@ -63,7 +63,7 @@ const exportInquiries = async (req, res) => {
 // ─── Get specific inquiry
 const getInquiryById = async (req, res) => {
   try {
-    const data = req.resource || await inquiryService.getInquiryById(req.params.id);
+    const data = await inquiryService.getInquiryById(req.params.id);
     res.status(200).json({
       message: 'Inquiry retrieved successfully',
       requestedByRole: req.user?.roleName,
@@ -186,10 +186,6 @@ const searchStudents = async (req, res) => {
   try {
     const { q } = req.query;
 
-    if (!q || q.trim().length === 0) {
-      return res.status(400).json({ error: "Query parameter 'q' is required" });
-    }
-
     const results = await inquiryService.searchStudents(q);
     res.status(200).json({
       message: 'Students search results',
@@ -206,10 +202,6 @@ const searchStudents = async (req, res) => {
 const searchAccounts = async (req, res) => {
   try {
     const { q } = req.query;
-
-    if (!q || q.trim().length === 0) {
-      return res.status(400).json({ error: "Query parameter 'q' is required" });
-    }
 
     const results = await inquiryService.searchAccounts(q);
     res.status(200).json({

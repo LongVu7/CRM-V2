@@ -28,12 +28,49 @@ function parseAuthorizeArgs(actionOrCode, resourceOrOptions, options = {}) {
 }
 
 /**
+ * Authorize if user satisfies ANY of the specified permissions.
+ */
+const authorizeAny = (permissions = [], options = {}) => {
+  const permList = Array.isArray(permissions) ? permissions : [permissions];
+
+  return async (req, res, next) => {
+    if (!req.ability || typeof req.ability.can !== 'function') {
+      return res.status(403).json({
+        error: 'Forbidden',
+        reason: 'NO_PERMISSIONS',
+        message: 'No authorization context found for this user'
+      });
+    }
+
+    const canPerform = permList.some(p => {
+      const { action, resource } = parseAuthorizeArgs(p);
+      return req.ability.can(action, resource);
+    });
+
+    if (!canPerform) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        reason: 'MISSING_PERMISSION',
+        requiredPermission: permList.join(' OR '),
+        message: `You do not have any of the required permissions: ${permList.join(', ')}`
+      });
+    }
+
+    next();
+  };
+};
+
+/**
  * Unified authorization middleware
  * 1. Checks overall capability gate via req.ability.can(action, resource)
  * 2. Injects Prisma query scope filter into req.permissionScope
  * 3. Enforces single-record IDOR ownership check when targetParam (:id) and model/resolver exist
  */
 const authorize = (actionOrCode, resourceOrOptions, options = {}) => {
+  if (Array.isArray(actionOrCode)) {
+    return authorizeAny(actionOrCode, resourceOrOptions);
+  }
+
   const { action, resource, opts } = parseAuthorizeArgs(actionOrCode, resourceOrOptions, options);
 
   return async (req, res, next) => {
@@ -47,9 +84,7 @@ const authorize = (actionOrCode, resourceOrOptions, options = {}) => {
     }
 
     // 1. Gate 1: Overall capability check
-    const canPerform = req.ability.can(action, resource) ||
-      (resource === 'group' && req.ability.can(action, 'team')) ||
-      (resource === 'team' && req.ability.can(action, 'group'));
+    const canPerform = req.ability.can(action, resource);
 
     if (!canPerform) {
       return res.status(403).json({
@@ -60,14 +95,10 @@ const authorize = (actionOrCode, resourceOrOptions, options = {}) => {
       });
     }
 
-    // 2. Gate 2a: Query scope injection for list/filter queries
-    let queryScope = buildPrismaScope(req.ability, action, resource);
-    if ((!queryScope || (queryScope.OR && queryScope.OR.length === 0)) && resource === 'group') {
-      queryScope = buildPrismaScope(req.ability, action, 'team');
-    }
-    req.permissionScope = queryScope;
+    // 2. Query scope injection for list/filter queries
+    req.permissionScope = buildPrismaScope(req.ability, action, resource);
 
-    // 3. Gate 2b: IDOR protection for single-record lookups and mutations
+    // 3. IDOR protection for single-record lookups and mutations
     const targetParam = opts.targetParam || 'id';
     const targetId = req.params?.[targetParam];
     const hasResolver = typeof opts.ownership?.resolver === 'function';
@@ -85,7 +116,7 @@ const authorize = (actionOrCode, resourceOrOptions, options = {}) => {
           }
         }
 
-        // If target record does not exist in DB - 
+        // If target record does not exist in DB
         if (!record) {
           return res.status(404).json({ error: 'Resource not found' });
         }
@@ -105,5 +136,8 @@ const authorize = (actionOrCode, resourceOrOptions, options = {}) => {
   };
 };
 
+authorize.authorize = authorize;
+authorize.authorizeAny = authorizeAny;
+authorize.parseAuthorizeArgs = parseAuthorizeArgs;
+
 module.exports = authorize;
-module.exports.parseAuthorizeArgs = parseAuthorizeArgs;

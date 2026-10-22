@@ -12,10 +12,10 @@ const inquiryIdorCheck = { resourceModel: 'inquiry' };
 
 // ─── Search routes
 router.route('/search/students')
-    .get(authenticate, authorize('inquiry.read'), inquiryController.searchStudents);
+    .get(authenticate, authorize(['inquiry.create', 'inquiry.read', 'inquiry.update']), inquiryController.searchStudents);
 
 router.route('/search/accounts')
-    .get(authenticate, authorize('inquiry.assign'), inquiryController.searchAccounts);
+    .get(authenticate, authorize(['inquiry.assign', 'inquiry.create']), inquiryController.searchAccounts);
 
 // ─── Import routes
 router.route('/import/template')

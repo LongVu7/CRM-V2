@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { login as apiLogin, logout as apiLogout, getMe as apiGetMe } from '@/services/authService'
-import { ability, permissionsToCaslRules } from '@/services/ability'
+import { ability, buildAbilityRules, permissionsToCaslRules } from '@/services/ability'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -12,18 +12,23 @@ export const useAuthStore = defineStore('auth', {
     isLoggedIn: (state) => !!state.user
   },
   actions: {
-    updateAbility(permissions = []) {
-      ability.update(permissionsToCaslRules(permissions))
+    updateAbility(userData = null) {
+      if (!userData) {
+        ability.update([])
+        return
+      }
+      if (typeof userData === 'object' && !Array.isArray(userData)) {
+        ability.update(buildAbilityRules(userData))
+      } else if (Array.isArray(userData)) {
+        ability.update(permissionsToCaslRules(userData))
+      }
     },
     async login(email, password) {
       this.loading = true
       try {
         const data = await apiLogin(email, password)
         this.user = data.user
-        this.updateAbility(data.user.permissions || [])
-        // if (data.token) {
-        //   localStorage.setItem('token', data.token)
-        // }
+        this.updateAbility(data.user)
         return data
       } finally {
         this.loading = false
@@ -34,7 +39,7 @@ export const useAuthStore = defineStore('auth', {
         await apiLogout()
       } finally {
         this.user = null
-        this.updateAbility([])
+        this.updateAbility(null)
         localStorage.removeItem('token')
       }
     },
@@ -43,10 +48,10 @@ export const useAuthStore = defineStore('auth', {
       try {
         const data = await apiGetMe()
         this.user = data.user
-        this.updateAbility(data.user.permissions || [])
+        this.updateAbility(data.user)
       } catch (error) {
         this.user = null
-        this.updateAbility([])
+        this.updateAbility(null)
       } finally {
         this.loading = false
         this.initialized = true
@@ -55,7 +60,7 @@ export const useAuthStore = defineStore('auth', {
     async refreshPermissions() {
       const data = await apiGetMe()
       this.user = data.user
-      this.updateAbility(data.user.permissions || [])
+      this.updateAbility(data.user)
     }
   }
 })

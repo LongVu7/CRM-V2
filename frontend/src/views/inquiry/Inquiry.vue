@@ -25,6 +25,7 @@
       @delete="onDelete"
       @delete-selected="onDeleteSelected"
       @show="onShow"
+      @edit="onEdit"
       @export="onExport"
       @filter="onFilter"
       @sort="onSort"
@@ -39,6 +40,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import Tag from 'primevue/tag'
 import InquiryList from '@/components/inquiry/InquiryList.vue'
 import InquiryShowDialog from '@/components/inquiry/InquiryShowDialog.vue'
@@ -46,6 +48,7 @@ import { useInquiry } from '@/composables/useInquiry'
 import { exportInquiries } from '@/services/inquiryService'
 import { useToast } from 'primevue/usetoast'
 
+const router = useRouter()
 const { inquiries, pagination, loading, fetchInquiries, deleteInquiry, deleteInquiries } = useInquiry()
 const toast = useToast()
 
@@ -55,6 +58,10 @@ const currentParams = ref({ page: 1, limit: 20, search: '', sortField: null, sor
 const showDialogVisible = ref(false)
 const showDialogInquiryId = ref(null)
 const exporting = ref(false)
+
+const onEdit = (inquiryId) => {
+  router.push(`/inquiries/${inquiryId}`)
+}
 
 onMounted(async () => {
   await loadData()

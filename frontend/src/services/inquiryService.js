@@ -42,13 +42,15 @@ export const assignStudent = async (inquiryId, studentId) => {
   return response.data
 }
 
-export const searchAccounts = async (query) => {
-  const response = await api.get(`${prefix}/search/accounts`, { params: { q: query } })
+export const searchAccounts = async (query = '') => {
+  const params = query ? { q: query } : {}
+  const response = await api.get(`${prefix}/search/accounts`, { params })
   return response.data.results
 }
 
-export const searchStudents = async (query) => {
-  const response = await api.get(`${prefix}/search/students`, { params: { q: query } })
+export const searchStudents = async (query = '') => {
+  const params = query ? { q: query } : {}
+  const response = await api.get(`${prefix}/search/students`, { params })
   return response.data.results
 }
 

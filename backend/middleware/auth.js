@@ -66,6 +66,7 @@ const authenticate = async (req, res, next) => {
     }
 
     const rolePermissions = (account.role?.permissions || []).map(rp => ({
+      id: rp.permission.id,
       code: rp.permission.code,
       action: rp.permission.action,
       resource: rp.permission.resource,
@@ -78,10 +79,12 @@ const authenticate = async (req, res, next) => {
       if (tm.team?.permissions) {
         for (const tp of tm.team.permissions) {
           teamPermissions.push({
+            id: tp.permission.id,
             code: tp.permission.code,
             action: tp.permission.action,
             resource: tp.permission.resource,
-            scope: tp.scope
+            scope: tp.scope,
+            teamId: tm.teamId
           });
         }
       }

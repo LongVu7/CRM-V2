@@ -234,29 +234,49 @@
         </template>
       </Column>
 
+      
       <!-- Actions Column -->
-      <Column header="Actions" style="width: 90px" :exportable="false" frozen alignFrozen="right">
+      <Column header="Actions" style="width: 110px" :exportable="false" frozen alignFrozen="right">
         <template #body="{ data }">
           <div class="action-buttons">
             <Button 
-              v-if="$can('read', 'inquiry')" 
-              icon="pi pi-eye" 
+              v-if="canUpdate(data)" 
+              icon="pi pi-pencil" 
               rounded 
               text 
               severity="info" 
-              aria-label="Show Inquiry" 
-              @click="emit('show', data.id)" 
+              aria-label="Edit Inquiry" 
+              v-tooltip.top="'Edit Inquiry'"
+              @click="onEdit(data.id)" 
             />
             <Button 
-              v-if="$can('delete', 'inquiry')" 
+              v-if="canDelete(data)" 
               icon="pi pi-trash" 
               rounded 
               text 
               severity="danger" 
               aria-label="Delete Inquiry" 
+              v-tooltip.top="'Delete Inquiry'"
               @click="confirmDeleteAction(data)" 
             />
+            <span v-if="!canUpdate(data) && !canDelete(data)" class="null-text">—</span>
           </div>
+        </template>
+      </Column>
+      <!-- View Detail Column -->
+      <Column header="View Detail" style="width: 100px; text-align: center" :exportable="false">
+        <template #body="{ data }">
+          <Button 
+            v-if="canRead(data)" 
+            icon="pi pi-eye" 
+            rounded 
+            text 
+            severity="info" 
+            aria-label="View Inquiry Details" 
+            v-tooltip.top="'View Details'"
+            @click="emit('show', data.id)" 
+          />
+          <span v-else class="null-text">—</span>
         </template>
       </Column>
     </DataTable>
@@ -283,6 +303,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useSchoolOptions } from '@/composables/useSchoolOptions'
 import { getStatusLevel } from '@/utils/inquiryLabels'
 import { formatCompactDate, formatCompactTime } from '@/utils/dateUtils'
+import { canPerform } from '@/services/ability'
 
 defineProps({
   inquiries: { type: Array, default: () => [] },
@@ -297,6 +318,7 @@ const emit = defineEmits([
   'delete', 
   'delete-selected', 
   'show', 
+  'edit',
   'export', 
   'filter', 
   'sort'
@@ -304,6 +326,15 @@ const emit = defineEmits([
 
 const router = useRouter()
 const confirm = useConfirm()
+
+const canRead = (inquiry) => canPerform('read', 'inquiry', inquiry)
+const canUpdate = (inquiry) => canPerform('update', 'inquiry', inquiry)
+const canDelete = (inquiry) => canPerform('delete', 'inquiry', inquiry)
+
+const onEdit = (id) => {
+  emit('edit', id)
+  router.push(`/inquiries/${id}`)
+}
 
 const selectedInquiries = ref([])
 const searchQuery = ref('')

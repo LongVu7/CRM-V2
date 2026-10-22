@@ -54,6 +54,7 @@
           :options="studentOptions"
           optionLabel="label"
           optionValue="value"
+          optionDisabled="disabled"
           placeholder="Search student by name, email or phone..."
           filter
           showClear
@@ -90,7 +91,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import StudentForm from '@/components/student/StudentForm.vue'
-import { getAllStudents } from '@/services/studentService'
+import { searchStudents } from '@/services/inquiryService'
 
 const props = defineProps({
   readonly: {
@@ -133,12 +134,18 @@ const newStudentForm = ref({
 })
 
 const studentOptions = computed(() =>
-  allStudents.value.map(s => ({
-    label: s.fullName
-      ? `${s.fullName} (${s.email || s.mobile || 'No contact'})`
-      : s.email || s.mobile || `Student #${s.id}`,
-    value: s.id
-  }))
+  allStudents.value.map(s => {
+    const contactParts = [s.mobile, s.email].filter(Boolean)
+    const contactStr = contactParts.length ? contactParts.join(' | ') : 'No contact'
+    const isAlreadyLinked = Boolean(s.inquiry && (!props.initialStudent || props.initialStudent.id !== s.id))
+    return {
+      label: s.fullName
+        ? `${s.fullName} (${contactStr})${isAlreadyLinked ? ' - [Already linked to inquiry]' : ''}`
+        : `${contactStr}${isAlreadyLinked ? ' - [Already linked to inquiry]' : ''}`,
+      value: s.id,
+      disabled: isAlreadyLinked
+    }
+  })
 )
 
 const selectedStudent = computed(() =>
@@ -148,10 +155,15 @@ const selectedStudent = computed(() =>
 const fetchAllStudents = async () => {
   loadingStudents.value = true
   try {
-    const response = await getAllStudents({ page: 1, limit: 1000 })
-    allStudents.value = response.data || []
-  } catch {
-    allStudents.value = []
+    const results = await searchStudents()
+    const list = Array.isArray(results) ? [...results] : []
+    if (props.initialStudent && !list.some(s => s.id === props.initialStudent.id)) {
+      list.unshift(props.initialStudent)
+    }
+    allStudents.value = list
+  } catch (err) {
+    console.error('Failed to load students for inquiry assignment:', err)
+    allStudents.value = props.initialStudent ? [props.initialStudent] : []
   } finally {
     loadingStudents.value = false
   }
@@ -168,6 +180,9 @@ watch(
     if (newStudent) {
       isCreatingStudent.value = false
       selectedStudentId.value = newStudent.id
+      if (!allStudents.value.some(s => s.id === newStudent.id)) {
+        allStudents.value.unshift(newStudent)
+      }
     }
   },
   { immediate: true }

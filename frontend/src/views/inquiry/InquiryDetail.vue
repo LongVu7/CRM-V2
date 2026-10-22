@@ -107,8 +107,10 @@ const submitGlobal = async () => {
     }
   }
 
-  const accountId = accountAssignRef.value.getPayload()
-  payload.assignedToId = accountId
+  const accountId = accountAssignRef.value?.getPayload ? accountAssignRef.value.getPayload() : undefined
+  if (accountId !== undefined) {
+    payload.assignedToId = accountId
+  }
 
   isSubmitting.value = true
   try {

@@ -86,7 +86,7 @@ const submitGlobal = async () => {
     payload.studentId = studentData.studentId
   }
 
-  const accountId = accountAssignRef.value.getPayload()
+  const accountId = accountAssignRef.value?.getPayload ? accountAssignRef.value.getPayload() : null
   if (accountId) {
     payload.assignedToId = accountId
   }
