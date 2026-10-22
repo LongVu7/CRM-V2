@@ -37,12 +37,25 @@ const campaignData = ref({
     description: '',
     ownerId: null,
     status: 'in_progress',
-    startDate: null,
+    startDate: new Date(),
     endDate: null,
     notes: ''
 })
 
 const handleSave = async () => {
+    if (!campaignData.value.name?.trim()) {
+        toast.add({ severity: 'warn', summary: 'Validation', detail: 'Campaign name is required', life: 3000 })
+        return
+    }
+    if (!campaignData.value.ownerId) {
+        toast.add({ severity: 'warn', summary: 'Validation', detail: 'Campaign owner is required', life: 3000 })
+        return
+    }
+    if (!campaignData.value.startDate) {
+        toast.add({ severity: 'warn', summary: 'Validation', detail: 'Start date is required', life: 3000 })
+        return
+    }
+
     try {
         await createCampaign(campaignData.value)
         toast.add({ severity: 'success', summary: 'Success', detail: 'Campaign created successfully', life: 3000 })

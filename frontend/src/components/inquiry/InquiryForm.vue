@@ -41,7 +41,7 @@
     <div class="form-grid">
       <div class="form-field">
         <label>Data Received</label>
-        <DatePicker :modelValue="modelValue.dataReceived" dateFormat="yy-mm-dd" placeholder="Select date"
+        <DatePicker :modelValue="modelValue.dataReceived" dateFormat="dd-mm-yy" placeholder="Select date"
           :showIcon="true" fluid @update:modelValue="emitField('dataReceived', $event)" />
       </div>
     </div>
@@ -62,40 +62,43 @@
 
     <div class="form-grid">
       <div class="form-field">
-        <label>Ngày tạo</label>
+        <label>Create Date</label>
         <DatePicker :modelValue="modelValue.createDate ? new Date(modelValue.createDate) : null" dateFormat="dd-mm-yy" placeholder="Select date" :showIcon="true" fluid @update:modelValue="emitField('createDate', $event)" />
       </div>
       <div class="form-field">
-        <label>Ngày tương tác</label>
+        <label>Interaction Date</label>
         <DatePicker :modelValue="modelValue.interactionAt ? new Date(modelValue.interactionAt) : null" dateFormat="dd-mm-yy" placeholder="Select date" :showIcon="true" fluid @update:modelValue="emitField('interactionAt', $event)" />
       </div>
     </div>
 
     <div class="form-grid">
       <div class="form-field">
-        <label>Số lần gọi</label>
+        <label>Call Count</label>
         <Select :modelValue="modelValue.callCount" :options="callCountOptions" optionLabel="label" optionValue="value" placeholder="Select count" showClear fluid @update:modelValue="emitField('callCount', $event)" />
       </div>
       <div class="form-field">
-        <label>Tên sự kiện tham gia</label>
-        <MultiSelect :modelValue="modelValue.eventNames" :options="eventOptions" optionLabel="label" optionValue="value" placeholder="Select events" filter display="chip" fluid @update:modelValue="emitField('eventNames', $event)" />
+        <label>Compensation Status</label>
+        <Select :modelValue="modelValue.compensationStatus" :options="compensationOptions" optionLabel="label" optionValue="value" placeholder="Select status" showClear fluid @update:modelValue="emitField('compensationStatus', $event)" />
       </div>
     </div>
 
     <div class="form-grid">
       <div class="form-field">
-        <label>Báo bù</label>
-        <Select :modelValue="modelValue.compensationStatus" :options="compensationOptions" optionLabel="label" optionValue="value" placeholder="Select status" showClear fluid @update:modelValue="emitField('compensationStatus', $event)" />
-      </div>
-      <div class="form-field">
-        <label>File ghi âm cuộc gọi</label>
+        <label>Record File</label>
         <InputText :modelValue="modelValue.recordFile" placeholder="Not available" disabled fluid />
       </div>
     </div>
 
     <div class="form-grid">
       <div class="form-field" style="grid-column: span 2;">
-        <label>Lịch sử cuộc gọi</label>
+        <label>Event Names</label>
+        <MultiSelect :modelValue="modelValue.eventNames" :options="eventOptions" optionLabel="label" optionValue="value" placeholder="Select events" filter display="chip" fluid @update:modelValue="emitField('eventNames', $event)" />
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-field" style="grid-column: span 2;">
+        <label>Call Log</label>
         <Textarea :modelValue="modelValue.callLog" rows="3" placeholder="Enter call history" fluid @update:modelValue="emitField('callLog', $event)" />
       </div>
     </div>
@@ -320,24 +323,52 @@ onMounted(async () => {
 
 .form-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
 }
 
 .form-grid.three-col {
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .form-field {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  min-width: 0;
 }
 
 .form-field label {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--p-text-color);
+}
+
+/* MultiSelect Chip Wrapping & Containment */
+:deep(.p-multiselect) {
+  max-width: 100%;
+}
+
+:deep(.p-multiselect-label-container) {
+  min-width: 0;
+  overflow: hidden;
+}
+
+:deep(.p-multiselect.p-multiselect-display-chip .p-multiselect-label) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  white-space: normal;
+  padding: 0.375rem 0.5rem;
+}
+
+:deep(.p-multiselect-chip-item) {
+  max-width: 100%;
+  display: inline-flex;
+}
+
+:deep(.p-chip) {
+  max-width: 100%;
 }
 
 @media (max-width: 640px) {

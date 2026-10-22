@@ -25,7 +25,16 @@
         </Column>
         <Column headerStyle="min-width: 12rem;">
             <template #body="{ data }">
-                <Button v-if="data.type === 'EMAIL' && data.status !== 'sent'" icon="pi pi-send" class="mr-2" rounded outlined severity="success" v-tooltip="'Send Emails'" @click="emit('send', data)" />
+                <Button 
+                    v-if="data.type === 'EMAIL'" 
+                    :icon="data.status === 'sent' ? 'pi pi-replay' : 'pi pi-send'" 
+                    class="mr-2" 
+                    rounded 
+                    outlined 
+                    :severity="data.status === 'sent' ? 'info' : 'success'" 
+                    v-tooltip="data.status === 'sent' ? 'Resend Emails' : 'Send Emails'" 
+                    @click="emit('send', data)" 
+                />
                 <Button icon="pi pi-users" class="mr-2" rounded outlined v-tooltip="'Manage Recipients'" @click="emit('recipients', data)" />
                 <Button icon="pi pi-pencil" class="mr-2" rounded outlined @click="emit('edit', data)" />
                 <Button icon="pi pi-trash" rounded outlined severity="danger" @click="emit('delete', data)" />

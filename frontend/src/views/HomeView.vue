@@ -109,6 +109,7 @@ onMounted(async () => {
 .home {
   padding: 2rem;
   max-width: 1100px;
+  margin: 0 auto;
 }
 
 .home-header {

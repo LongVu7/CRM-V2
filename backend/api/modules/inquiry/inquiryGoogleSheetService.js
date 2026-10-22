@@ -10,7 +10,7 @@ const {
 } = require('../../utils/enumMapper');
 const { resolveHierarchy, normalizeHierarchyText } = require('../../utils/hierarchyUtils');
 
-// !--- 4-Tier Province Group Rules for Google Sheets automated intake ---! //
+// !--- Province-Group Rules for Google Sheets automated intake ---! //
 const TIER_1_PROVINCES = new Set([
   'thanh pho ho chi minh',
   'binh duong',
@@ -31,7 +31,7 @@ const TIER_2_PROVINCES = new Set([
 ]);
 
 /**
- * Derives the 4-tier Province Group strictly for Google Sheets sync leads.
+ * Derives the Province Group strictly for Google Sheets sync leads.
  * - TP. Hồ Chí Minh, Bình Dương, Vũng Tàu -> HO_CHI_MINH (TP HCM)
  * - Đồng Nai, Lâm Đồng, Khánh Hòa, Tiền Giang, Long An, Tây Ninh, ĐakLak, Bến Tre, Bình Thuận, Bình Phước -> CORE_PROVINCE (Tỉnh ruột)
  * - Other old provinces  -> OTHER_PROVINCE (Tỉnh ngoài)

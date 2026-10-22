@@ -1,13 +1,23 @@
 const { z } = require('zod');
 
+const requiredDate = z.preprocess((val) => {
+  if (val === null || val === undefined || val === '') return undefined;
+  return val;
+}, z.coerce.date({ required_error: 'Start date is required', invalid_type_error: 'Start date must be a valid date' }));
+
+const optionalDate = z.preprocess((val) => {
+  if (val === null || val === undefined || val === '') return null;
+  return val;
+}, z.coerce.date().nullable().optional());
+
 const campaignSchema = z.object({
   name: z.string().min(1, 'Name is required').max(255),
   description: z.string().optional().nullable(),
   ownerId: z.number().int({ message: 'Owner is required' }),
   teamId: z.number().int().optional().nullable(),
   status: z.enum(['in_progress', 'completed', 'scheduled', 'cancelled']),
-  startDate: z.coerce.date({ required_error: 'Start date is required' }),
-  endDate: z.coerce.date().optional().nullable(),
+  startDate: requiredDate,
+  endDate: optionalDate,
   notes: z.string().optional().nullable(),
 });
 

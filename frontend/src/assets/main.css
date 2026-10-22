@@ -12,3 +12,16 @@ a {
   color: inherit;
   transition: 0.3s;
 }
+
+/* Ensure MultiSelect with chips wraps properly and respects container boundaries */
+.p-multiselect.p-multiselect-display-chip .p-multiselect-label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  white-space: normal;
+}
+
+.p-multiselect-chip-item {
+  max-width: 100%;
+}
+

@@ -107,10 +107,6 @@ const navigateToEdit = () => {
             <span class="field-value">{{ studentData.otherPhone || '—' }}</span>
           </div>
           <div class="field-item">
-            <span class="field-label">Parent Phone</span>
-            <span class="field-value">{{ studentData.parentPhone || '—' }}</span>
-          </div>
-          <div class="field-item">
             <span class="field-label">Primary Address</span>
             <span class="field-value">{{ studentData.primaryAddress || '—' }}</span>
           </div>

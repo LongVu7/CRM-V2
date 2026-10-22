@@ -42,7 +42,6 @@ const studentTemplate = ref({
   mobile: '',
   otherPhone: '',
   birthDate: null,
-  parentPhone: '',
   primaryAddress: '',
   schoolId: null,
 
@@ -75,6 +74,7 @@ const createNewStudent = async (payload) => {
 .student-new-view {
   padding: 1.5rem 2rem;
   max-width: 900px;
+  margin: 0 auto;
 }
 
 .page-header {

@@ -118,7 +118,6 @@ const newStudentForm = ref({
   email: '',
   mobile: '',
   otherPhone: '',
-  parentPhone: '',
   birthDate: null,
   primaryAddress: '',
   newSchoolCity: null,

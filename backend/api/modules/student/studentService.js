@@ -19,9 +19,9 @@ const {
 const { ProvinceGroup, SchoolType, StudentClass, EnglishCertificate, GPA, ProgramScore } = require('@prisma/client');
 const { buildHierarchyTree } = require('../../utils/hierarchyUtils');
 
-// ─── Get options for student form (majors & new Provinces)
+// ─── Get options for student form (majors, new Provinces & countries)
 const getStudentOptions = async () => {
-  const [majorsRaw, newProvinces] = await prisma.$transaction([
+  const [majorsRaw, newProvinces, countries] = await prisma.$transaction([
     prisma.majorData.findMany({
       where: { isActive: true },
       select: { id: true, name: true, label: true, parentId: true, sortOrder: true },
@@ -30,6 +30,10 @@ const getStudentOptions = async () => {
     prisma.newProvince.findMany({
       select: { id: true, name: true },
       orderBy: { name: 'asc' }
+    }),
+    prisma.country.findMany({
+      select: { id: true, name: true, code: true },
+      orderBy: { name: 'asc' }
     })
   ]);
 
@@ -37,13 +41,14 @@ const getStudentOptions = async () => {
 
   return {
     majors,
-    newProvinces
+    newProvinces,
+    countries
   };
 };
 
 // ─── Create a student
 const createStudent = async (data) => {
-  const { specializedRegister, education, parentPhone, ...studentData } = data;
+  const { specializedRegister, education, ...studentData } = data;
   try {
     return await prisma.$transaction(async (tx) => {
       return await tx.student.create({
@@ -61,23 +66,23 @@ const createStudent = async (data) => {
             }
           })
         },
-      include: {
-        education: {
-          include: {
-            school: { select: { id: true, name: true, oldProvince: { select: { id: true, name: true } } } },
-            newProvince: { select: { id: true, name: true } },
-            country: { select: { id: true, name: true } }
-          }
-        },
-        specializedRegister: {
-          include: {
-            interestedMajor: { select: { id: true, name: true, label: true } },
-            specificMajor: { select: { id: true, name: true, label: true } }
+        include: {
+          education: {
+            include: {
+              school: { select: { id: true, name: true, oldProvince: { select: { id: true, name: true } } } },
+              newProvince: { select: { id: true, name: true } },
+              country: { select: { id: true, name: true } }
+            }
+          },
+          specializedRegister: {
+            include: {
+              interestedMajor: { select: { id: true, name: true, label: true } },
+              specificMajor: { select: { id: true, name: true, label: true } }
+            }
           }
         }
-      }
+      });
     });
-  });
   } catch (error) {
 
     if (error.code === 'P2002') {
@@ -98,7 +103,7 @@ const createStudent = async (data) => {
 //Filter function
 const buildStudentWhere = ({ search, oldProvinceId, newProvinceId, countryId, provinceGroup, schoolType, birthYear, class: studentClass }) => {
   const where = {};
-  
+
   if (search) {
     where.OR = [
       { fullName: { contains: search, mode: 'insensitive' } },
@@ -154,7 +159,7 @@ const getAllStudents = async (filters) => {
       where,
       skip,
       take: limit,
-      include: { 
+      include: {
         education: {
           include: {
             school: { select: { id: true, name: true, oldProvince: { select: { id: true, name: true } } } },
@@ -184,7 +189,7 @@ const getAllStudents = async (filters) => {
 const getStudentById = async (id) => {
   const student = await prisma.student.findUnique({
     where: { id: Number(id) },
-    include: { 
+    include: {
       education: {
         include: {
           school: { select: { id: true, name: true, oldProvince: { select: { id: true, name: true } } } },
@@ -212,7 +217,7 @@ const getStudentById = async (id) => {
 
 // ─── Update a student
 const updateStudent = async (id, data) => {
-  const { specializedRegister, education, parentPhone, ...studentData } = data;
+  const { specializedRegister, education, ...studentData } = data;
 
   try {
     return await prisma.$transaction(async (tx) => {
@@ -316,15 +321,14 @@ const previewImportStudents = async (parsedStudents, accountId) => {
 
   // Clean and prepare rows
   const processedRows = parsedStudents.map((row) => {
-    const r = { 
-      ...row, 
+    const r = {
+      ...row,
       mobile: row.mobile || row['Mobile'],
       fullName: row.fullName || row['Full Name'],
       email: row.email || row['Email'],
       gender: row.gender || row['Gender'],
       otherPhone: row.otherPhone || row['Other Phone'],
       birthDate: row.birthDate || row['Date of Birth'] || row['Birth Date'],
-      parentPhone: row.parentPhone || row['Parent Phone'],
       primaryAddress: row.primaryAddress || row['Primary Address'],
       school: row.school || row['School Name'] || row['School'],
       schoolCity: row.schoolCity || row['School City'],
@@ -339,9 +343,9 @@ const previewImportStudents = async (parsedStudents, accountId) => {
       admissionYear: row.admissionYear || row['Admission Year'],
       interestedMajor: row.interestedMajor || row['Interested Major'],
       specificMajor: row.specificMajor || row['Specific Major'],
-      _meta: { rowNumber: row._mapping?.rowNumber, errors: [], classification: null } 
+      _meta: { rowNumber: row._mapping?.rowNumber, errors: [], classification: null }
     };
-    
+
     // Normalize mobile
     if (r.mobile) {
       let cleaned = String(r.mobile).replace(/\D/g, '');
@@ -466,7 +470,7 @@ const previewImportStudents = async (parsedStudents, accountId) => {
       s.provinceGroup = PROVINCE_MAP[norm] || norm;
       if (!Object.keys(ProvinceGroup).includes(s.provinceGroup)) s._meta.errors.push(`Invalid Province Group: ${pgVal}`);
     }
-    
+
     let stVal = s.schoolType || s['School Type'];
     if (stVal) {
       stVal = normalizeEnum(stVal);
@@ -474,7 +478,7 @@ const previewImportStudents = async (parsedStudents, accountId) => {
       s.schoolType = stVal;
       if (!Object.keys(SchoolType).includes(s.schoolType)) s._meta.errors.push(`Invalid School Type: ${s.schoolType || stVal}`);
     }
-    
+
     let clsVal = s.class || s['Class'];
     if (clsVal) {
       let norm = normalizeEnum(clsVal);
@@ -485,7 +489,7 @@ const previewImportStudents = async (parsedStudents, accountId) => {
     let gpaVal = s.gpa || s['GPA'];
     if (gpaVal) {
       let norm = normalizeEnum(gpaVal);
-      norm = norm.replace(/</g, '<').replace(/>/g, '>'); 
+      norm = norm.replace(/</g, '<').replace(/>/g, '>');
       s.gpa = GPA_MAP[norm] || norm;
     }
 
@@ -610,7 +614,7 @@ const confirmImportStudents = async (importToken, accountId) => {
               gender: row.gender || 'Unknown',
               email: row.email || null,
               mobile: row.mobile,
-              otherPhone: row.otherPhone || row.parentPhone || null,
+              otherPhone: row.otherPhone || null,
               birthDate: row.birthDate || null,
               primaryAddress: row.primaryAddress || null,
               specializedRegisterId: srId
@@ -654,8 +658,8 @@ const exportStudents = async (filters) => {
     include: {
       specializedRegister: {
         include: {
-          interestedMajor: {select: { id: true, name: true, label: true }},
-          specificMajor: {select: { id: true, name: true, label: true } }
+          interestedMajor: { select: { id: true, name: true, label: true } },
+          specificMajor: { select: { id: true, name: true, label: true } }
         }
       },
       education: {
@@ -676,9 +680,8 @@ const exportStudents = async (filters) => {
     'Mobile': s.mobile || '',
     'Other Phone': s.otherPhone || '',
     'Date of Birth': s.birthDate ? s.birthDate.toISOString().split('T')[0] : '',
-    'Parent Phone': s.otherPhone || '',
     'Primary Address': s.primaryAddress || '',
-    
+
     // Education
     'School Name': s.education?.school?.name || '',
     'School City': s.education?.school?.oldProvince?.name || '',
@@ -687,7 +690,7 @@ const exportStudents = async (filters) => {
     'Province Group': PROVINCE_GROUP_LABELS[s.education?.provinceGroup] || s.education?.provinceGroup || '',
     'School Type': SCHOOL_TYPE_LABELS[s.education?.schoolType] || s.education?.schoolType || '',
     'Class': CLASS_LABELS[s.education?.class] || s.education?.class || '',
-    
+
     // Specialized Register
     'GPA': GPA_LABELS[s.specializedRegister?.gpa] || s.specializedRegister?.gpa || '',
     'English Certificate': s.specializedRegister?.englishCertificate || '',
@@ -695,7 +698,7 @@ const exportStudents = async (filters) => {
     'Admission Year': s.specializedRegister?.admissionYear || '',
     'Interested Major': s.specializedRegister?.interestedMajor?.label || '',
     'Specific Major': s.specializedRegister?.specificMajor?.label || '',
-    
+
     'Created At': s.createdAt ? s.createdAt.toISOString().split('T')[0] : '',
     'Updated At': s.updatedAt ? s.updatedAt.toISOString().split('T')[0] : ''
   }));

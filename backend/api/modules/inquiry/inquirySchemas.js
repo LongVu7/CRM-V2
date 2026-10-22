@@ -25,11 +25,11 @@ const inquiryFields = {
   createDate: dateString.optional(),
   interactionAt: dateString.optional(),
   callCount: z.number().int().min(1).max(10).optional(),
-  eventNames: z.array(z.nativeEnum(EventName)).optional(),
+  eventNames: z.array(z.enum(EventName)).optional(),
   callLog: z.string().max(5000).optional(),
   recordFile: z.string().optional(),
-  compensationStatus: z.nativeEnum(CompensationStatus).optional(),
-  priority: z.nativeEnum(Priority).optional()
+  compensationStatus: z.enum(CompensationStatus).optional(),
+  priority: z.enum(Priority).optional()
 };
 
 const createInquirySchema = z.object(inquiryFields).strict();
@@ -45,11 +45,11 @@ const updateInquirySchema = z.object({
   createDate: dateString.nullable().optional(),
   interactionAt: dateString.nullable().optional(),
   callCount: z.number().int().min(1).max(10).nullable().optional(),
-  eventNames: z.array(z.nativeEnum(EventName)).nullable().optional(),
+  eventNames: z.array(z.enum(EventName)).nullable().optional(),
   callLog: z.string().max(5000).nullable().optional(),
   recordFile: z.string().nullable().optional(),
-  compensationStatus: z.nativeEnum(CompensationStatus).nullable().optional(),
-  priority: z.nativeEnum(Priority).nullable().optional()
+  compensationStatus: z.enum(CompensationStatus).nullable().optional(),
+  priority: z.enum(Priority).nullable().optional()
 }).strict().refine((data) => Object.keys(data).length > 0, {
   message: 'Request body cannot be empty'
 });
@@ -80,7 +80,7 @@ const sanitizeSheetMobile = (val) => {
 const sheetMobileSchema = z.preprocess(
   sanitizeSheetMobile,
   z.string({ required_error: 'Mobile is required' })
-    .regex(/^0\d{9}$/, 'Số điện thoại không hợp lệ (cần 10 số bắt đầu bằng 0)')
+    .regex(/^0\d{9}$/, 'Phone format is incorrect (10-digit, start with 0)')
 );
 
 const sheetFullNameSchema = z.string({
@@ -97,11 +97,11 @@ const sheetInquirySyncSchema = z.object({
   mobile: sheetMobileSchema,
   email: z.preprocess(
     (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
-    z.string().email('Email không đúng định dạng').max(255).optional()
+    z.email('Email format is incorrect').max(255).optional()
   ),
   otherPhone: z.preprocess(
     sanitizeSheetMobile,
-    z.string().regex(/^0\d{9}$/, 'Số điện thoại phụ không hợp lệ').optional()
+    z.string().regex(/^0\d{9}$/, 'Phone format is incorrect (10-digit, start with 0)').optional()
   ),
   primaryAddress: z.preprocess(
     (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
@@ -139,7 +139,7 @@ const sheetInquirySyncSchema = z.object({
     (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
     z.string().max(50).optional()
   )
-}).passthrough();
+}).loose();
 
 module.exports = {
   createInquirySchema,

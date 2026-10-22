@@ -1,4 +1,5 @@
 import { ref } from 'vue'
+import { getStudentOptions } from '@/services/studentService'
 import { getAllCountries } from '@/services/schoolService'
 
 export function useCountryOptions() {
@@ -8,9 +9,18 @@ export function useCountryOptions() {
   const fetchCountries = async () => {
     loadingCountries.value = true
     try {
-      countries.value = await getAllCountries()
-    } catch (err) {
-      countries.value = []
+      const data = await getStudentOptions()
+      if (data?.countries?.length) {
+        countries.value = data.countries
+      } else {
+        countries.value = await getAllCountries()
+      }
+    } catch {
+      try {
+        countries.value = await getAllCountries()
+      } catch {
+        countries.value = []
+      }
     } finally {
       loadingCountries.value = false
     }
@@ -22,3 +32,4 @@ export function useCountryOptions() {
     fetchCountries
   }
 }
+

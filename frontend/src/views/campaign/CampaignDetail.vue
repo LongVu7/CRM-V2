@@ -189,11 +189,16 @@ const handleDeleteActivity = async (activity) => {
 }
 
 const handleSendActivity = async (activity) => {
-    if (!confirm(`Send emails to all recipients of "${activity.name}"?`)) return
+    const isResend = activity.status === 'sent'
+    const confirmMsg = isResend
+        ? `Resend emails to all recipients of "${activity.name}"?`
+        : `Send emails to all recipients of "${activity.name}"?`
+    if (!confirm(confirmMsg)) return
     activityLoading.value = true
     try {
         const result = await sendActivity(campaignId, activity.id)
-        toast.add({ severity: 'success', summary: 'Sent', detail: `Sent: ${result.sentCount}, Failed: ${result.failedCount}`, life: 5000 })
+        const summaryMsg = isResend ? 'Send again' : 'Sent'
+        toast.add({ severity: 'success', summary: summaryMsg, detail: `Sent: ${result.sentCount}, Failed: ${result.failedCount}`, life: 5000 })
         await loadData()
     } catch (err) {
         toast.add({ severity: 'error', summary: 'Error', detail: error.value, life: 5000 })

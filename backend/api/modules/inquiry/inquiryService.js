@@ -131,7 +131,7 @@ const buildInquiryWhere = (filters, permissionScope = {}) => {
   // Student specific filters
   if (filters.birthYear || filters.oldProvinceId) {
     where.student = { ...(where.student || {}) };
-    
+
     if (filters.birthYear) {
       const year = parseInt(filters.birthYear, 10);
       where.student.birthDate = {
@@ -139,7 +139,7 @@ const buildInquiryWhere = (filters, permissionScope = {}) => {
         lt: new Date(`${year + 1}-01-01T00:00:00.000Z`)
       };
     }
-    
+
     if (filters.oldProvinceId) {
       where.student.education = {
         school: { oldProvinceId: parseInt(filters.oldProvinceId, 10) }
@@ -215,10 +215,10 @@ const createInquiry = async ({ studentId, student, assignedToId, teamId, ...inqu
     }
   }
 
-  const inquiryData = buildInquiryData({ 
-    assignedToId: creatorAssignedToId, 
+  const inquiryData = buildInquiryData({
+    assignedToId: creatorAssignedToId,
     teamId: effectiveTeamId,
-    ...inquiryFields 
+    ...inquiryFields
   });
 
   if (studentId) return _createWithExistingStudent(inquiryData, studentId);
@@ -478,7 +478,7 @@ const assignAccountToInquiry = async (inquiryId, accountId) => {
   const iid = parseInt(inquiryId, 10);
   const aid = parseInt(accountId, 10);
 
-  const account = await prisma.account.findUnique({ 
+  const account = await prisma.account.findUnique({
     where: { id: aid },
     include: { teamMemberships: true }
   });
@@ -488,10 +488,10 @@ const assignAccountToInquiry = async (inquiryId, accountId) => {
 
   return prisma.inquiry.update({
     where: { id: iid },
-    data: { 
-      assignedToId: aid, 
+    data: {
+      assignedToId: aid,
       ...(newTeamId && { teamId: newTeamId }),
-      updatedAt: new Date() 
+      updatedAt: new Date()
     },
     include: inquiryInclude
   });
@@ -603,7 +603,6 @@ const exportInquiries = async (filters, permissionScope = {}) => {
     'Mobile': i.student?.mobile || '',
     'Other Phone': i.student?.otherPhone || '',
     'Email': i.student?.email || '',
-    'Parent Phone': i.student?.parentPhone || '',
     'Primary Address': i.student?.primaryAddress || '',
     // Inquiry basic details
     'Description': i.description || '',
