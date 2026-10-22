@@ -12,16 +12,6 @@ function normalizeSubject(subject) {
 /**
  * Constructs a Prisma-capable CASL Ability instance reflecting the user's role
  * and team permissions compiled with dynamic scopes.
- *
- * @param {Object} account
- * @param {number} [account.accountId]
- * @param {number} [account.id]
- * @param {number|null} [account.roleId]
- * @param {string|null} [account.roleName]
- * @param {number[]} [account.teamIds]
- * @param {Array<{ code?: string, action: string, resource: string, scope?: string }>} [account.rolePermissions]
- * @param {Array<{ code?: string, action: string, resource: string, scope?: string }>} [account.teamPermissions]
- * @returns {import('@casl/prisma').PureAbility}
  */
 function defineAbilityFor(account = {}) {
   const { can, build } = new AbilityBuilder(createPrismaAbility);
@@ -70,11 +60,9 @@ function defineAbilityFor(account = {}) {
 
 /**
  * Translates CASL ability conditions into an idiomatic Prisma `where` clause.
- *
- * @param {import('@casl/prisma').PureAbility} ability
- * @param {string} action - e.g. 'read', 'update'
- * @param {string} subjectName - e.g. 'inquiry', 'student', 'team'
- * @returns {object} Prisma WHERE condition
+ * action - e.g. 'read', 'update'
+ * subjectName - e.g. 'inquiry', 'student', 'team'
+ * Returns {object} Prisma WHERE condition
  */
 function buildPrismaScope(ability, action, subjectName) {
   if (!ability || typeof ability.can !== 'function') {

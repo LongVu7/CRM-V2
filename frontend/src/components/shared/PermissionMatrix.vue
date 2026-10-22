@@ -188,15 +188,37 @@ const permissionMap = computed(() => {
   return map
 })
 
+const ACTION_ORDER = [
+  'create',
+  'read',
+  'update',
+  'delete',
+  'export',
+  'import',
+  'assign',
+  'assign_role',
+  'assign_leader',
+  'assign_perm'
+]
+
 const uniqueResources = computed(() => {
   const resources = [...new Set(allPermissions.value.map(p => p.resource))]
   return resources.sort()
 })
 
 const uniqueActions = computed(() => {
-  if (apiActions.value.length > 0) return apiActions.value
-  const actions = [...new Set(allPermissions.value.map(p => p.action))]
-  return actions.sort()
+  const actions = apiActions.value.length > 0
+    ? [...apiActions.value]
+    : [...new Set(allPermissions.value.map(p => p.action))]
+
+  return actions.sort((a, b) => {
+    const idxA = ACTION_ORDER.indexOf(a)
+    const idxB = ACTION_ORDER.indexOf(b)
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB
+    if (idxA !== -1) return -1
+    if (idxB !== -1) return 1
+    return a.localeCompare(b)
+  })
 })
 
 const getPermission = (resource, action) => {
@@ -212,10 +234,14 @@ const getScope = (permId) => {
 }
 
 const emitUpdate = (newMap) => {
-  const result = Array.from(newMap.entries()).map(([permissionId, scope]) => ({
-    permissionId,
-    scope
-  }))
+  // Only emit permissions that exist in allPermissions to avoid persisting ghost/legacy IDs
+  const validIds = new Set(allPermissions.value.map(p => p.id))
+  const result = []
+  for (const [permissionId, scope] of newMap.entries()) {
+    if (validIds.has(permissionId)) {
+      result.push({ permissionId, scope })
+    }
+  }
   emit('update:modelValue', result)
 }
 
