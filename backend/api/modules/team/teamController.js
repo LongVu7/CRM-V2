@@ -118,6 +118,19 @@ const updateTeamPermissions = async (req, res) => {
   }
 };
 
+const getAvailableAccounts = async (req, res) => {
+  try {
+    const data = await teamService.getAvailableAccounts();
+    res.status(200).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   getAllTeams,
   getTeamById,
@@ -126,5 +139,6 @@ module.exports = {
   deleteTeam,
   addMember,
   removeMember,
-  updateTeamPermissions
+  updateTeamPermissions,
+  getAvailableAccounts
 };

@@ -4,15 +4,41 @@ const templateRenderer = require('../campaignTemplate/templateRenderer');
 
 // ─── Campaign CRUD ───
 
-const createCampaign = async (data, createdById) => {
+const createCampaign = async (data, userOrId) => {
+  const createdById = typeof userOrId === 'object' && userOrId !== null
+    ? (userOrId.accountId || userOrId.id)
+    : userOrId;
+  const userTeamIds = typeof userOrId === 'object' && Array.isArray(userOrId.teamIds)
+    ? userOrId.teamIds
+    : [];
+
+  let effectiveTeamId = data.teamId;
+  if (!effectiveTeamId) {
+    if (userTeamIds.length > 0) {
+      effectiveTeamId = userTeamIds[0];
+    } else if (data.ownerId) {
+      const owner = await prisma.account.findUnique({
+        where: { id: Number(data.ownerId) },
+        include: { teamMemberships: true }
+      });
+      effectiveTeamId = owner?.teamMemberships?.[0]?.teamId || null;
+    }
+  }
+
+  const { teamId: _, ...rest } = data;
+
   return prisma.campaign.create({
     data: {
-      ...data,
+      ...rest,
       startDate: new Date(data.startDate),
       ...(data.endDate && { endDate: new Date(data.endDate) }),
-      createdById
+      createdById,
+      ...(effectiveTeamId && { teamId: Number(effectiveTeamId) })
     },
-    include: { owner: { select: { id: true, fullName: true, email: true } } }
+    include: {
+      owner: { select: { id: true, fullName: true, email: true } },
+      team: { select: { id: true, name: true } }
+    }
   });
 };
 
@@ -20,11 +46,17 @@ const updateCampaign = async (id, data) => {
   const updateData = { ...data, updatedAt: new Date() };
   if (data.startDate) updateData.startDate = new Date(data.startDate);
   if (data.endDate) updateData.endDate = new Date(data.endDate);
+  if (data.teamId !== undefined) {
+    updateData.teamId = data.teamId ? Number(data.teamId) : null;
+  }
 
   return prisma.campaign.update({
     where: { id: Number(id) },
     data: updateData,
-    include: { owner: { select: { id: true, fullName: true, email: true } } }
+    include: {
+      owner: { select: { id: true, fullName: true, email: true } },
+      team: { select: { id: true, name: true } }
+    }
   });
 };
 
@@ -33,6 +65,7 @@ const getCampaignById = async (id) => {
     where: { id: Number(id) },
     include: {
       owner: { select: { id: true, fullName: true, email: true } },
+      team: { select: { id: true, name: true } },
       activities: {
         orderBy: { createdAt: 'desc' },
         include: {
@@ -44,11 +77,26 @@ const getCampaignById = async (id) => {
   });
 };
 
-const listCampaigns = async () => {
+const getAvailableOwners = async () => {
+  return prisma.account.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: { select: { id: true, name: true } }
+    },
+    orderBy: { fullName: 'asc' }
+  });
+};
+
+const listCampaigns = async (permissionScope = {}) => {
   return prisma.campaign.findMany({
+    where: { ...permissionScope },
     orderBy: { createdAt: 'desc' },
     include: {
       owner: { select: { id: true, fullName: true, email: true } },
+      team: { select: { id: true, name: true } },
       _count: { select: { activities: true } }
     }
   });
@@ -203,6 +251,7 @@ module.exports = {
   createCampaign,
   updateCampaign,
   getCampaignById,
+  getAvailableOwners,
   listCampaigns,
   deleteCampaign,
   createActivity,

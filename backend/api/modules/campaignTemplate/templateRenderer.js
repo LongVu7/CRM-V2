@@ -40,9 +40,9 @@ const validateContent = (content) => {
 
 /**
  * Replaces valid {{variables}} with actual data.
- * @param {string} content - The template HTML or text
- * @param {Object} dataObj - The data dictionary e.g. { fullName: 'John Doe', email: 'x@y.com' }
- * @returns {string} The rendered content
+ * content - The template HTML or text
+ * dataObj - The data dictionary e.g. { fullName: 'John Doe', email: 'x@y.com' }
+ * The rendered content
  */
 const renderContent = (content, dataObj) => {
   if (!content) return '';

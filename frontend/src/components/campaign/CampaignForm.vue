@@ -51,7 +51,7 @@ import Select from 'primevue/select'
 import Textarea from 'primevue/textarea'
 import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
-import { getAllAccounts } from '@/services/accountService'
+import { getAvailableOwners } from '@/services/campaignService'
 import { campaignStatusOptions } from '@/constants/campaign'
 
 const props = defineProps({
@@ -71,7 +71,7 @@ const accounts = ref([])
 
 onMounted(async () => {
     try {
-        accounts.value = await getAllAccounts()
+        accounts.value = await getAvailableOwners()
     } catch (e) {
         // Accounts fail silently — dropdown just stays empty
     }

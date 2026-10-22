@@ -49,6 +49,8 @@ function defineAbilityFor(account = {}) {
     } else if (scope === 'OWNER_ONLY') {
       if (subject === 'team') {
         can(action, subject, { leaderId: accountId });
+      } else if (subject === 'campaign') {
+        can(action, subject, { ownerId: accountId });
       } else {
         can(action, subject, { assignedToId: accountId });
       }

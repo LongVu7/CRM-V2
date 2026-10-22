@@ -11,6 +11,7 @@ model Campaign {
   name        String    @db.VarChar(255)
   description String?
   ownerId     Int       @map("owner_id")
+  teamId      Int?      @map("team_id")
   status      String    @db.VarChar(50) // in_progress, completed, scheduled, cancelled
   startDate   DateTime  @map("start_date")
   endDate     DateTime? @map("end_date")
@@ -21,8 +22,10 @@ model Campaign {
 
   owner      Account            @relation("CampaignOwner", fields: [ownerId], references: [id])
   createdBy  Account?           @relation("CampaignCreator", fields: [createdById], references: [id])
+  team       Team?              @relation(fields: [teamId], references: [id], onDelete: SetNull)
   activities CampaignActivity[]
 
+  @@index([teamId])
   @@map("campaign")
 }
 

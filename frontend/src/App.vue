@@ -76,8 +76,11 @@ const navigationItems = [
 const navItems = computed(() =>
   navigationItems.filter(item => {
     if (!item.permission) return true
-    const { action, subject } = parsePermission(item.permission)
-    return can(action, subject)
+    const perms = Array.isArray(item.permission) ? item.permission : [item.permission]
+    return perms.some(p => {
+      const { action, subject } = parsePermission(p)
+      return can(action, subject)
+    })
   })
 )
 

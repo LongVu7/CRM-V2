@@ -85,10 +85,13 @@ watch(() => props.team, (newVal) => {
 }, { deep: true })
 
 const leaderOptions = computed(() =>
-  props.accounts.map(acc => ({
-    label: acc.fullName ? `${acc.fullName} (${acc.email})` : acc.email,
-    value: acc.id
-  }))
+  props.accounts.map(acc => {
+    const roleStr = acc.role?.name ? ` - ${acc.role.name}` : ''
+    return {
+      label: acc.fullName ? `${acc.fullName} (${acc.email}${roleStr})` : `${acc.email}${roleStr}`,
+      value: acc.id
+    }
+  })
 )
 
 const validate = () => {

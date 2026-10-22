@@ -195,8 +195,11 @@ router.beforeEach((to) => {
 
   // Permission guard — local CASL check, no API call
   if (to.meta.permission) {
-    const { action, subject } = parsePermission(to.meta.permission)
-    const hasPermission = ability.can(action, subject)
+    const perms = Array.isArray(to.meta.permission) ? to.meta.permission : [to.meta.permission]
+    const hasPermission = perms.some(p => {
+      const { action, subject } = parsePermission(p)
+      return ability.can(action, subject)
+    })
     if (!hasPermission) {
       return '/forbidden'
     }

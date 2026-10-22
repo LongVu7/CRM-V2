@@ -119,11 +119,29 @@ export function useTeam() {
     }
   }
 
+  const availableAccounts = ref([])
+  const fetchAvailableAccounts = async () => {
+    loading.value = true
+    error.value = null
+    try {
+      const data = await api.getAvailableAccounts()
+      availableAccounts.value = data || []
+      return availableAccounts.value
+    } catch (err) {
+      availableAccounts.value = []
+      error.value = err.response?.data?.details || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     teams,
     team,
     loading,
     error,
+    availableAccounts,
     fetchTeams,
     fetchTeamById,
     createTeam,
@@ -131,6 +149,7 @@ export function useTeam() {
     deleteTeam,
     addMember,
     removeMember,
-    updatePermissions
+    updatePermissions,
+    fetchAvailableAccounts
   }
 }

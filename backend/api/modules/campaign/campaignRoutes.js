@@ -7,15 +7,21 @@ const { idParamSchema } = require('../../../schemas/commonSchemas');
 const { campaignSchema, updateCampaignSchema, activitySchema, updateActivitySchema, activityRecipientSchema, campaignTemplateSchema } = require('./campaignSchemas');
 const campaignController = require('./campaignController');
 
+const campaignIdorCheck = { resourceModel: 'campaign' };
+
+// ─── Available owners for campaign assignment ───
+router.route('/available-owners')
+    .get(authenticate, authorize(['campaign.create', 'campaign.update', 'campaign.read']), campaignController.getAvailableOwners);
+
 // ─── CRUD routes for Campaigns ───
 router.route('/')
     .get(authenticate, authorize('campaign.read'), campaignController.listCampaigns)
     .post(authenticate, authorize('campaign.create'), validateBody(campaignSchema), campaignController.createCampaign);
 
 router.route('/:id')
-    .get(authenticate, authorize('campaign.read'), validateParams(idParamSchema), campaignController.getCampaignById)
-    .put(authenticate, authorize('campaign.update'), validateParams(idParamSchema), validateBody(updateCampaignSchema), campaignController.updateCampaign)
-    .delete(authenticate, authorize('campaign.delete'), validateParams(idParamSchema), campaignController.deleteCampaign);
+    .get(authenticate, authorize('campaign.read', campaignIdorCheck), validateParams(idParamSchema), campaignController.getCampaignById)
+    .put(authenticate, authorize('campaign.update', campaignIdorCheck), validateParams(idParamSchema), validateBody(updateCampaignSchema), campaignController.updateCampaign)
+    .delete(authenticate, authorize('campaign.delete', campaignIdorCheck), validateParams(idParamSchema), campaignController.deleteCampaign);
 
 // ─── Activity routes  ───
 router.route('/:id/activities')

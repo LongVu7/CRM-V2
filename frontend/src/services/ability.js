@@ -57,6 +57,9 @@ export function buildAbilityRules(user = {}) {
       if (resourceSubject === 'team') {
         can(action, resourceSubject, { leaderId: accountId })
         can(action, resourceSubject, { 'leader.id': accountId })
+      } else if (resourceSubject === 'campaign') {
+        can(action, resourceSubject, { ownerId: accountId })
+        can(action, resourceSubject, { 'owner.id': accountId })
       } else {
         can(action, resourceSubject, { assignedToId: accountId })
         can(action, resourceSubject, { 'assignedTo.id': accountId })

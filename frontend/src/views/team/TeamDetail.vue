@@ -21,7 +21,7 @@
         <!-- TeamMembers - Add member to team -->
         <TeamMembers
           :members="linkedMembers"
-          :allAccounts="accounts"
+          :allAccounts="availableAccounts"
           :isAdding="isAddingMember"
           @add-member="handleAddMember"
           @remove-member="handleRemoveMember"
@@ -29,7 +29,7 @@
         <!-- TeamForm - specify privileges and metadata -->
         <TeamForm
           :team="existingTeam"
-          :accounts="accounts"
+          :accounts="availableAccounts"
           :isSubmitting="isSubmitting"
           buttonText="Save Changes"
           @submit="handleSubmit"
@@ -47,14 +47,20 @@ import { useToast } from 'primevue/usetoast'
 import TeamForm from '@/components/team/TeamForm.vue'
 import TeamMembers from '@/components/team/TeamMembers.vue'
 import { useTeam } from '@/composables/useTeam'
-import { useAccount } from '@/composables/useAccount'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 
-const { fetchTeamById, updateTeam, addMember, removeMember, updatePermissions } = useTeam()
-const { accounts, fetchAccounts } = useAccount()
+const {
+  fetchTeamById,
+  updateTeam,
+  addMember,
+  removeMember,
+  updatePermissions,
+  availableAccounts,
+  fetchAvailableAccounts
+} = useTeam()
 
 const existingTeam = ref({
   name: '',
@@ -96,7 +102,7 @@ onMounted(async () => {
   try {
     await Promise.all([
       loadTeamData(),
-      fetchAccounts()
+      fetchAvailableAccounts()
     ])
   } catch {
     // Handled

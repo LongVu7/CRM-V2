@@ -16,11 +16,12 @@ const { resolveHierarchy } = require('../../utils/hierarchyUtils');
 const importTokens = require('../../utils/importTokenManager');
 
 /**
- * {'USER' | 'SYSTEM'} type - The actor type executing the import
+ * Notes: {'USER' | 'SYSTEM'} type - The actor type executing the import
  * For audit log 
  */
 
-// RequiredStruct => Required in struct file (columm Header)
+// !----- Template generation ------!
+// RequiredStruct => Required in file structure (columm Header)
 // RequiredNew => Required when create new student (Value in Row)
 const COLUMN_MAP = {
   'Full Name': { key: 'fullName', requiredStruct: true, requiredNew: true },

@@ -4,8 +4,7 @@ const campaignService = require('./campaignService');
 
 const createCampaign = async (req, res) => {
   try {
-    const createdById = req.user ? req.user.id : null;
-    const campaign = await campaignService.createCampaign(req.body, createdById);
+    const campaign = await campaignService.createCampaign(req.body, req.user);
     res.status(201).json(campaign);
   } catch (error) {
     res.status(500).json({ error: error.message || 'Error creating campaign' });
@@ -31,9 +30,18 @@ const getCampaignById = async (req, res) => {
   }
 };
 
+const getAvailableOwners = async (req, res) => {
+  try {
+    const owners = await campaignService.getAvailableOwners();
+    res.json(owners);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Error fetching available owners' });
+  }
+};
+
 const listCampaigns = async (req, res) => {
   try {
-    const campaigns = await campaignService.listCampaigns();
+    const campaigns = await campaignService.listCampaigns(req.permissionScope);
     res.json(campaigns);
   } catch (error) {
     res.status(500).json({ error: error.message || 'Error fetching campaigns' });
@@ -105,6 +113,7 @@ module.exports = {
   createCampaign,
   updateCampaign,
   getCampaignById,
+  getAvailableOwners,
   listCampaigns,
   deleteCampaign,
   createActivity,

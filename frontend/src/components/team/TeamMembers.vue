@@ -90,10 +90,13 @@ const availableAccounts = computed(() => {
 })
 
 const accountOptions = computed(() =>
-  availableAccounts.value.map(acc => ({
-    label: acc.fullName ? `${acc.fullName} (${acc.email})` : acc.email,
-    value: acc.id
-  }))
+  availableAccounts.value.map(acc => {
+    const roleStr = acc.role?.name ? ` - ${acc.role.name}` : ''
+    return {
+      label: acc.fullName ? `${acc.fullName} (${acc.email}${roleStr})` : `${acc.email}${roleStr}`,
+      value: acc.id
+    }
+  })
 )
 
 const handleAddMember = () => {

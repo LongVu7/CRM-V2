@@ -4,8 +4,8 @@ const { authenticate } = require('../../../middleware/auth');
 const authorize = require('../../../middleware/authorize');
 const permissionController = require('./permissionController');
 
-// ─── List all system permissions (admin only — used for PermissionMatrix)
+// ─── List all system permissions 
 router.route('/')
-    .get(authenticate, authorize('role.read'), permissionController.getAllPermissions);
+    .get(authenticate, authorize(['role.read', 'team.assign_perm']), permissionController.getAllPermissions);
 
 module.exports = router;

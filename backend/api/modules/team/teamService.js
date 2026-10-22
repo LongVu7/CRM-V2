@@ -27,7 +27,14 @@ const getAllTeams = async ({ page = 1, limit = 10, search = '' } = {}, permissio
       take: limitNumber,
       orderBy: { id: 'desc' },
       include: {
-        leader: { select: { id: true, fullName: true, email: true } },
+        leader: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            role: { select: { id: true, name: true } }
+          }
+        },
         _count: { select: { members: true } }
       }
     }),
@@ -41,7 +48,8 @@ const getAllTeams = async ({ page = 1, limit = 10, search = '' } = {}, permissio
     leader: t.leader ? {
       id: t.leader.id,
       fullName: t.leader.fullName,
-      email: t.leader.email
+      email: t.leader.email,
+      role: t.leader.role
     } : null,
     memberCount: t._count.members,
     createdAt: t.createdAt
@@ -68,10 +76,24 @@ const getTeamById = async (id, permissionScope = {}) => {
   const team = await prisma.team.findFirst({
     where,
     include: {
-      leader: { select: { id: true, fullName: true, email: true } },
+      leader: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: { select: { id: true, name: true } }
+        }
+      },
       members: {
         include: {
-          account: { select: { id: true, fullName: true, email: true } }
+          account: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true,
+              role: { select: { id: true, name: true } }
+            }
+          }
         },
         orderBy: { joinedAt: 'asc' }
       },
@@ -95,12 +117,14 @@ const getTeamById = async (id, permissionScope = {}) => {
     leader: team.leader ? {
       id: team.leader.id,
       fullName: team.leader.fullName,
-      email: team.leader.email
+      email: team.leader.email,
+      role: team.leader.role
     } : null,
     members: team.members.map(m => ({
       id: m.account.id,
       fullName: m.account.fullName,
       email: m.account.email,
+      role: m.account.role,
       joinedAt: m.joinedAt
     })),
     permissions: team.permissions.map(tp => ({
@@ -354,6 +378,23 @@ const updateTeamPermissions = async (teamId, permissions, user) => {
   };
 };
 
+/**
+ * Get active accounts available for team assignment (member addition and leadership)
+ */
+const getAvailableAccounts = async () => {
+  return prisma.account.findMany({
+    where: { isActive: true },
+    select: {
+      id: true,
+      fullName: true,
+      email: true,
+      role: { select: { id: true, name: true } },
+      isActive: true
+    },
+    orderBy: { fullName: 'asc' }
+  });
+};
+
 module.exports = {
   getAllTeams,
   getTeamById,
@@ -362,5 +403,6 @@ module.exports = {
   deleteTeam,
   addMember,
   removeMember,
-  updateTeamPermissions
+  updateTeamPermissions,
+  getAvailableAccounts
 };

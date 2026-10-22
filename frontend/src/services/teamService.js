@@ -41,3 +41,8 @@ export const updateTeamPermissions = async (teamId, permissions) => {
   const response = await api.put(`${prefix}/${teamId}/permissions`, { permissions })
   return response.data
 }
+
+export const getAvailableAccounts = async () => {
+  const response = await api.get(`${prefix}/available-accounts`)
+  return response.data.data || []
+}

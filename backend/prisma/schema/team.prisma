@@ -13,6 +13,7 @@ model Team {
   members     TeamMember[]
   permissions TeamPermission[]
   inquiries   Inquiry[]
+  campaigns   Campaign[]
 
   @@index([leaderId])
   @@map("team")

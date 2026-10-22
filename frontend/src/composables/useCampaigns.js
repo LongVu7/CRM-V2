@@ -142,13 +142,28 @@ export function useCampaigns() {
     }
   }
 
+  const availableOwners = ref([])
+
+  const fetchAvailableOwners = async () => {
+    try {
+      const data = await api.getAvailableOwners()
+      availableOwners.value = data
+      return data
+    } catch (err) {
+      error.value = err.response?.data?.error || 'Failed to fetch available owners'
+      throw err
+    }
+  }
+
   return {
     campaigns,
     currentCampaign,
+    availableOwners,
     loading,
     error,
     fetchCampaigns,
     fetchCampaignById,
+    fetchAvailableOwners,
     createCampaign,
     updateCampaign,
     deleteCampaign,

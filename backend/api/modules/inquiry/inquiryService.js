@@ -36,6 +36,9 @@ const getInquiryOptions = async () => {
 // ─── Shared query 
 const inquiryInclude = {
   student: true,
+  team: {
+    select: { id: true, name: true }
+  },
   assignedTo: {
     select: { id: true, fullName: true, email: true }
   },
@@ -68,13 +71,14 @@ const inquiryInclude = {
 };
 
 
-const buildInquiryData = ({ assignedToId, sourceDataId, statusDataId, dataReceived, interactionAt, createDate, eventNames, ...rest }) => ({
+const buildInquiryData = ({ assignedToId, teamId, sourceDataId, statusDataId, dataReceived, interactionAt, createDate, eventNames, ...rest }) => ({
   ...rest,
   ...(eventNames !== undefined && { eventNames: eventNames === null ? [] : eventNames }),
   ...(dataReceived !== undefined && { dataReceived: dataReceived ? new Date(dataReceived) : null }),
   ...(interactionAt !== undefined && { interactionAt: interactionAt ? new Date(interactionAt) : null }),
   ...(createDate !== undefined && { createDate: createDate ? new Date(createDate) : null }),
   ...(assignedToId !== undefined && { assignedTo: assignedToId ? { connect: { id: parseInt(assignedToId, 10) } } : { disconnect: true } }),
+  ...(teamId !== undefined && { team: teamId ? { connect: { id: parseInt(teamId, 10) } } : { disconnect: true } }),
   ...(sourceDataId !== undefined && { sourceData: sourceDataId ? { connect: { id: parseInt(sourceDataId, 10) } } : { disconnect: true } }),
   ...(statusDataId !== undefined && { statusData: statusDataId ? { connect: { id: parseInt(statusDataId, 10) } } : { disconnect: true } })
 });
@@ -195,10 +199,27 @@ const getInquiryById = async (id) => {
  *   2. create a new inquiry with new student inline
  *   3. Create an inquiry alone
  */
-const createInquiry = async ({ studentId, student, assignedToId, ...inquiryFields }, user) => {
+const createInquiry = async ({ studentId, student, assignedToId, teamId, ...inquiryFields }, user) => {
   // Auto assign staff who created inquiry 
-  const creatorAssignedToId = assignedToId || user.accountId;
-  const inquiryData = buildInquiryData({ assignedToId: creatorAssignedToId, ...inquiryFields });
+  const creatorAssignedToId = assignedToId || user?.accountId;
+  let effectiveTeamId = teamId;
+  if (!effectiveTeamId) {
+    if (assignedToId && assignedToId !== user?.accountId) {
+      const assignee = await prisma.account.findUnique({
+        where: { id: parseInt(assignedToId, 10) },
+        include: { teamMemberships: true }
+      });
+      effectiveTeamId = assignee?.teamMemberships?.[0]?.teamId || user?.teamIds?.[0] || null;
+    } else {
+      effectiveTeamId = user?.teamIds?.[0] || null;
+    }
+  }
+
+  const inquiryData = buildInquiryData({ 
+    assignedToId: creatorAssignedToId, 
+    teamId: effectiveTeamId,
+    ...inquiryFields 
+  });
 
   if (studentId) return _createWithExistingStudent(inquiryData, studentId);
   if (student?.fullName) return _createWithNewStudent(inquiryData, student);
@@ -316,13 +337,20 @@ const _createAlone = async (inquiryData) => {
 
 // ─── Update inquiry
 const updateInquiry = async (id, updateData) => {
-  const { sourceDataId, statusDataId, assignedToId, ...rest } = updateData;
+  const { sourceDataId, statusDataId, assignedToId, teamId, ...rest } = updateData;
 
   const data = {
     ...rest,
     updatedAt: new Date(),
     ...(rest.dataReceived && { dataReceived: new Date(rest.dataReceived) })
   };
+
+  // Handle teamId: connect or disconnect
+  if (teamId !== undefined) {
+    data.team = teamId
+      ? { connect: { id: parseInt(teamId, 10) } }
+      : { disconnect: true };
+  }
 
   // Handle assignedToId: connect or disconnect
   if (assignedToId !== undefined) {
@@ -450,12 +478,21 @@ const assignAccountToInquiry = async (inquiryId, accountId) => {
   const iid = parseInt(inquiryId, 10);
   const aid = parseInt(accountId, 10);
 
-  const account = await prisma.account.findUnique({ where: { id: aid } });
+  const account = await prisma.account.findUnique({ 
+    where: { id: aid },
+    include: { teamMemberships: true }
+  });
   if (!account) throw handleError('Account not found', 404);
+
+  const newTeamId = account.teamMemberships?.[0]?.teamId || null;
 
   return prisma.inquiry.update({
     where: { id: iid },
-    data: { assignedToId: aid, updatedAt: new Date() },
+    data: { 
+      assignedToId: aid, 
+      ...(newTeamId && { teamId: newTeamId }),
+      updatedAt: new Date() 
+    },
     include: inquiryInclude
   });
 };

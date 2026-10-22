@@ -14,7 +14,12 @@ const {
 } = require('./teamSchemas');
 const teamController = require('./teamController');
 
+// Resource parameter for ownership/scope checks
 const teamIdorCheck = { resourceModel: 'team' };
+
+// ─── Team Available Accounts Endpoint (for membership & leadership)
+router.route('/available-accounts')
+  .get(authenticate, authorize(['team.update', 'team.create', 'team.read']), teamController.getAvailableAccounts);
 
 // ─── Team CRUD Endpoints
 router.route('/')

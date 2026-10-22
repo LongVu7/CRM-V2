@@ -8,6 +8,11 @@ export const getAllCampaigns = async () => {
   return response.data
 }
 
+export const getAvailableOwners = async () => {
+  const response = await api.get(`${prefix}/available-owners`)
+  return response.data
+}
+
 export const getCampaignById = async (id) => {
   const response = await api.get(`${prefix}/${id}`)
   return response.data

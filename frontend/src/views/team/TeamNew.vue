@@ -11,7 +11,7 @@
       </div>
       <TeamForm
         :team="newTeam"
-        :accounts="accounts"
+        :accounts="availableAccounts"
         :isSubmitting="isSubmitting"
         @submit="handleSubmit"
       />
@@ -26,12 +26,10 @@ import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import TeamForm from '@/components/team/TeamForm.vue'
 import { useTeam } from '@/composables/useTeam'
-import { useAccount } from '@/composables/useAccount'
 
 const router = useRouter()
 const toast = useToast()
-const { createTeam, updatePermissions } = useTeam()
-const { accounts, fetchAccounts } = useAccount()
+const { createTeam, updatePermissions, fetchAvailableAccounts, availableAccounts } = useTeam()
 
 const newTeam = ref({
   name: '',
@@ -44,7 +42,7 @@ const isSubmitting = ref(false)
 
 onMounted(async () => {
   try {
-    await fetchAccounts()
+    await fetchAvailableAccounts()
   } catch {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load accounts for selection', life: 5000 })
   }
