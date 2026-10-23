@@ -11,6 +11,7 @@
       </div>
       <TeamForm
         :team="newTeam"
+        :parentOptions="parentOptions"
         :accounts="availableAccounts"
         :isSubmitting="isSubmitting"
         @submit="handleSubmit"
@@ -29,42 +30,43 @@ import { useTeam } from '@/composables/useTeam'
 
 const router = useRouter()
 const toast = useToast()
-const { createTeam, updatePermissions, fetchAvailableAccounts, availableAccounts } = useTeam()
+const {
+  createTeam,
+  fetchAvailableAccounts,
+  availableAccounts,
+  fetchParentOptions,
+  parentOptions
+} = useTeam()
 
 const newTeam = ref({
   name: '',
   description: '',
-  leaderId: null,
-  permissionIds: []
+  parentId: null,
+  leaderId: null
 })
 
 const isSubmitting = ref(false)
 
 onMounted(async () => {
   try {
-    await fetchAvailableAccounts()
+    await Promise.all([
+      fetchAvailableAccounts(),
+      fetchParentOptions()
+    ])
   } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load accounts for selection', life: 5000 })
+    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load options for team form', life: 5000 })
   }
 })
 
 const handleSubmit = async (payload) => {
   isSubmitting.value = true
   try {
-    const res = await createTeam({
+    await createTeam({
       name: payload.name,
       description: payload.description,
+      parentId: payload.parentId,
       leaderId: payload.leaderId
     })
-
-    const teamId = res?.data?.id
-    if (teamId && Array.isArray(payload.permissionIds) && payload.permissionIds.length > 0) {
-      const perms = payload.permissionIds.map(p => ({
-        permissionId: typeof p === 'object' ? p.permissionId : p,
-        scope: (typeof p === 'object' && p.scope) ? p.scope : 'TEAM_ONLY'
-      }))
-      await updatePermissions(teamId, perms)
-    }
 
     toast.add({ severity: 'success', summary: 'Success', detail: 'Team created successfully', life: 3000 })
     router.push('/teams')

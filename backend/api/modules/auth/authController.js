@@ -1,9 +1,10 @@
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
+const { getDescendantSubtreeTeamIds } = require('../../utils/teamHierarchy');
 
 // ─── Login
 const login = (req, res, next) => {
-  passport.authenticate('local', { session: false }, (err, account, info) => {
+  passport.authenticate('local', { session: false }, async (err, account, info) => {
     if (err) {
       return res.status(500).json({
         error: 'Authentication error',
@@ -32,7 +33,8 @@ const login = (req, res, next) => {
       maxAge: 45 * 60 * 1000 // 45 minutes
     });
 
-    const rolePermissions = (account.role?.permissions || []).map(rp => ({
+    // 1. Primary role permissions
+    const primaryPermissions = (account.role?.permissions || []).map(rp => ({
       id: rp.permission.id,
       code: rp.permission.code,
       action: rp.permission.action,
@@ -40,28 +42,31 @@ const login = (req, res, next) => {
       scope: rp.scope
     }));
 
-    const teamMemberships = account.teamMemberships || [];
-    const teamIds = teamMemberships.map(tm => tm.teamId);
-    const teamPermissions = [];
-    for (const tm of teamMemberships) {
-      if (tm.team?.permissions) {
-        for (const tp of tm.team.permissions) {
-          teamPermissions.push({
-            id: tp.permission.id,
-            code: tp.permission.code,
-            action: tp.permission.action,
-            resource: tp.permission.resource,
-            scope: tp.scope,
-            teamId: tm.teamId
-          });
-        }
-      }
-    }
+    // 2. Contextual team role permissions
+    const membership = account.teamMemberships?.[0] || null;
+    const memberTeamId = membership?.teamId || null;
+    const contextualPermissions = (membership?.role?.permissions || []).map(rp => ({
+      id: rp.permission.id,
+      code: rp.permission.code,
+      action: rp.permission.action,
+      resource: rp.permission.resource,
+      scope: rp.scope
+    }));
 
-    const permissionCodes = Array.from(new Set([
-      ...rolePermissions.map(p => p.code),
-      ...teamPermissions.map(p => p.code)
-    ]));
+    const permissionsMap = new Map();
+    [...primaryPermissions, ...contextualPermissions].forEach(p => {
+      permissionsMap.set(`${p.resource}:${p.action}:${p.scope}`, p);
+    });
+    const effectivePermissions = Array.from(permissionsMap.values());
+
+    // 3. Subtree authorized team IDs
+    const ledTeamIds = (account.teamsLed || []).map(t => t.id);
+    const rootTeamIds = new Set();
+    if (memberTeamId) rootTeamIds.add(memberTeamId);
+    ledTeamIds.forEach(id => rootTeamIds.add(id));
+
+    const authorizedTeamIds = await getDescendantSubtreeTeamIds(Array.from(rootTeamIds));
+    const permissionCodes = Array.from(new Set(effectivePermissions.map(p => p.code)));
 
     res.status(200).json({
       message: 'Login successful',
@@ -70,10 +75,12 @@ const login = (req, res, next) => {
         email: account.email,
         fullName: account.fullName,
         roleName: account.role?.name || null,
-        teamIds,
+        memberTeamId,
+        ledTeamIds,
+        teamIds: authorizedTeamIds,
+        authorizedTeamIds,
         permissions: permissionCodes,
-        rolePermissions,
-        teamPermissions
+        rolePermissions: effectivePermissions
       }
     });
   })(req, res, next);
@@ -93,10 +100,12 @@ const getMe = (req, res) => {
       email: req.user.email,
       fullName: req.user.fullName,
       roleName: req.user.roleName,
-      teamIds: req.user.teamIds || [],
+      memberTeamId: req.user.memberTeamId,
+      ledTeamIds: req.user.ledTeamIds || [],
+      teamIds: req.user.authorizedTeamIds || [],
+      authorizedTeamIds: req.user.authorizedTeamIds || [],
       permissions: Array.from(req.user.permissions || []),
-      rolePermissions: req.user.rolePermissions || [],
-      teamPermissions: req.user.teamPermissions || []
+      rolePermissions: req.user.rolePermissions || []
     }
   });
 };
@@ -125,10 +134,12 @@ const refreshToken = (req, res) => {
       email: req.user.email,
       fullName: req.user.fullName,
       roleName: req.user.roleName,
-      teamIds: req.user.teamIds || [],
+      memberTeamId: req.user.memberTeamId,
+      ledTeamIds: req.user.ledTeamIds || [],
+      teamIds: req.user.authorizedTeamIds || [],
+      authorizedTeamIds: req.user.authorizedTeamIds || [],
       permissions: Array.from(req.user.permissions || []),
-      rolePermissions: req.user.rolePermissions || [],
-      teamPermissions: req.user.teamPermissions || []
+      rolePermissions: req.user.rolePermissions || []
     }
   });
 };

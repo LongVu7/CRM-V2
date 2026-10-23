@@ -12,5 +12,5 @@ RUN npx prisma generate
 
 EXPOSE 3003
 
-# Run migrations and start the server
-CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
+# Run migrations, generate client, and start the server
+CMD ["sh", "-c", "npx prisma migrate deploy && npx prisma generate && npm run start"]

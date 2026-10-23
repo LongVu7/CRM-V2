@@ -13,7 +13,7 @@ const {
 
 
 const inquiryFields = {
-  teamId: z.number().int('teamId must be an integer').optional(),
+  teamId: z.number().int('teamId must be an integer').nullable().optional(),
   statusDataId: z.number().int('statusDataId must be an integer').optional(),
   description: z.string().optional(),
   dataReceived: dateString.optional(),

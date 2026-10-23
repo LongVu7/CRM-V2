@@ -7,6 +7,17 @@ export const getAllTeams = async (params = {}) => {
   return response.data.data || []
 }
 
+export const getTeamTree = async () => {
+  const response = await api.get(`${prefix}/tree`)
+  return response.data.data || []
+}
+
+export const getParentTeamOptions = async (excludeTeamId = null) => {
+  const params = excludeTeamId ? { excludeTeamId } : {}
+  const response = await api.get(`${prefix}/parent-options`, { params })
+  return response.data.data || []
+}
+
 export const getTeamById = async (id) => {
   const response = await api.get(`${prefix}/${id}`)
   return response.data.data
@@ -27,18 +38,13 @@ export const deleteTeam = async (id) => {
   return response.data
 }
 
-export const addMemberToTeam = async (teamId, accountId) => {
-  const response = await api.post(`${prefix}/${teamId}/members`, { accountId })
+export const addMemberToTeam = async (teamId, accountId, roleId = null) => {
+  const response = await api.post(`${prefix}/${teamId}/members`, { accountId, roleId })
   return response.data
 }
 
 export const removeMemberFromTeam = async (teamId, accountId) => {
   const response = await api.delete(`${prefix}/${teamId}/members/${accountId}`)
-  return response.data
-}
-
-export const updateTeamPermissions = async (teamId, permissions) => {
-  const response = await api.put(`${prefix}/${teamId}/permissions`, { permissions })
   return response.data
 }
 

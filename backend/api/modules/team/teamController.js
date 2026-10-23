@@ -2,11 +2,24 @@ const teamService = require('./teamService');
 
 const getAllTeams = async (req, res) => {
   try {
-    const result = await teamService.getAllTeams(req.query, req.permissionScope);
+    const { page, limit, search } = req.query;
+    const data = await teamService.getAllTeams({ page, limit, search }, req.permissionScope);
     res.status(200).json({
       success: true,
-      data: result.data,
-      pagination: result.pagination
+      ...data
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, error: error.message });
+  }
+};
+
+const getTeamTree = async (req, res) => {
+  try {
+    const data = await teamService.getTeamTree(req.permissionScope);
+    res.status(200).json({
+      success: true,
+      data
     });
   } catch (error) {
     const status = error.statusCode || 500;
@@ -30,8 +43,7 @@ const getTeamById = async (req, res) => {
 
 const createTeam = async (req, res) => {
   try {
-    const creatorId = req.user?.accountId;
-    const data = await teamService.createTeam(req.body, creatorId);
+    const data = await teamService.createTeam(req.body, req.user?.accountId);
     res.status(201).json({
       success: true,
       message: 'Team created successfully',
@@ -61,10 +73,10 @@ const updateTeam = async (req, res) => {
 const deleteTeam = async (req, res) => {
   try {
     const { id } = req.params;
-    await teamService.deleteTeam(id);
+    const data = await teamService.deleteTeam(id);
     res.status(200).json({
       success: true,
-      message: 'Team decommissioned successfully'
+      ...data
     });
   } catch (error) {
     const status = error.statusCode || 500;
@@ -75,11 +87,10 @@ const deleteTeam = async (req, res) => {
 const addMember = async (req, res) => {
   try {
     const { id } = req.params;
-    const { accountId } = req.body;
-    const data = await teamService.addMember(id, accountId);
+    const data = await teamService.addMember(id, req.body);
     res.status(200).json({
       success: true,
-      message: 'Member added to team successfully',
+      message: 'Member assigned to team successfully',
       data
     });
   } catch (error) {
@@ -91,26 +102,10 @@ const addMember = async (req, res) => {
 const removeMember = async (req, res) => {
   try {
     const { id, accountId } = req.params;
-    await teamService.removeMember(id, accountId);
+    const data = await teamService.removeMember(id, accountId);
     res.status(200).json({
       success: true,
-      message: 'Member removed from team successfully'
-    });
-  } catch (error) {
-    const status = error.statusCode || 500;
-    res.status(status).json({ success: false, error: error.message });
-  }
-};
-
-const updateTeamPermissions = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { permissions } = req.body;
-    const data = await teamService.updateTeamPermissions(id, permissions, req.user);
-    res.status(200).json({
-      success: true,
-      message: 'Team permissions updated successfully',
-      data
+      ...data
     });
   } catch (error) {
     const status = error.statusCode || 500;
@@ -131,14 +126,29 @@ const getAvailableAccounts = async (req, res) => {
   }
 };
 
+const getParentTeamOptions = async (req, res) => {
+  try {
+    const { excludeTeamId } = req.query;
+    const data = await teamService.getParentTeamOptions(excludeTeamId);
+    res.status(200).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ success: false, error: error.message });
+  }
+};
+
 module.exports = {
   getAllTeams,
+  getTeamTree,
   getTeamById,
   createTeam,
   updateTeam,
   deleteTeam,
   addMember,
   removeMember,
-  updateTeamPermissions,
-  getAvailableAccounts
+  getAvailableAccounts,
+  getParentTeamOptions
 };

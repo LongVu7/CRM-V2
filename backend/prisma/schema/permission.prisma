@@ -8,7 +8,6 @@ model Permission {
 
   roles  RolePermission[]
   groups GroupPermission[]
-  teams  TeamPermission[]
 
   @@map("permission")
 }

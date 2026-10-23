@@ -4,7 +4,7 @@ export const ability = createMongoAbility([])
 
 /**
  * Builds dynamic CASL rules from authenticated user profile and permissions
- * supporting ALL, TEAM_ONLY, and OWNER_ONLY scopes.
+ * supporting ALL, TEAM_ONLY, and OWNER_ONLY scopes over authorized team subtrees.
  *
  * @param {object} user - User profile object from /api/auth/me or login
  * @returns {Array} CASL rules array
@@ -15,19 +15,20 @@ export function buildAbilityRules(user = {}) {
   if (!user) return rules
 
   // 1. Super-administrator bypass
-  if (user.roleName === 'admin') {
+  const roleName = user.roleName || user.role?.name || ''
+  if (roleName.toLowerCase() === 'admin' || roleName.toLowerCase() === 'administrator') {
     can('manage', 'all')
     return rules
   }
 
   const accountId = user.id !== undefined ? user.id : user.accountId
-  const teamIds = Array.isArray(user.teamIds) ? user.teamIds : []
-  const rolePermissions = Array.isArray(user.rolePermissions) ? user.rolePermissions : []
-  const teamPermissions = Array.isArray(user.teamPermissions) ? user.teamPermissions : []
-  const allPermissions = [...rolePermissions, ...teamPermissions]
+  const teamIds = Array.isArray(user.authorizedTeamIds)
+    ? user.authorizedTeamIds
+    : (Array.isArray(user.teamIds) ? user.teamIds : [])
+  const permissions = Array.isArray(user.rolePermissions) ? user.rolePermissions : []
 
   // Fallback for legacy permission string codes array
-  if (allPermissions.length === 0 && Array.isArray(user.permissions)) {
+  if (permissions.length === 0 && Array.isArray(user.permissions)) {
     for (const code of user.permissions) {
       if (typeof code === 'string' && code.includes('.')) {
         const dotIndex = code.indexOf('.')
@@ -37,7 +38,7 @@ export function buildAbilityRules(user = {}) {
     return rules
   }
 
-  for (const perm of allPermissions) {
+  for (const perm of permissions) {
     if (!perm.action || !perm.resource) continue
 
     const action = perm.action.toLowerCase()

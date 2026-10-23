@@ -15,8 +15,7 @@ function buildSqlReportScope(user) {
   }
 
   const rolePerms = user.rolePermissions || [];
-  const teamPerms = user.teamPermissions || [];
-  const reportPerms = [...rolePerms, ...teamPerms].filter(
+  const reportPerms = rolePerms.filter(
     p => p.resource === 'report' || p.code === 'report.read' || p.action === 'read'
   );
 

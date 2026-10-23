@@ -1,5 +1,23 @@
 <template>
   <div class="inquiry-form-fields">
+    <!-- Attributed Team (Option 2: Explicit dropdown for multi-team leaders and admins; hidden for regular single-team members) -->
+    <div v-if="isMultiTeamLeader" class="form-grid">
+      <div class="form-field full-width">
+        <label>Attributed Team <span class="required-star">*</span></label>
+        <Select
+          :modelValue="modelValue.teamId"
+          :options="teamOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Select owning team for this inquiry"
+          :loading="loadingTeams"
+          fluid
+          @update:modelValue="emitField('teamId', $event)"
+        />
+        <small class="field-hint">As a leader of multiple teams, select the team that owns this record.</small>
+      </div>
+    </div>
+
     <!-- Status Data Cascading Dropdowns -->
     <div class="form-grid three-col">
       <div class="form-field">
@@ -106,7 +124,7 @@
 </template>
 
 <script setup>
-import { shallowRef, watch, onMounted, nextTick } from 'vue'
+import { ref, computed, shallowRef, watch, onMounted, nextTick } from 'vue'
 import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Select from 'primevue/select'
@@ -114,6 +132,31 @@ import DatePicker from 'primevue/datepicker'
 import MultiSelect from 'primevue/multiselect'
 import { useSourceData } from '@/composables/useSourceData'
 import { useStatusData } from '@/composables/useStatusData'
+import { useAuthStore } from '@/stores/auth'
+import { useTeam } from '@/composables/useTeam'
+
+const authStore = useAuthStore()
+const { teams, fetchTeams } = useTeam()
+const loadingTeams = ref(false)
+
+const isMultiTeamLeader = computed(() => {
+  const led = authStore.user?.ledTeamIds || []
+  const role = (authStore.user?.roleName || '').toLowerCase()
+  const isAdmin = role === 'admin' || role === 'administrator'
+  return led.length > 1 || isAdmin
+})
+
+const teamOptions = computed(() => {
+  const role = (authStore.user?.roleName || '').toLowerCase()
+  const isAdmin = role === 'admin' || role === 'administrator'
+  if (isAdmin) {
+    return teams.value.map(t => ({ label: t.name, value: t.id }))
+  }
+  const authorizedIds = new Set(authStore.user?.authorizedTeamIds || authStore.user?.ledTeamIds || [])
+  return teams.value
+    .filter(t => authorizedIds.has(t.id))
+    .map(t => ({ label: t.name, value: t.id }))
+})
 
 const callCountOptions = Array.from({ length: 10 }, (_, i) => ({
   label: `${i + 1} lần`,
@@ -296,6 +339,27 @@ async function restoreSourceSelections(sourceDataId) {
 }
 
 onMounted(async () => {
+  // If user is a single-team member or single-team leader, auto-stamp teamId with zero prompt
+  if (!isMultiTeamLeader.value) {
+    const defaultTeamId = authStore.user?.memberTeamId || (authStore.user?.ledTeamIds && authStore.user.ledTeamIds[0]) || null
+    if (defaultTeamId && !props.modelValue.teamId) {
+      emitField('teamId', defaultTeamId)
+    }
+  } else {
+    // Multi-team leader or admin: load teams for the selector dropdown
+    loadingTeams.value = true
+    try {
+      await fetchTeams()
+      if (!props.modelValue.teamId && teamOptions.value.length > 0) {
+        emitField('teamId', teamOptions.value[0].value)
+      }
+    } catch (err) {
+      console.error('Failed to load teams for inquiry attribution', err)
+    } finally {
+      loadingTeams.value = false
+    }
+  }
+
   await Promise.all([fetchSources(), fetchInteractions()])
   if (props.initialSourceDataId) {
     await restoreSourceSelections(props.initialSourceDataId)
@@ -319,6 +383,20 @@ onMounted(async () => {
   margin-top: 0.5rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--p-content-border-color, #e2e8f0);
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.required-star {
+  color: var(--p-red-500, #ef4444);
+}
+
+.field-hint {
+  font-size: 0.75rem;
+  color: var(--p-text-muted-color);
+  margin-top: 0.25rem;
 }
 
 .form-grid {

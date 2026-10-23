@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const prisma = require('../config/db');
 const { defineAbilityFor } = require('../config/ability');
+const { getDescendantSubtreeTeamIds } = require('../api/utils/teamHierarchy');
 
 // ─── Verify JWT from cookie (or Bearer header) and load user with dynamic permissions & CASL ability
 const authenticate = async (req, res, next) => {
@@ -42,7 +43,8 @@ const authenticate = async (req, res, next) => {
         teamMemberships: {
           select: {
             teamId: true,
-            team: {
+            roleId: true,
+            role: {
               select: {
                 id: true,
                 name: true,
@@ -55,7 +57,19 @@ const authenticate = async (req, res, next) => {
                   }
                 }
               }
+            },
+            team: {
+              select: {
+                id: true,
+                name: true
+              }
             }
+          }
+        },
+        teamsLed: {
+          select: {
+            id: true,
+            name: true
           }
         }
       }
@@ -65,7 +79,8 @@ const authenticate = async (req, res, next) => {
       return res.status(401).json({ error: 'Account not found or deactivated' });
     }
 
-    const rolePermissions = (account.role?.permissions || []).map(rp => ({
+    // 1. Primary account role permissions
+    const primaryPermissions = (account.role?.permissions || []).map(rp => ({
       id: rp.permission.id,
       code: rp.permission.code,
       action: rp.permission.action,
@@ -73,30 +88,39 @@ const authenticate = async (req, res, next) => {
       scope: rp.scope
     }));
 
-    const teamIds = (account.teamMemberships || []).map(tm => tm.teamId);
-    const teamPermissions = [];
-    for (const tm of account.teamMemberships || []) {
-      if (tm.team?.permissions) {
-        for (const tp of tm.team.permissions) {
-          teamPermissions.push({
-            id: tp.permission.id,
-            code: tp.permission.code,
-            action: tp.permission.action,
-            resource: tp.permission.resource,
-            scope: tp.scope,
-            teamId: tm.teamId
-          });
-        }
-      }
-    }
+    // 2. Contextual team role permissions (from single team membership)
+    const membership = account.teamMemberships?.[0] || null;
+    const memberTeamId = membership?.teamId || null;
+    const contextualPermissions = (membership?.role?.permissions || []).map(rp => ({
+      id: rp.permission.id,
+      code: rp.permission.code,
+      action: rp.permission.action,
+      resource: rp.permission.resource,
+      scope: rp.scope
+    }));
 
+    // Merge & deduplicate permissions
+    const permissionsMap = new Map();
+    [...primaryPermissions, ...contextualPermissions].forEach(p => {
+      permissionsMap.set(`${p.resource}:${p.action}:${p.scope}`, p);
+    });
+    const effectivePermissions = Array.from(permissionsMap.values());
+
+    // 3. Resolve team IDs & subtrees
+    const ledTeamIds = (account.teamsLed || []).map(t => t.id);
+    const rootTeamIds = new Set();
+    if (memberTeamId) rootTeamIds.add(memberTeamId);
+    ledTeamIds.forEach(id => rootTeamIds.add(id));
+
+    const authorizedTeamIds = await getDescendantSubtreeTeamIds(Array.from(rootTeamIds));
+
+    // 4. Construct CASL pure ability instance
     const ability = defineAbilityFor({
       accountId: account.id,
       roleId: account.roleId,
       roleName: account.role?.name || null,
-      teamIds,
-      rolePermissions,
-      teamPermissions
+      authorizedTeamIds,
+      permissions: effectivePermissions
     });
 
     req.ability = ability;
@@ -107,13 +131,12 @@ const authenticate = async (req, res, next) => {
       fullName: account.fullName,
       roleId: account.roleId,
       roleName: account.role?.name || null,
-      teamIds,
-      rolePermissions,
-      teamPermissions,
-      permissions: new Set([
-        ...rolePermissions.map(p => p.code),
-        ...teamPermissions.map(p => p.code)
-      ])
+      memberTeamId,
+      ledTeamIds,
+      teamIds: authorizedTeamIds,
+      authorizedTeamIds,
+      permissions: new Set(effectivePermissions.map(p => p.code)),
+      rolePermissions: effectivePermissions
     };
 
     next();
@@ -128,8 +151,8 @@ const checkRole = (allowedRoles) => {
     if (!req.user || !allowedRoles.includes(req.user.roleName)) {
       return res.status(403).json({
         message: "Forbidden: You do not have the correct role to perform this action.",
-        yourRole: req.user?.roleName || "None",
-        allowedRoles: allowedRoles
+        requiredRoles: allowedRoles,
+        userRole: req.user?.roleName || null
       });
     }
     next();

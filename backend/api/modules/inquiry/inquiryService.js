@@ -194,6 +194,47 @@ const getInquiryById = async (id) => {
   return inquiry;
 };
 
+/**
+ * Injects or validates teamId during record creation per Dual-Tier Cardinality contract.
+ *
+ * @param {object} reqUser - Authenticated user context
+ * @param {number|undefined} requestedTeamId - Team ID submitted in request body
+ * @returns {number|null} The resolved teamId to persist
+ */
+const resolveCreationTeamId = (reqUser, requestedTeamId) => {
+  if (!reqUser) return requestedTeamId ? parseInt(requestedTeamId, 10) : null;
+
+  const roleName = (reqUser.roleName || '').toLowerCase();
+  if (roleName === 'admin' || roleName === 'administrator') {
+    return requestedTeamId ? parseInt(requestedTeamId, 10) : null;
+  }
+
+  const ledTeamIds = reqUser.ledTeamIds || [];
+  const memberTeamId = reqUser.memberTeamId;
+
+  // Single-team member or single-team leader -> enforce automatic attribution
+  if (ledTeamIds.length <= 1) {
+    const defaultTeamId = ledTeamIds[0] || memberTeamId || (reqUser.teamIds && reqUser.teamIds[0]);
+    if (!defaultTeamId) {
+      throw handleError('User does not belong to any team to own this record', 400);
+    }
+    return parseInt(defaultTeamId, 10);
+  }
+
+  // Multi-team leader -> validate submitted teamId against authorized teams
+  if (!requestedTeamId) {
+    throw handleError('Multi-team leaders must specify a teamId for new records', 400);
+  }
+
+  const tid = parseInt(requestedTeamId, 10);
+  const authorized = (reqUser.authorizedTeamIds || reqUser.teamIds || []).includes(tid);
+  if (!authorized) {
+    throw handleError('You are not authorized to create records for this team', 403);
+  }
+
+  return tid;
+};
+
 /** Create inquiry cases:
  *   1. Create and link an existing student
  *   2. create a new inquiry with new student inline
@@ -202,18 +243,7 @@ const getInquiryById = async (id) => {
 const createInquiry = async ({ studentId, student, assignedToId, teamId, ...inquiryFields }, user) => {
   // Auto assign staff who created inquiry 
   const creatorAssignedToId = assignedToId || user?.accountId;
-  let effectiveTeamId = teamId;
-  if (!effectiveTeamId) {
-    if (assignedToId && assignedToId !== user?.accountId) {
-      const assignee = await prisma.account.findUnique({
-        where: { id: parseInt(assignedToId, 10) },
-        include: { teamMemberships: true }
-      });
-      effectiveTeamId = assignee?.teamMemberships?.[0]?.teamId || user?.teamIds?.[0] || null;
-    } else {
-      effectiveTeamId = user?.teamIds?.[0] || null;
-    }
-  }
+  const effectiveTeamId = resolveCreationTeamId(user, teamId);
 
   const inquiryData = buildInquiryData({
     assignedToId: creatorAssignedToId,
@@ -637,5 +667,6 @@ module.exports = {
   searchStudents,
   searchAccounts,
   exportInquiries,
-  getInquiryOptions
+  getInquiryOptions,
+  resolveCreationTeamId
 };

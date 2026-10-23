@@ -8,7 +8,6 @@ const {
   createTeamSchema,
   updateTeamSchema,
   addMemberSchema,
-  teamPermissionsSchema,
   teamMemberParamsSchema,
   teamQuerySchema
 } = require('./teamSchemas');
@@ -21,6 +20,14 @@ const teamIdorCheck = { resourceModel: 'team' };
 router.route('/available-accounts')
   .get(authenticate, authorize(['team.update', 'team.create', 'team.read']), teamController.getAvailableAccounts);
 
+// ─── Hierarchical Team Tree Endpoint
+router.route('/tree')
+  .get(authenticate, authorize('team.read'), teamController.getTeamTree);
+
+// ─── Team Parent Hierarchy Options Endpoint
+router.route('/parent-options')
+  .get(authenticate, authorize(['team.create', 'team.update', 'team.read']), teamController.getParentTeamOptions);
+
 // ─── Team CRUD Endpoints
 router.route('/')
   .get(authenticate, authorize('team.read'), validateQuery(teamQuerySchema), teamController.getAllTeams)
@@ -31,14 +38,11 @@ router.route('/:id')
   .put(authenticate, authorize('team.update', teamIdorCheck), validateParams(idParamSchema), validateBody(updateTeamSchema), teamController.updateTeam)
   .delete(authenticate, authorize('team.delete', teamIdorCheck), validateParams(idParamSchema), teamController.deleteTeam);
 
-// ─── Team Membership & Permissions Endpoints
+// ─── Team Membership Endpoints
 router.route('/:id/members')
   .post(authenticate, authorize('team.update', teamIdorCheck), validateParams(idParamSchema), validateBody(addMemberSchema), teamController.addMember);
 
 router.route('/:id/members/:accountId')
   .delete(authenticate, authorize('team.update', teamIdorCheck), validateParams(teamMemberParamsSchema), teamController.removeMember);
-
-router.route('/:id/permissions')
-  .put(authenticate, authorize('team.update', teamIdorCheck), validateParams(idParamSchema), validateBody(teamPermissionsSchema), teamController.updateTeamPermissions);
 
 module.exports = router;

@@ -3,7 +3,9 @@ import * as api from '@/services/teamService'
 
 export function useTeam() {
   const teams = ref([])
+  const teamTree = ref([])
   const team = ref(null)
+  const parentOptions = ref([])
   const loading = ref(false)
   const error = ref(null)
 
@@ -14,6 +16,36 @@ export function useTeam() {
       teams.value = await api.getAllTeams(params)
       return teams.value
     } catch (err) {
+      error.value = err.response?.data?.details || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const fetchTeamTree = async () => {
+    loading.value = true
+    error.value = null
+    try {
+      teamTree.value = await api.getTeamTree()
+      return teamTree.value
+    } catch (err) {
+      teamTree.value = []
+      error.value = err.response?.data?.details || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const fetchParentOptions = async (excludeTeamId = null) => {
+    loading.value = true
+    error.value = null
+    try {
+      parentOptions.value = await api.getParentTeamOptions(excludeTeamId)
+      return parentOptions.value
+    } catch (err) {
+      parentOptions.value = []
       error.value = err.response?.data?.details || err.message
       throw err
     } finally {
@@ -77,11 +109,11 @@ export function useTeam() {
     }
   }
 
-  const addMember = async (teamId, accountId) => {
+  const addMember = async (teamId, accountId, roleId = null) => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.addMemberToTeam(teamId, accountId)
+      const response = await api.addMemberToTeam(teamId, accountId, roleId)
       return response
     } catch (err) {
       error.value = err.response?.data?.details || err.message
@@ -96,20 +128,6 @@ export function useTeam() {
     error.value = null
     try {
       const response = await api.removeMemberFromTeam(teamId, accountId)
-      return response
-    } catch (err) {
-      error.value = err.response?.data?.details || err.message
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-
-  const updatePermissions = async (teamId, permissions) => {
-    loading.value = true
-    error.value = null
-    try {
-      const response = await api.updateTeamPermissions(teamId, permissions)
       return response
     } catch (err) {
       error.value = err.response?.data?.details || err.message
@@ -138,18 +156,21 @@ export function useTeam() {
 
   return {
     teams,
+    teamTree,
     team,
     loading,
     error,
     availableAccounts,
+    parentOptions,
     fetchTeams,
+    fetchTeamTree,
     fetchTeamById,
+    fetchParentOptions,
     createTeam,
     updateTeam,
     deleteTeam,
     addMember,
     removeMember,
-    updatePermissions,
     fetchAvailableAccounts
   }
 }

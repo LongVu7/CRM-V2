@@ -1,4 +1,9 @@
 const prisma = require('../../../config/db');
+const {
+  validateNoCircularHierarchy,
+  buildTeamTree,
+  getDescendantSubtreeTeamIds
+} = require('../../utils/teamHierarchy');
 
 /**
  * List teams with pagination and optional search
@@ -27,6 +32,9 @@ const getAllTeams = async ({ page = 1, limit = 10, search = '' } = {}, permissio
       take: limitNumber,
       orderBy: { id: 'desc' },
       include: {
+        parent: {
+          select: { id: true, name: true }
+        },
         leader: {
           select: {
             id: true,
@@ -35,7 +43,7 @@ const getAllTeams = async ({ page = 1, limit = 10, search = '' } = {}, permissio
             role: { select: { id: true, name: true } }
           }
         },
-        _count: { select: { members: true } }
+        _count: { select: { members: true, children: true } }
       }
     }),
     prisma.team.count({ where })
@@ -45,6 +53,8 @@ const getAllTeams = async ({ page = 1, limit = 10, search = '' } = {}, permissio
     id: t.id,
     name: t.name,
     description: t.description,
+    parentId: t.parentId,
+    parent: t.parent ? { id: t.parent.id, name: t.parent.name } : null,
     leader: t.leader ? {
       id: t.leader.id,
       fullName: t.leader.fullName,
@@ -52,6 +62,7 @@ const getAllTeams = async ({ page = 1, limit = 10, search = '' } = {}, permissio
       role: t.leader.role
     } : null,
     memberCount: t._count.members,
+    childrenCount: t._count.children,
     createdAt: t.createdAt
   }));
 
@@ -66,9 +77,41 @@ const getAllTeams = async ({ page = 1, limit = 10, search = '' } = {}, permissio
 };
 
 /**
+ * Get entire hierarchical team tree
+ */
+const getTeamTree = async (permissionScope = {}) => {
+  const teams = await prisma.team.findMany({
+    where: permissionScope,
+    orderBy: { name: 'asc' },
+    include: {
+      leader: {
+        select: {
+          id: true,
+          fullName: true,
+          email: true,
+          role: { select: { id: true, name: true } }
+        }
+      },
+      _count: { select: { members: true } }
+    }
+  });
+
+  const formattedTeams = teams.map(t => ({
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    parentId: t.parentId,
+    leaderId: t.leaderId,
+    leader: t.leader,
+    memberCount: t._count.members,
+    createdAt: t.createdAt
+  }));
+
+  return buildTeamTree(formattedTeams);
+};
+
+/**
  * Get team details by ID
- * @param {number|string} id
- * @param {object} [permissionScope]
  */
 const getTeamById = async (id, permissionScope = {}) => {
   const where = { id: Number(id), ...permissionScope };
@@ -76,6 +119,16 @@ const getTeamById = async (id, permissionScope = {}) => {
   const team = await prisma.team.findFirst({
     where,
     include: {
+      parent: {
+        select: { id: true, name: true }
+      },
+      children: {
+        select: {
+          id: true,
+          name: true,
+          leader: { select: { id: true, fullName: true } }
+        }
+      },
       leader: {
         select: {
           id: true,
@@ -93,13 +146,10 @@ const getTeamById = async (id, permissionScope = {}) => {
               email: true,
               role: { select: { id: true, name: true } }
             }
-          }
+          },
+          role: { select: { id: true, name: true } }
         },
         orderBy: { joinedAt: 'asc' }
-      },
-      permissions: {
-        include: { permission: true },
-        orderBy: { permissionId: 'asc' }
       }
     }
   });
@@ -114,6 +164,9 @@ const getTeamById = async (id, permissionScope = {}) => {
     id: team.id,
     name: team.name,
     description: team.description,
+    parentId: team.parentId,
+    parent: team.parent ? { id: team.parent.id, name: team.parent.name } : null,
+    children: team.children,
     leader: team.leader ? {
       id: team.leader.id,
       fullName: team.leader.fullName,
@@ -124,13 +177,10 @@ const getTeamById = async (id, permissionScope = {}) => {
       id: m.account.id,
       fullName: m.account.fullName,
       email: m.account.email,
-      role: m.account.role,
+      accountRole: m.account.role,
+      roleId: m.roleId,
+      teamRole: m.role ? { id: m.role.id, name: m.role.name } : null,
       joinedAt: m.joinedAt
-    })),
-    permissions: team.permissions.map(tp => ({
-      permissionId: tp.permissionId,
-      permissionCode: tp.permission.code,
-      scope: tp.scope
     })),
     createdAt: team.createdAt
   };
@@ -138,8 +188,6 @@ const getTeamById = async (id, permissionScope = {}) => {
 
 /**
  * Create a new team
- * @param {object} data - { name, description, leaderId }
- * @param {number|string} [creatorId]
  */
 const createTeam = async (data, creatorId) => {
   const existing = await prisma.team.findUnique({ where: { name: data.name.trim() } });
@@ -149,6 +197,21 @@ const createTeam = async (data, creatorId) => {
     throw error;
   }
 
+  if (data.parentId) {
+    const parent = await prisma.team.findUnique({ where: { id: Number(data.parentId) } });
+    if (!parent) {
+      const error = new Error('Parent team not found');
+      error.statusCode = 404;
+      throw error;
+    }
+    try {
+      await validateNoCircularHierarchy(null, Number(data.parentId));
+    } catch (err) {
+      err.statusCode = 400;
+      throw err;
+    }
+  }
+
   if (data.leaderId) {
     const leader = await prisma.account.findUnique({ where: { id: Number(data.leaderId) } });
     if (!leader) {
@@ -156,53 +219,41 @@ const createTeam = async (data, creatorId) => {
       error.statusCode = 404;
       throw error;
     }
+    if (!leader.isActive) {
+      const error = new Error('Cannot appoint a deactivated account as team leader');
+      error.statusCode = 400;
+      throw error;
+    }
   }
 
-  const newTeam = await prisma.$transaction(async (tx) => {
-    const created = await tx.team.create({
-      data: {
-        name: data.name.trim(),
-        description: data.description || null,
-        ...(data.leaderId ? { leader: { connect: { id: Number(data.leaderId) } } } : {}),
-        ...(creatorId ? { createdBy: { connect: { id: Number(creatorId) } } } : {})
-      }
-    });
-
-    if (data.leaderId) {
-      await tx.teamMember.create({
-        data: {
-          teamId: created.id,
-          accountId: Number(data.leaderId)
-        }
-      });
+  return prisma.team.create({
+    data: {
+      name: data.name.trim(),
+      description: data.description || null,
+      ...(data.parentId ? { parent: { connect: { id: Number(data.parentId) } } } : {}),
+      ...(data.leaderId ? { leader: { connect: { id: Number(data.leaderId) } } } : {}),
+      ...(creatorId ? { createdBy: { connect: { id: Number(creatorId) } } } : {})
+    },
+    include: {
+      parent: { select: { id: true, name: true } },
+      leader: { select: { id: true, fullName: true, email: true } }
     }
-
-    return created;
   });
-
-  return {
-    id: newTeam.id,
-    name: newTeam.name,
-    description: newTeam.description,
-    leaderId: newTeam.leaderId,
-    createdAt: newTeam.createdAt
-  };
 };
 
 /**
- * Update an existing team
- * @param {number|string} id
- * @param {object} data - { name, description, leaderId }
+ * Update team details
  */
 const updateTeam = async (id, data) => {
-  const team = await prisma.team.findUnique({ where: { id: Number(id) } });
-  if (!team) {
+  const teamId = Number(id);
+  const existing = await prisma.team.findUnique({ where: { id: teamId } });
+  if (!existing) {
     const error = new Error('Team not found');
     error.statusCode = 404;
     throw error;
   }
 
-  if (data.name && data.name.trim() !== team.name) {
+  if (data.name && data.name.trim() !== existing.name) {
     const duplicate = await prisma.team.findUnique({ where: { name: data.name.trim() } });
     if (duplicate) {
       const error = new Error('Team with this name already exists');
@@ -211,6 +262,23 @@ const updateTeam = async (id, data) => {
     }
   }
 
+  if (data.parentId !== undefined) {
+    if (data.parentId !== null) {
+      const parent = await prisma.team.findUnique({ where: { id: Number(data.parentId) } });
+      if (!parent) {
+        const error = new Error('Parent team not found');
+        error.statusCode = 404;
+        throw error;
+      }
+      try {
+        await validateNoCircularHierarchy(teamId, Number(data.parentId));
+      } catch (err) {
+        err.statusCode = 400;
+        throw err;
+      }
+    }
+  }
+
   if (data.leaderId) {
     const leader = await prisma.account.findUnique({ where: { id: Number(data.leaderId) } });
     if (!leader) {
@@ -218,164 +286,164 @@ const updateTeam = async (id, data) => {
       error.statusCode = 404;
       throw error;
     }
+    if (!leader.isActive) {
+      const error = new Error('Cannot appoint a deactivated account as team leader');
+      error.statusCode = 400;
+      throw error;
+    }
   }
 
-  const updated = await prisma.$transaction(async (tx) => {
-    const res = await tx.team.update({
-      where: { id: Number(id) },
-      data: {
-        ...(data.name ? { name: data.name.trim() } : {}),
-        ...(data.description !== undefined ? { description: data.description || null } : {}),
-        ...(data.leaderId !== undefined ? { leaderId: data.leaderId ? Number(data.leaderId) : null } : {})
-      }
-    });
-
-    if (data.leaderId) {
-      await tx.teamMember.upsert({
-        where: { teamId_accountId: { teamId: Number(id), accountId: Number(data.leaderId) } },
-        create: { teamId: Number(id), accountId: Number(data.leaderId) },
-        update: {}
-      });
+  return prisma.team.update({
+    where: { id: teamId },
+    data: {
+      ...(data.name ? { name: data.name.trim() } : {}),
+      ...(data.description !== undefined ? { description: data.description } : {}),
+      ...(data.parentId !== undefined
+        ? (data.parentId === null ? { parent: { disconnect: true } } : { parent: { connect: { id: Number(data.parentId) } } })
+        : {}),
+      ...(data.leaderId !== undefined
+        ? (data.leaderId === null ? { leader: { disconnect: true } } : { leader: { connect: { id: Number(data.leaderId) } } })
+        : {})
+    },
+    include: {
+      parent: { select: { id: true, name: true } },
+      leader: { select: { id: true, fullName: true, email: true } }
     }
-
-    return res;
   });
-
-  return {
-    id: updated.id,
-    name: updated.name,
-    description: updated.description,
-    leaderId: updated.leaderId
-  };
 };
 
 /**
  * Delete a team
- * @param {number|string} id
  */
 const deleteTeam = async (id) => {
-  const team = await prisma.team.findUnique({ where: { id: Number(id) } });
-  if (!team) {
+  const teamId = Number(id);
+  const existing = await prisma.team.findUnique({
+    where: { id: teamId },
+    include: {
+      _count: { select: { inquiries: true, campaigns: true, children: true } }
+    }
+  });
+
+  if (!existing) {
     const error = new Error('Team not found');
     error.statusCode = 404;
     throw error;
   }
 
-  await prisma.team.delete({ where: { id: Number(id) } });
-  return { success: true };
+  return prisma.$transaction(async (tx) => {
+    // If the team has child teams, detach them to root (parentId = null)
+    if (existing._count.children > 0) {
+      await tx.team.updateMany({
+        where: { parentId: teamId },
+        data: { parentId: null }
+      });
+    }
+
+    // Reassign inquiries and campaigns to null team
+    if (existing._count.inquiries > 0) {
+      await tx.inquiry.updateMany({
+        where: { teamId },
+        data: { teamId: null }
+      });
+    }
+
+    if (existing._count.campaigns > 0) {
+      await tx.campaign.updateMany({
+        where: { teamId },
+        data: { teamId: null }
+      });
+    }
+
+    await tx.team.delete({ where: { id: teamId } });
+    return { success: true, message: 'Team decommissioned successfully' };
+  });
 };
 
 /**
- * Add a member account to a team
- * @param {number|string} teamId
- * @param {number|string} accountId
+ * Add or transfer a member to a team with a contextual role
+ * Enforces Single-Team Membership (1:N) via upsert on accountId
  */
-const addMember = async (teamId, accountId) => {
-  const team = await prisma.team.findUnique({ where: { id: Number(teamId) } });
+const addMember = async (teamId, data) => {
+  const tid = Number(teamId);
+  const aid = Number(data.accountId);
+  const rid = data.roleId ? Number(data.roleId) : null;
+
+  const team = await prisma.team.findUnique({ where: { id: tid } });
   if (!team) {
     const error = new Error('Team not found');
     error.statusCode = 404;
     throw error;
   }
 
-  const account = await prisma.account.findUnique({ where: { id: Number(accountId) } });
+  const account = await prisma.account.findUnique({ where: { id: aid } });
   if (!account) {
     const error = new Error('Account not found');
     error.statusCode = 404;
     throw error;
   }
 
+  if (rid) {
+    const role = await prisma.role.findUnique({ where: { id: rid } });
+    if (!role) {
+      const error = new Error('Role not found');
+      error.statusCode = 404;
+      throw error;
+    }
+  }
+
+  // Single-team membership: upsert by accountId transfers user if already in another team
   const member = await prisma.teamMember.upsert({
-    where: { teamId_accountId: { teamId: Number(teamId), accountId: Number(accountId) } },
-    create: { teamId: Number(teamId), accountId: Number(accountId) },
-    update: {}
+    where: { accountId: aid },
+    update: {
+      teamId: tid,
+      roleId: rid,
+      joinedAt: new Date()
+    },
+    create: {
+      teamId: tid,
+      accountId: aid,
+      roleId: rid
+    },
+    include: {
+      account: { select: { id: true, fullName: true, email: true } },
+      role: { select: { id: true, name: true } }
+    }
   });
 
   return {
     teamId: member.teamId,
     accountId: member.accountId,
+    roleId: member.roleId,
+    account: member.account,
+    role: member.role,
     joinedAt: member.joinedAt
   };
 };
 
 /**
- * Remove a member account from a team
+ * Remove member from team
  * @param {number|string} teamId
  * @param {number|string} accountId
  */
 const removeMember = async (teamId, accountId) => {
-  const member = await prisma.teamMember.findUnique({
-    where: { teamId_accountId: { teamId: Number(teamId), accountId: Number(accountId) } }
+  const tid = Number(teamId);
+  const aid = Number(accountId);
+
+  const existing = await prisma.teamMember.findUnique({
+    where: { accountId: aid }
   });
 
-  if (!member) {
-    const error = new Error('Member not found in team');
+  if (!existing || existing.teamId !== tid) {
+    const error = new Error('Member not found in this team');
     error.statusCode = 404;
     throw error;
   }
 
   await prisma.teamMember.delete({
-    where: { teamId_accountId: { teamId: Number(teamId), accountId: Number(accountId) } }
+    where: { accountId: aid }
   });
 
-  return { success: true };
-};
-
-/**
- * Update team permissions with dynamic scopes
- * Enforces that non-administrators cannot assign scope = 'ALL'
- * @param {number|string} teamId
- * @param {Array<{permissionId: number, scope: string}>} permissions
- * @param {object} user - Authenticated user context
- */
-const updateTeamPermissions = async (teamId, permissions, user) => {
-  const isAdmin = user && (user.roleName === 'Administrator' || user.roleName === 'admin' || user.role?.name === 'Administrator');
-  if (!isAdmin && permissions.some(p => p.scope === 'ALL')) {
-    const error = new Error("Only administrators can assign 'ALL' scope to team permissions");
-    error.statusCode = 403;
-    throw error;
-  }
-
-  const team = await prisma.team.findUnique({ where: { id: Number(teamId) } });
-  if (!team) {
-    const error = new Error('Team not found');
-    error.statusCode = 404;
-    throw error;
-  }
-
-  const permIds = permissions.map(p => Number(p.permissionId));
-  if (permIds.length > 0) {
-    const existingPerms = await prisma.permission.findMany({
-      where: { id: { in: permIds } },
-      select: { id: true }
-    });
-
-    if (existingPerms.length !== permIds.length) {
-      const foundIds = new Set(existingPerms.map(p => p.id));
-      const missingIds = permIds.filter(id => !foundIds.has(id));
-      const error = new Error(`Invalid permission IDs: ${missingIds.join(', ')}`);
-      error.statusCode = 400;
-      throw error;
-    }
-  }
-
-  await prisma.$transaction(async (tx) => {
-    await tx.teamPermission.deleteMany({ where: { teamId: Number(teamId) } });
-    if (permissions.length > 0) {
-      await tx.teamPermission.createMany({
-        data: permissions.map(p => ({
-          teamId: Number(teamId),
-          permissionId: Number(p.permissionId),
-          scope: p.scope || 'TEAM_ONLY'
-        }))
-      });
-    }
-  });
-
-  return {
-    teamId: Number(teamId),
-    permissionsAssigned: permissions.length
-  };
+  return { success: true, message: 'Member removed successfully' };
 };
 
 /**
@@ -389,20 +457,50 @@ const getAvailableAccounts = async () => {
       fullName: true,
       email: true,
       role: { select: { id: true, name: true } },
+      teamMemberships: {
+        select: {
+          teamId: true,
+          team: { select: { id: true, name: true } },
+          role: { select: { id: true, name: true } }
+        }
+      },
       isActive: true
     },
     orderBy: { fullName: 'asc' }
   });
 };
 
+/**
+ * Get valid parent team candidates for team create or update.
+ * If `excludeTeamId` is provided (e.g. during edit), excludes that team and all its descendant subtrees.
+ */
+const getParentTeamOptions = async (excludeTeamId = null) => {
+  let excludedIds = [];
+  if (excludeTeamId) {
+    const tid = Number(excludeTeamId);
+    if (!isNaN(tid) && tid > 0) {
+      excludedIds = await getDescendantSubtreeTeamIds(tid);
+    }
+  }
+
+  return prisma.team.findMany({
+    where: {
+      ...(excludedIds.length > 0 ? { id: { notIn: excludedIds } } : {})
+    },
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' }
+  });
+};
+
 module.exports = {
   getAllTeams,
+  getTeamTree,
   getTeamById,
   createTeam,
   updateTeam,
   deleteTeam,
   addMember,
   removeMember,
-  updateTeamPermissions,
-  getAvailableAccounts
+  getAvailableAccounts,
+  getParentTeamOptions
 };

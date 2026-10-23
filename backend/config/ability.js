@@ -11,27 +11,29 @@ function normalizeSubject(subject) {
 
 /**
  * Constructs a Prisma-capable CASL Ability instance reflecting the user's role
- * and team permissions compiled with dynamic scopes.
+ * and permissions compiled with dynamic scopes over authorized team subtrees.
  */
 function defineAbilityFor(account = {}) {
   const { can, build } = new AbilityBuilder(createPrismaAbility);
 
   const accountId = account.accountId !== undefined ? account.accountId : account.id;
-  const roleName = account.roleName;
-  const teamIds = Array.isArray(account.teamIds) ? account.teamIds : [];
+  const roleName = account.roleName || (account.role && account.role.name);
+  const authorizedTeamIds = Array.isArray(account.authorizedTeamIds)
+    ? account.authorizedTeamIds
+    : (Array.isArray(account.teamIds) ? account.teamIds : []);
 
   // 1. Super-administrator bypass
-  if (roleName === 'admin') {
+  if (roleName === 'admin' || roleName === 'administrator') {
     can('manage', 'all');
     return build();
   }
 
-  // 2. Compile dynamic permissions (role + teams)
-  const rolePermissions = Array.isArray(account.rolePermissions) ? account.rolePermissions : [];
-  const teamPermissions = Array.isArray(account.teamPermissions) ? account.teamPermissions : [];
-  const allPermissions = [...rolePermissions, ...teamPermissions];
+  // 2. Compile dynamic permissions purely from Role (Account Role or Contextual Team Role)
+  const permissions = Array.isArray(account.permissions)
+    ? account.permissions
+    : (Array.isArray(account.rolePermissions) ? account.rolePermissions : []);
 
-  for (const perm of allPermissions) {
+  for (const perm of permissions) {
     if (!perm.action || !perm.resource) continue;
 
     const action = perm.action.toLowerCase();
@@ -42,9 +44,9 @@ function defineAbilityFor(account = {}) {
       can(action, subject);
     } else if (scope === 'TEAM_ONLY') {
       if (subject === 'team') {
-        can(action, subject, { id: { in: teamIds } });
+        can(action, subject, { id: { in: authorizedTeamIds } });
       } else {
-        can(action, subject, { teamId: { in: teamIds } });
+        can(action, subject, { teamId: { in: authorizedTeamIds } });
       }
     } else if (scope === 'OWNER_ONLY') {
       if (subject === 'team') {

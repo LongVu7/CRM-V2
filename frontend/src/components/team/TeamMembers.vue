@@ -12,8 +12,19 @@
         optionValue="value"
         placeholder="Search active account to add..."
         filter
-        class="add-select"
+        class="add-account-select"
       />
+
+      <Select
+        v-model="selectedRole"
+        :options="roleOptions"
+        optionLabel="label"
+        optionValue="value"
+        placeholder="Contextual role (optional)..."
+        class="add-role-select"
+        showClear
+      />
+
       <Button
         label="Add Member"
         icon="pi pi-user-plus"
@@ -39,15 +50,36 @@
       <Column field="fullName" header="Full Name">
         <template #body="{ data }"><span class="member-name">{{ data.fullName || '—' }}</span></template>
       </Column>
+
       <Column field="email" header="Email">
         <template #body="{ data }"><span class="member-email">{{ data.email }}</span></template>
       </Column>
-      <Column field="role.name" header="Role" style="width: 150px">
+
+      <Column header="Account Role" style="width: 150px">
         <template #body="{ data }">
-          <Tag v-if="data.role" :value="data.role.name" :severity="data.role.name === 'admin' ? 'danger' : 'info'" />
+          <Tag
+            v-if="data.accountRole"
+            :value="data.accountRole.name"
+            :severity="data.accountRole.name === 'admin' || data.accountRole.name === 'Administrator' ? 'danger' : 'info'"
+          />
           <span v-else class="null-text">—</span>
         </template>
       </Column>
+
+      <Column header="Contextual Team Role" style="min-width: 200px">
+        <template #body="{ data }">
+          <Select
+            :modelValue="data.roleId || null"
+            :options="roleOptions"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="No contextual role"
+            class="table-role-select"
+            @update:modelValue="newRoleId => handleRoleChange(data.id, newRoleId)"
+          />
+        </template>
+      </Column>
+
       <Column header="Action" style="width: 100px; text-align: center;">
         <template #body="{ data }">
           <Button
@@ -67,12 +99,13 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
+import { useRole } from '@/composables/useRole'
 
 const props = defineProps({
   members: { type: Array, default: () => [] },
@@ -80,9 +113,30 @@ const props = defineProps({
   isAdding: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['add-member', 'remove-member'])
+const emit = defineEmits(['add-member', 'update-member-role', 'remove-member'])
+
+const { roles, fetchRoles } = useRole()
 
 const selectedAccount = ref(null)
+const selectedRole = ref(null)
+
+onMounted(async () => {
+  try {
+    await fetchRoles()
+  } catch (err) {
+    console.error('Failed to fetch roles:', err)
+  }
+})
+
+const roleOptions = computed(() => {
+  const options = [{ label: 'None (Inherit Global Role)', value: null }]
+  if (Array.isArray(roles.value)) {
+    roles.value.forEach(r => {
+      options.push({ label: r.name, value: r.id })
+    })
+  }
+  return options
+})
 
 const availableAccounts = computed(() => {
   const memberIds = new Set(props.members.map(m => m.id))
@@ -101,8 +155,19 @@ const accountOptions = computed(() =>
 
 const handleAddMember = () => {
   if (!selectedAccount.value) return
-  emit('add-member', selectedAccount.value)
+  emit('add-member', {
+    accountId: selectedAccount.value,
+    roleId: selectedRole.value
+  })
   selectedAccount.value = null
+  selectedRole.value = null
+}
+
+const handleRoleChange = (accountId, newRoleId) => {
+  emit('update-member-role', {
+    accountId,
+    roleId: newRoleId
+  })
 }
 </script>
 
@@ -141,11 +206,21 @@ const handleAddMember = () => {
   display: flex;
   gap: 0.75rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
-.add-select {
+.add-account-select {
+  flex: 2;
+  min-width: 250px;
+}
+
+.add-role-select {
   flex: 1;
-  max-width: 400px;
+  min-width: 180px;
+}
+
+.table-role-select {
+  width: 100%;
 }
 
 .members-table {

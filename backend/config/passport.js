@@ -17,11 +17,18 @@ module.exports = (passport) => {
             },
             teamMemberships: {
               include: {
-                team: {
+                team: true,
+                role: {
                   include: {
                     permissions: { include: { permission: true } }
                   }
                 }
+              }
+            },
+            teamsLed: {
+              select: {
+                id: true,
+                name: true
               }
             }
           }

@@ -24,11 +24,13 @@
           :allAccounts="availableAccounts"
           :isAdding="isAddingMember"
           @add-member="handleAddMember"
+          @update-member-role="handleUpdateMemberRole"
           @remove-member="handleRemoveMember"
         />
-        <!-- TeamForm - specify privileges and metadata -->
+        <!-- TeamForm - specify team metadata and hierarchy -->
         <TeamForm
           :team="existingTeam"
+          :parentOptions="parentOptions"
           :accounts="availableAccounts"
           :isSubmitting="isSubmitting"
           buttonText="Save Changes"
@@ -57,16 +59,18 @@ const {
   updateTeam,
   addMember,
   removeMember,
-  updatePermissions,
   availableAccounts,
-  fetchAvailableAccounts
+  fetchAvailableAccounts,
+  fetchParentOptions,
+  parentOptions
 } = useTeam()
 
 const existingTeam = ref({
+  id: null,
   name: '',
   description: '',
-  leaderId: null,
-  permissionIds: []
+  parentId: null,
+  leaderId: null
 })
 const linkedMembers = ref([])
 
@@ -80,13 +84,11 @@ const loadTeamData = async () => {
     const data = await fetchTeamById(route.params.id)
     if (data) {
       existingTeam.value = {
+        id: data.id,
         name: data.name || '',
         description: data.description || '',
-        leaderId: data.leader ? data.leader.id : null,
-        permissionIds: (data.permissions || []).map(p => ({
-          permissionId: p.permissionId ?? p,
-          scope: p.scope || 'TEAM_ONLY'
-        }))
+        parentId: data.parentId ?? null,
+        leaderId: data.leader ? data.leader.id : null
       }
       linkedMembers.value = data.members || []
     } else {
@@ -102,7 +104,8 @@ onMounted(async () => {
   try {
     await Promise.all([
       loadTeamData(),
-      fetchAvailableAccounts()
+      fetchAvailableAccounts(),
+      fetchParentOptions(route.params.id)
     ])
   } catch {
     // Handled
@@ -117,16 +120,9 @@ const handleSubmit = async (payload) => {
     await updateTeam(route.params.id, {
       name: payload.name,
       description: payload.description,
+      parentId: payload.parentId,
       leaderId: payload.leaderId
     })
-
-    if (Array.isArray(payload.permissionIds)) {
-      const perms = payload.permissionIds.map(p => ({
-        permissionId: typeof p === 'object' ? p.permissionId : p,
-        scope: (typeof p === 'object' && p.scope) ? p.scope : 'TEAM_ONLY'
-      }))
-      await updatePermissions(route.params.id, perms)
-    }
 
     toast.add({ severity: 'success', summary: 'Success', detail: 'Team updated successfully', life: 3000 })
     await loadTeamData()
@@ -142,10 +138,10 @@ const handleSubmit = async (payload) => {
   }
 }
 
-const handleAddMember = async (accountId) => {
+const handleAddMember = async ({ accountId, roleId }) => {
   isAddingMember.value = true
   try {
-    await addMember(route.params.id, accountId)
+    await addMember(route.params.id, accountId, roleId)
     toast.add({ severity: 'success', summary: 'Success', detail: 'Member added to team', life: 3000 })
     await loadTeamData()
   } catch (error) {
@@ -157,6 +153,21 @@ const handleAddMember = async (accountId) => {
     })
   } finally {
     isAddingMember.value = false
+  }
+}
+
+const handleUpdateMemberRole = async ({ accountId, roleId }) => {
+  try {
+    await addMember(route.params.id, accountId, roleId)
+    toast.add({ severity: 'success', summary: 'Success', detail: 'Member role updated successfully', life: 3000 })
+    await loadTeamData()
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: error.response?.data?.error || error.message || 'Failed to update member role',
+      life: 5000
+    })
   }
 }
 

@@ -1,41 +1,27 @@
 const { z } = require('zod');
 
-const scopeEnum = z.enum(['ALL', 'TEAM_ONLY', 'OWNER_ONLY'], {
-  errorMap: () => ({ message: "scope must be one of 'ALL', 'TEAM_ONLY', 'OWNER_ONLY'" })
-});
-
 const createTeamSchema = z.object({
   name: z.string({ required_error: 'Team name is required' })
     .trim()
     .min(1, 'Team name is required')
     .max(255, 'Team name cannot exceed 255 characters'),
   description: z.string().trim().max(1000).nullable().optional(),
+  parentId: z.number().int().positive('parentId must be a positive integer').nullable().optional(),
   leaderId: z.number().int().positive('leaderId must be a positive integer').nullable().optional()
 }).strict();
 
 const updateTeamSchema = z.object({
   name: z.string().trim().min(1, 'Team name is required').max(255).optional(),
   description: z.string().trim().max(1000).nullable().optional(),
+  parentId: z.number().int().positive('parentId must be a positive integer').nullable().optional(),
   leaderId: z.number().int().positive('leaderId must be a positive integer').nullable().optional()
 }).strict();
 
 const addMemberSchema = z.object({
   accountId: z.number({ required_error: 'accountId is required' })
     .int()
-    .positive('accountId must be a positive integer')
-}).strict();
-
-const teamPermissionItemSchema = z.object({
-  permissionId: z.number({ required_error: 'permissionId is required' })
-    .int()
-    .positive('permissionId must be a positive integer'),
-  scope: scopeEnum.default('TEAM_ONLY')
-}).strict();
-
-const teamPermissionsSchema = z.object({
-  permissions: z.array(teamPermissionItemSchema, {
-    required_error: 'permissions array is required'
-  })
+    .positive('accountId must be a positive integer'),
+  roleId: z.number().int().positive('roleId must be a positive integer').nullable().optional()
 }).strict();
 
 const teamMemberParamsSchema = z.object({
@@ -50,12 +36,9 @@ const teamQuerySchema = z.object({
 });
 
 module.exports = {
-  scopeEnum,
   createTeamSchema,
   updateTeamSchema,
   addMemberSchema,
-  teamPermissionItemSchema,
-  teamPermissionsSchema,
   teamMemberParamsSchema,
   teamQuerySchema
 };

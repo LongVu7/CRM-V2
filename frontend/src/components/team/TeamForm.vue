@@ -8,6 +8,21 @@
       </div>
 
       <div class="form-field">
+        <label for="tf-parent">Parent Team (Hierarchy)</label>
+        <Select
+          id="tf-parent"
+          v-model="form.parentId"
+          :options="parentTeamOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="None (Top-level Root Team)"
+          showClear
+          fluid
+        />
+        <small class="form-hint">Sub-teams automatically inherit data scope under this parent.</small>
+      </div>
+
+      <div class="form-field">
         <label for="tf-leader">Team Leader</label>
         <Select
           id="tf-leader"
@@ -23,18 +38,8 @@
 
       <div class="form-field full-width">
         <label for="tf-description">Description</label>
-        <InputText id="tf-description" v-model="form.description" placeholder="Brief description of the team's scope or territory" fluid />
+        <InputText id="tf-description" v-model="form.description" placeholder="Brief description of the team's operational scope or territory" fluid />
       </div>
-    </div>
-
-    <div class="form-section">
-      <h3><i class="pi pi-shield"></i> Team Privileges (Optional)</h3>
-      <p class="section-hint">Assign delegated permissions to all members of this team.</p>
-      <PermissionMatrix
-        v-model="form.permissionIds"
-        defaultScope="TEAM_ONLY"
-        :allowAllScope="isAdmin"
-      />
     </div>
 
     <div class="form-actions">
@@ -48,17 +53,11 @@ import { ref, watch, computed } from 'vue'
 import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
-import PermissionMatrix from '@/components/shared/PermissionMatrix.vue'
-import { useAuthStore } from '@/stores/auth'
-
-const authStore = useAuthStore()
-const isAdmin = computed(() => {
-  const r = authStore.user?.roleName || authStore.user?.role?.name || ''
-  return r.toLowerCase() === 'admin' || r.toLowerCase() === 'administrator'
-})
 
 const props = defineProps({
   team: { type: Object, required: true },
+  parentOptions: { type: Array, default: () => [] },
+  teams: { type: Array, default: () => [] },
   accounts: { type: Array, default: () => [] },
   isSubmitting: { type: Boolean, default: false },
   buttonText: { type: String, default: 'Submit' }
@@ -69,8 +68,8 @@ const emit = defineEmits(['submit'])
 const form = ref({
   name: props.team.name || '',
   description: props.team.description || '',
-  leaderId: props.team.leaderId ?? null,
-  permissionIds: [...(props.team.permissionIds || [])]
+  parentId: props.team.parentId ?? null,
+  leaderId: props.team.leaderId ?? null
 })
 const errors = ref({})
 
@@ -78,8 +77,8 @@ watch(() => props.team, (newVal) => {
   form.value = {
     name: newVal.name || '',
     description: newVal.description || '',
-    leaderId: newVal.leaderId ?? null,
-    permissionIds: [...(newVal.permissionIds || [])]
+    parentId: newVal.parentId ?? null,
+    leaderId: newVal.leaderId ?? null
   }
   errors.value = {}
 }, { deep: true })
@@ -94,23 +93,34 @@ const leaderOptions = computed(() =>
   })
 )
 
+// Parent team candidates pre-processed and provided directly by the backend API
+const parentTeamOptions = computed(() => {
+  const source = (props.parentOptions && props.parentOptions.length > 0) ? props.parentOptions : props.teams
+  return source.map(t => ({
+    label: t.name,
+    value: t.id
+  }))
+})
+
 const validate = () => {
   const e = {}
   if (!form.value.name || !form.value.name.trim()) {
     e.name = 'Team name is required'
+  }
+  if (props.team?.id && form.value.parentId === props.team.id) {
+    e.parentId = 'A team cannot be its own parent'
   }
   errors.value = e
   return Object.keys(e).length === 0
 }
 
 const getPayload = () => {
-  const payload = {
+  return {
     name: form.value.name.trim(),
     description: form.value.description?.trim() || null,
-    leaderId: form.value.leaderId || null,
-    permissionIds: form.value.permissionIds || []
+    parentId: form.value.parentId || null,
+    leaderId: form.value.leaderId || null
   }
-  return payload
 }
 
 const onSubmit = () => {
@@ -157,25 +167,9 @@ const onSubmit = () => {
   font-size: 0.8rem;
 }
 
-.form-section {
-  border-top: 1px solid var(--p-surface-200);
-  padding-top: 1.25rem;
-}
-
-.form-section h3 {
-  font-size: 1.05rem;
-  font-weight: 600;
-  margin: 0 0 0.25rem 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--p-text-color);
-}
-
-.section-hint {
-  font-size: 0.85rem;
+.form-hint {
   color: var(--p-text-muted-color);
-  margin: 0 0 1rem 0;
+  font-size: 0.78rem;
 }
 
 .form-actions {
