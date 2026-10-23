@@ -31,7 +31,7 @@ app.use(cors({
 
 
 app.use(express.urlencoded({ extended: true }));
-app.use(express.json()); 
+app.use(express.json());
 app.use(cookieParser());
 require('./config/passport')(passport);
 app.use(passport.initialize());

@@ -47,6 +47,15 @@
               class="delete-btn" 
             />
             <Button 
+              v-if="$can('import', 'inquiry')" 
+              label="Sync Google Sheets" 
+              icon="pi pi-sync" 
+              text 
+              @click="emit('sync-sheets')" 
+              class="sync-sheets-btn" 
+              :loading="syncing" 
+            />
+            <Button 
               v-if="$can('export', 'inquiry')" 
               label="Export" 
               icon="pi pi-download" 
@@ -309,6 +318,7 @@ defineProps({
   inquiries: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   exporting: { type: Boolean, default: false },
+  syncing: { type: Boolean, default: false },
   pagination: { type: Object, default: null }
 })
 
@@ -320,6 +330,7 @@ const emit = defineEmits([
   'show', 
   'edit',
   'export', 
+  'sync-sheets',
   'filter', 
   'sort'
 ])
@@ -515,7 +526,8 @@ const getStatusTagSeverity = (label) => {
 }
 
 .export-btn,
-.delete-btn {
+.delete-btn,
+.sync-sheets-btn {
   font-size: 0.85rem;
   padding: 0.25rem 0.75rem;
 }

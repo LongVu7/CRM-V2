@@ -277,18 +277,29 @@ const confirmImportInquiry = async (req, res) => {
 
 const importFromGoogleSheets = async (req, res) => {
   try {
-    // Return 202 Accepted immediately
-    res.status(202).json({
-      message: 'Google Sheets import has started and is running in the background.'
-    });
+    if (req.query.async === 'true') {
+      res.status(202).json({
+        message: 'Google Sheets import has started and is running in the background.'
+      });
 
-    // Run the sync asynchronously to prevent blocking the request thread
-    setImmediate(async () => {
-      try {
-        await syncGoogleSheetsToInquiries();
-      } catch (err) {
-        console.error(JSON.stringify({ error: 'Background sync failed', details: err.message }));
-      }
+      setImmediate(async () => {
+        try {
+          await syncGoogleSheetsToInquiries();
+        } catch (err) {
+          console.error(JSON.stringify({ error: 'Background sync failed', details: err.message }));
+        }
+      });
+      return;
+    }
+
+    const results = await syncGoogleSheetsToInquiries();
+    const totalStudents = results.reduce((acc, r) => acc + (r.newStudentsCreated || 0), 0);
+    const totalInquiries = results.reduce((acc, r) => acc + (r.newInquiriesForExisting || 0), 0);
+    const totalSkipped = results.reduce((acc, r) => acc + (r.skipped || 0), 0);
+
+    res.status(200).json({
+      message: `Google Sheets sync completed: ${totalStudents} new student(s), ${totalInquiries} new inquiry(s) created (${totalSkipped} skipped).`,
+      data: results
     });
   } catch (error) {
     handleError(res, error);

@@ -2,7 +2,7 @@ const cron = require('node-cron');
 const { syncGoogleSheetsToInquiries } = require('../api/modules/inquiry/inquiryGoogleSheetService');
 
 if (process.env.ENABLE_SHEETS_CRON !== 'false') {
-  const schedule = '48 13 * * *';
+  const schedule = '48 18 * * *';
   cron.schedule(schedule, () => {
     syncGoogleSheetsToInquiries();
   });
@@ -11,5 +11,5 @@ if (process.env.ENABLE_SHEETS_CRON !== 'false') {
     message: 'Google Sheets cron scheduled',
     schedule
   }));
-  syncGoogleSheetsToInquiries();
+  // syncGoogleSheetsToInquiries();
 }

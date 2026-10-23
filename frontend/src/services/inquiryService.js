@@ -92,3 +92,8 @@ export const getInquiryOptions = async () => {
   const response = await api.get(`${prefix}/options`)
   return response.data.data
 }
+
+export const syncGoogleSheets = async (params = {}) => {
+  const response = await api.post(`${prefix}/import/sheet-sync`, {}, { params })
+  return response.data
+}

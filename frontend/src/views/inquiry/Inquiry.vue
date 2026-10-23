@@ -19,6 +19,7 @@
       :inquiries="inquiries"
       :loading="loading"
       :exporting="exporting"
+      :syncing="syncing"
       :pagination="pagination"
       @page-change="onPageChange"
       @search="onSearch"
@@ -27,6 +28,7 @@
       @show="onShow"
       @edit="onEdit"
       @export="onExport"
+      @sync-sheets="onSyncSheets"
       @filter="onFilter"
       @sort="onSort"
     />
@@ -45,7 +47,7 @@ import Tag from 'primevue/tag'
 import InquiryList from '@/components/inquiry/InquiryList.vue'
 import InquiryShowDialog from '@/components/inquiry/InquiryShowDialog.vue'
 import { useInquiry } from '@/composables/useInquiry'
-import { exportInquiries } from '@/services/inquiryService'
+import { exportInquiries, syncGoogleSheets } from '@/services/inquiryService'
 import { useToast } from 'primevue/usetoast'
 
 const router = useRouter()
@@ -58,6 +60,7 @@ const currentParams = ref({ page: 1, limit: 20, search: '', sortField: null, sor
 const showDialogVisible = ref(false)
 const showDialogInquiryId = ref(null)
 const exporting = ref(false)
+const syncing = ref(false)
 
 const onEdit = (inquiryId) => {
   router.push(`/inquiries/${inquiryId}`)
@@ -147,6 +150,31 @@ const onExport = async () => {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to export inquiries', life: 5000 })
   } finally {
     exporting.value = false
+  }
+}
+
+const onSyncSheets = async () => {
+  if (syncing.value) return
+  syncing.value = true
+  try {
+    const res = await syncGoogleSheets()
+    toast.add({
+      severity: 'success',
+      summary: 'Google Sheets Sync',
+      detail: res?.message || 'Google Sheets sync completed successfully.',
+      life: 5000
+    })
+    await loadData()
+  } catch (error) {
+    const errorMsg = error?.response?.data?.message || 'Failed to sync Google Sheets'
+    toast.add({
+      severity: 'error',
+      summary: 'Sync Failed',
+      detail: errorMsg,
+      life: 5000
+    })
+  } finally {
+    syncing.value = false
   }
 }
 </script>

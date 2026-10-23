@@ -549,6 +549,8 @@ async function syncGoogleSheetsToInquiries() {
     }
   ];
 
+  const results = [];
+
   for (const sheet of sheetsToSync) {
     if (!sheet.id) {
       console.error(JSON.stringify({
@@ -558,6 +560,11 @@ async function syncGoogleSheetsToInquiries() {
         error: `Missing environment variable for sheet ID`,
         timestamp: new Date().toISOString()
       }));
+      results.push({
+        sheet: sheet.name,
+        status: 'SKIPPED',
+        error: 'Missing environment variable for sheet ID'
+      });
       continue;
     }
 
@@ -656,6 +663,15 @@ async function syncGoogleSheetsToInquiries() {
         timestamp: new Date().toISOString()
       }));
 
+      results.push({
+        sheet: sheet.name,
+        status: 'SUCCESS',
+        totalRawRows: rawRows.length,
+        newStudentsCreated: result.newStudentsCreated,
+        newInquiriesForExisting: result.newInquiriesForExisting,
+        skipped: result.skipped
+      });
+
     } catch (error) {
       console.error(JSON.stringify({
         severity: 'ERROR',
@@ -664,8 +680,15 @@ async function syncGoogleSheetsToInquiries() {
         error: error.message || error,
         timestamp: new Date().toISOString()
       }));
+      results.push({
+        sheet: sheet.name,
+        status: 'ERROR',
+        error: error.message || error
+      });
     }
   }
+
+  return results;
 }
 
 module.exports = {
