@@ -51,11 +51,6 @@ async function getDescendantSubtreeTeamIds(rootTeamIds, tx = prisma) {
 /**
  * Validates that setting `targetParentId` as parent of `teamId` will not
  * produce a circular hierarchy cycle.
- *
- * @param {number} teamId - The team being created or updated
- * @param {number|null} targetParentId - The proposed parent team ID
- * @param {object} [tx=prisma] - Optional Prisma client or transaction
- * @throws {Error} If circular reference or self-parenting detected
  */
 async function validateNoCircularHierarchy(teamId, targetParentId, tx = prisma) {
   if (!targetParentId) {

@@ -1,6 +1,7 @@
 const prisma = require('../../../config/db');
 const { applyStatusTransition } = require('../../utils/statusTransition');
 const { buildHierarchyTree } = require('../../utils/hierarchyUtils');
+const { buildPaginationMeta } = require('../../utils/pagination');
 
 // ─── Error factory
 const handleError = (message, status) => {
@@ -93,7 +94,7 @@ const fetchInquiry = (txOrPrisma, id) =>
 
 
 
-const { buildPaginationMeta } = require('../../utils/pagination');
+
 
 // ─── Build Inquiry Where Clause
 const buildInquiryWhere = (filters, permissionScope = {}) => {
@@ -195,11 +196,7 @@ const getInquiryById = async (id) => {
 };
 
 /**
- * Injects or validates teamId during record creation per Dual-Tier Cardinality contract.
- *
- * @param {object} reqUser - Authenticated user context
- * @param {number|undefined} requestedTeamId - Team ID submitted in request body
- * @returns {number|null} The resolved teamId to persist
+ * Injects or validates teamId during record creation.
  */
 const resolveCreationTeamId = (reqUser, requestedTeamId) => {
   if (!reqUser) return requestedTeamId ? parseInt(requestedTeamId, 10) : null;

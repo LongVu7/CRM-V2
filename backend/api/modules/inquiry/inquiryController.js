@@ -1,6 +1,10 @@
 const inquiryService = require('./inquiryService');
 const { generateExcelBuffer } = require('../../utils/exportUtils');
 const { syncGoogleSheetsToInquiries } = require('./inquiryGoogleSheetService');
+const fs = require('fs');
+const inquiryImportService = require('./inquiryImportService');
+const { parseExcelFiles } = require('../../utils/excelParser');
+const { parsePagination } = require('../../utils/pagination');
 
 // Error handling
 const handleError = (res, error) => {
@@ -8,7 +12,7 @@ const handleError = (res, error) => {
   res.status(status).json({ error: error.message, ...(status === 500 && { details: error.message }) });
 };
 
-const { parsePagination } = require('../../utils/pagination');
+
 
 // ─── List all inquiries
 const getAllInquiries = async (req, res) => {
@@ -215,9 +219,7 @@ const searchAccounts = async (req, res) => {
   }
 };
 
-const fs = require('fs');
-const inquiryImportService = require('./inquiryImportService');
-const { parseExcelFiles } = require('../../utils/excelParser');
+
 
 // ─── Import Endpoints
 

@@ -1,11 +1,26 @@
+const enumConstants = require('../../constants/enumConstants');
+const {
+  PROVINCE_MAP,
+  CLASS_MAP,
+  GPA_MAP,
+  PROGRAM_SCORE_MAP,
+  ENGLISH_CERT_MAP,
+  PROVINCE_ALIASES,
+  CLASS_LABELS,
+  PROVINCE_GROUP_LABELS,
+  SCHOOL_TYPE_LABELS,
+  GPA_LABELS,
+  PROGRAM_SCORE_LABELS
+} = enumConstants;
+
 const removeVietnameseTones = (str) => {
-  str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g,"a"); 
-  str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g,"e"); 
-  str = str.replace(/ì|í|ị|ỉ|ĩ/g,"i"); 
-  str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g,"o"); 
-  str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g,"u"); 
-  str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g,"y"); 
-  str = str.replace(/đ/g,"d");
+  str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");
+  str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e");
+  str = str.replace(/ì|í|ị|ỉ|ĩ/g, "i");
+  str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o");
+  str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u");
+  str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y");
+  str = str.replace(/đ/g, "d");
   str = str.replace(/À|Á|Ạ|Ả|Ã|Â|Ầ|Ấ|Ậ|Ẩ|Ẫ|Ă|Ằ|Ắ|Ặ|Ẳ|Ẵ/g, "A");
   str = str.replace(/È|É|Ẹ|Ẻ|Ẽ|Ê|Ề|Ế|Ệ|Ể|Ễ/g, "E");
   str = str.replace(/Ì|Í|Ị|Ỉ|Ĩ/g, "I");
@@ -24,122 +39,6 @@ const normalizeEnum = (val) => {
   return str;
 };
 
-const PROVINCE_MAP = {
-  'TP_HCM': 'HO_CHI_MINH',
-  'HO_CHI_MINH': 'HO_CHI_MINH',
-  'TINH_RUOT': 'CORE_PROVINCE',
-  'CORE_PROVINCE': 'CORE_PROVINCE',
-  'TINH_NGOAI': 'OTHER_PROVINCE',
-  'OTHER_PROVINCE': 'OTHER_PROVINCE',
-  'NUOC_NGOAI': 'FOREIGN',
-  'FOREIGN': 'FOREIGN'
-};
-
-const CLASS_MAP = {
-  'LOP_11': 'GRADE_11',
-  'GRADE_11': 'GRADE_11',
-  'LOP_12': 'GRADE_12',
-  'GRADE_12': 'GRADE_12',
-  'THI_SINH_TU_DO': 'FREELANCE',
-  'FREELANCE': 'FREELANCE'
-};
-
-const GPA_MAP = {
-  '3_MON_LT21D': 'LOWER_21', // Note: < becomes LT
-  '3_MON_<21D': 'LOWER_21',
-  '3_MON_LOP_11_TU_21_23D': 'G11_21_TO_23',
-  '3_MON_HK1_12_TU_21_23D': 'G12_SEM1_21_TO_23',
-  '3_MON_CA_NAM_12_TU_21_23D': 'G12_21_TO_23',
-  '3_MON_LOP_11_TU_24_26D': 'G11_24_TO_26',
-  '3_MON_HK1_12_TU_24_26D': 'G12_SEM1_24_TO_26',
-  '3_MON_CA_NAM_12_TU_24_26D': 'G12_24_TO_26',
-  '3_MON_LOP_11_>26D': 'G11_HIGHER_26',
-  '3_MON_HK1_12_>26D': 'G12_SEM1_HIGHER_26',
-  '3_MON_CA_NAM_12_>26D': 'G12_HIGHER_26',
-  'KHAC': 'OTHER',
-  // Support direct enum values
-  'LOWER_21': 'LOWER_21',
-  'G11_21_TO_23': 'G11_21_TO_23',
-  'G12_SEM1_21_TO_23': 'G12_SEM1_21_TO_23',
-  'G12_21_TO_23': 'G12_21_TO_23',
-  'G11_24_TO_26': 'G11_24_TO_26',
-  'G12_SEM1_24_TO_26': 'G12_SEM1_24_TO_26',
-  'G12_24_TO_26': 'G12_24_TO_26',
-  'G11_HIGHER_26': 'G11_HIGHER_26',
-  'G12_SEM1_HIGHER_26': 'G12_SEM1_HIGHER_26',
-  'G12_HIGHER_26': 'G12_HIGHER_26',
-  'OTHER': 'OTHER'
-};
-
-const PROGRAM_SCORE_MAP = {
-  'DAT_XET_HB_TALENT': 'TALENT_SCHOLARSHIP',
-  'DAT_XET_HB_KHAC': 'OTHER_SCHOLARSHIP',
-  'DAT_KHONG_CO_HB': 'ELIGIBLE_NO_SCHOLARSHIP',
-  'DANG_CHO_XET_DUYET': 'PENDING_REVIEW',
-  'CHUA_DU_DIEM_DAU_VAO': 'NOT_ELIGIBLE',
-  'KHAC': 'OTHER',
-  // Support direct enum values
-  'TALENT_SCHOLARSHIP': 'TALENT_SCHOLARSHIP',
-  'OTHER_SCHOLARSHIP': 'OTHER_SCHOLARSHIP',
-  'ELIGIBLE_NO_SCHOLARSHIP': 'ELIGIBLE_NO_SCHOLARSHIP',
-  'PENDING_REVIEW': 'PENDING_REVIEW',
-  'NOT_ELIGIBLE': 'NOT_ELIGIBLE',
-  'OTHER': 'OTHER'
-};
-
-const ENGLISH_CERT_MAP = {
-  'IELTS': 'IELTS',
-  'TOEFL': 'TOEFL',
-  'TOEIC': 'TOEIC',
-  'VSTEP': 'VSTEP',
-  'APTIS': 'APTIS',
-  'LINGUASKILL': 'LINGUASKILL',
-  'PEIC': 'PEIC',
-  'CAMBRIDGE_EXAM': 'CAMBRIDGE_EXAM',
-  'PTE': 'PTE',
-  'OTHER': 'other',
-  'KHAC': 'other'
-};
-
-const PROVINCE_ALIASES = {
-  // Ho Chi Minh City variations
-  'tp ho chi minh': 'thanh pho ho chi minh',
-  'tp. ho chi minh': 'thanh pho ho chi minh',
-  'tp.hcm': 'thanh pho ho chi minh',
-  'tphcm': 'thanh pho ho chi minh',
-  'ho chi minh': 'thanh pho ho chi minh',
-  'hcm': 'thanh pho ho chi minh',
-  'sai gon': 'thanh pho ho chi minh',
-  // Ha Noi variations
-  'tp ha noi': 'ha noi',
-  'tp. ha noi': 'ha noi',
-  'thanh pho ha noi': 'ha noi',
-  // Da Nang variations
-  'tp da nang': 'da nang',
-  'tp. da nang': 'da nang',
-  'thanh pho da nang': 'da nang',
-  // Can Tho variations
-  'tp can tho': 'can tho',
-  'tp. can tho': 'can tho',
-  'thanh pho can tho': 'can tho',
-  // Hai Phong variations
-  'tp hai phong': 'hai phong',
-  'tp. hai phong': 'hai phong',
-  'thanh pho hai phong': 'hai phong',
-  // Ba Ria - Vung Tau variations
-  'ba ria vung tau': 'ba ria - vung tau',
-  'brvt': 'ba ria - vung tau',
-  'vung tau': 'ba ria - vung tau',
-  // Thua Thien Hue variations
-  'thua thien hue': 'hue',
-  'tt hue': 'hue',
-  // Dak Lak variations
-  'daklak': 'dak lak',
-  'dak lak': 'dak lak',
-  'dac lac': 'dak lak',
-  'daclak': 'dak lak'
-};
-
 const normalizeProvinceName = (val) => {
   if (!val) return '';
   let str = removeVietnameseTones(String(val)).toLowerCase();
@@ -150,66 +49,9 @@ const normalizeProvinceName = (val) => {
   return stripped;
 };
 
-// Display labels for readable output
-const CLASS_LABELS = {
-  GRADE_11: 'Lớp 11',
-  GRADE_12: 'Lớp 12',
-  FREELANCE: 'Thí sinh tự do'
-};
-
-const PROVINCE_GROUP_LABELS = {
-  HO_CHI_MINH: 'TP HCM',
-  CORE_PROVINCE: 'Tỉnh ruột',
-  OTHER_PROVINCE: 'Tỉnh ngoài',
-  FOREIGN: 'Nước ngoài'
-};
-
-const SCHOOL_TYPE_LABELS = {
-  A_STAR: 'A*',
-  A: 'A',
-  B: 'B',
-  C: 'C',
-  D: 'D'
-};
-
-const GPA_LABELS = {
-  LOWER_21: '3 môn <21đ',
-  G11_21_TO_23: '3 môn lớp 11 từ 21-23đ',
-  G12_SEM1_21_TO_23: '3 môn HK1 12 từ 21-23đ',
-  G12_21_TO_23: '3 môn cả năm 12 từ 21-23đ',
-  G11_24_TO_26: '3 môn lớp 11 từ 24-26đ',
-  G12_SEM1_24_TO_26: '3 môn HK1 12 từ 24-26đ',
-  G12_24_TO_26: '3 môn cả năm 12 từ 24-26đ',
-  G11_HIGHER_26: '3 môn lớp 11 > 26đ',
-  G12_SEM1_HIGHER_26: '3 môn HK1 12 >26đ',
-  G12_HIGHER_26: '3 môn cả năm 12 >26đ',
-  OTHER: 'Khác'
-};
-
-const PROGRAM_SCORE_LABELS = {
-  TALENT_SCHOLARSHIP: 'Đạt xét HB Talent',
-  OTHER_SCHOLARSHIP: 'Đạt xét HB khác',
-  ELIGIBLE_NO_SCHOLARSHIP: 'Đạt - không có HB',
-  PENDING_REVIEW: 'Đang chờ xét duyệt',
-  NOT_ELIGIBLE: 'Chưa đủ điểm đầu vào',
-  OTHER: 'Khác'
-};
-
 module.exports = {
   removeVietnameseTones,
   normalizeEnum,
-  PROVINCE_MAP,
-  CLASS_MAP,
-  GPA_MAP,
-  PROGRAM_SCORE_MAP,
-  ENGLISH_CERT_MAP,
-  PROVINCE_ALIASES,
   normalizeProvinceName,
-  CLASS_LABELS,
-  PROVINCE_GROUP_LABELS,
-  SCHOOL_TYPE_LABELS,
-  GPA_LABELS,
-  PROGRAM_SCORE_LABELS
+  ...enumConstants
 };
-
-

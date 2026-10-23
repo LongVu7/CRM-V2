@@ -1,4 +1,12 @@
-const { isProcessed, isInteracted, isNb } = require('./statusGroups');
+const {
+  PROCESSED_INTERACTIONS,
+  INTERACTED_INTERACTIONS,
+  NB_GENERAL
+} = require('../../constants/statusConstants');
+
+const isProcessed = (interactionName) => PROCESSED_INTERACTIONS.includes(interactionName);
+const isInteracted = (interactionName) => INTERACTED_INTERACTIONS.includes(interactionName);
+const isNb = (generalName) => generalName === NB_GENERAL;
 
 /**
  * Resolves the status hierarchy (interaction, general, detail)

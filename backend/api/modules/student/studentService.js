@@ -17,6 +17,7 @@ const {
   PROGRAM_SCORE_LABELS
 } = require('../../utils/enumMapper');
 const { ProvinceGroup, SchoolType, StudentClass, EnglishCertificate, GPA, ProgramScore } = require('@prisma/client');
+
 const { buildHierarchyTree } = require('../../utils/hierarchyUtils');
 
 // ─── Get options for student form (majors, new Provinces & countries)
@@ -404,6 +405,7 @@ const previewImportStudents = async (parsedStudents, accountId) => {
   }
 
   const newProvinceNames = [...new Set(processedRows.map(s => String(s.newProvince || s['New Province'] || '').trim()).filter(Boolean))];
+  
   const npLookup = new Map();
   if (newProvinceNames.length > 0) {
     const nps = await prisma.newProvince.findMany({ where: { name: { in: newProvinceNames, mode: 'insensitive' } } });
@@ -468,7 +470,8 @@ const previewImportStudents = async (parsedStudents, accountId) => {
     if (pgVal) {
       let norm = normalizeEnum(pgVal);
       s.provinceGroup = PROVINCE_MAP[norm] || norm;
-      if (!Object.keys(ProvinceGroup).includes(s.provinceGroup)) s._meta.errors.push(`Invalid Province Group: ${pgVal}`);
+      if (!Object.keys(ProvinceGroup).includes(s.provinceGroup))
+         s._meta.errors.push(`Invalid Province Group: ${pgVal}`);
     }
 
     let stVal = s.schoolType || s['School Type'];
@@ -491,18 +494,27 @@ const previewImportStudents = async (parsedStudents, accountId) => {
       let norm = normalizeEnum(gpaVal);
       norm = norm.replace(/</g, '<').replace(/>/g, '>');
       s.gpa = GPA_MAP[norm] || norm;
+      if (!Object.keys(GPA).includes(s.gpa)) {
+        s._meta.errors.push(`Invalid GPA: ${gpaVal}`);
+      }
     }
 
     let psVal = s.programScore || s['Program Score'];
     if (psVal) {
       let norm = normalizeEnum(psVal);
       s.programScore = PROGRAM_SCORE_MAP[norm] || norm;
+      if (!Object.keys(ProgramScore).includes(s.programScore)) {
+        s._meta.errors.push(`Invalid Program Score: ${psVal}`);
+      }
     }
 
     let ecVal = s.englishCertificate || s['English Certificate'];
     if (ecVal) {
       let norm = normalizeEnum(ecVal);
       s.englishCertificate = ENGLISH_CERT_MAP[norm] || norm;
+      if (!Object.keys(EnglishCertificate).includes(s.englishCertificate)) {
+        s._meta.errors.push(`Invalid English Certificate: ${ecVal}`);
+      }
     }
 
     let intMajor = s.interestedMajor || s['Interested Major'];
