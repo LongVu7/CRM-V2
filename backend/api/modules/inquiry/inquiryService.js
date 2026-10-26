@@ -78,10 +78,10 @@ const buildInquiryData = ({ assignedToId, teamId, sourceDataId, statusDataId, da
   ...(dataReceived !== undefined && { dataReceived: dataReceived ? new Date(dataReceived) : null }),
   ...(interactionAt !== undefined && { interactionAt: interactionAt ? new Date(interactionAt) : null }),
   ...(createDate !== undefined && { createDate: createDate ? new Date(createDate) : null }),
-  ...(assignedToId ? { assignedTo: { connect: { id: parseInt(assignedToId, 10) } } } : {}),
-  ...(teamId ? { team: { connect: { id: parseInt(teamId, 10) } } } : {}),
-  ...(sourceDataId ? { sourceData: { connect: { id: parseInt(sourceDataId, 10) } } } : {}),
-  ...(statusDataId ? { statusData: { connect: { id: parseInt(statusDataId, 10) } } } : {})
+  ...(assignedToId !== undefined && { assignedTo: assignedToId ? { connect: { id: parseInt(assignedToId, 10) } } : { disconnect: true } }),
+  ...(teamId !== undefined && { team: teamId ? { connect: { id: parseInt(teamId, 10) } } : { disconnect: true } }),
+  ...(sourceDataId !== undefined && { sourceData: sourceDataId ? { connect: { id: parseInt(sourceDataId, 10) } } : { disconnect: true } }),
+  ...(statusDataId !== undefined && { statusData: statusDataId ? { connect: { id: parseInt(statusDataId, 10) } } : { disconnect: true } })
 });
 
 
@@ -274,7 +274,7 @@ const _createWithExistingStudent = async (inquiryData, studentId, user, effectiv
     );
   }
 
-  // Re
+
   try {
     return await prisma.$transaction(async (tx) => {
       let milestoneUpdates = {};
@@ -711,29 +711,6 @@ const exportInquiries = async (filters, permissionScope = {}) => {
   }));
 };
 
-// ─── Get Inquiry Status History
-const getInquiryStatusHistory = async (inquiryId) => {
-  const parsedId = parseInt(inquiryId, 10);
-  return await prisma.inquiryStatusHistory.findMany({
-    where: { inquiryId: parsedId },
-    include: {
-      previousStatus: {
-        select: { id: true, name: true, label: true, level: true }
-      },
-      newStatus: {
-        select: { id: true, name: true, label: true, level: true }
-      },
-      changedBy: {
-        select: { id: true, fullName: true, email: true }
-      },
-      team: {
-        select: { id: true, name: true }
-      }
-    },
-    orderBy: { changedAt: 'asc' }
-  });
-};
-
 module.exports = {
   getAllInquiries,
   getInquiryById,
@@ -747,6 +724,5 @@ module.exports = {
   searchAccounts,
   exportInquiries,
   getInquiryOptions,
-  resolveCreationTeamId,
-  getInquiryStatusHistory
+  resolveCreationTeamId
 };
