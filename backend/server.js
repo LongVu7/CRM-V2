@@ -20,6 +20,9 @@ const countryRoutes = require('./api/modules/country/countryRoutes');
 const reportRoutes = require('./api/modules/report/reportRoutes');
 const teamRoutes = require('./api/modules/team/teamRoutes');
 
+const { authenticate } = require('./middleware/auth');
+const { requireAdmin } = require('./middleware/authorize');
+
 const app = express();
 const port = process.env.PORT || 3003;
 
@@ -36,6 +39,14 @@ app.use(cookieParser());
 require('./config/passport')(passport);
 app.use(passport.initialize());
 
+// ─── Admin Routes ───
+const adminRouter = express.Router();
+adminRouter.use(authenticate, requireAdmin);
+adminRouter.use('/roles', roleRoutes);
+adminRouter.use('/accounts', accountRoutes);
+app.use('/api/admin', adminRouter);
+
+// ─── Resource Routes ───
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/inquiries', inquiryRoutes);
