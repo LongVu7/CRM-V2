@@ -19,6 +19,19 @@
           <i :class="item.icon"></i>
           <span v-show="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
         </RouterLink>
+
+        <!-- Admin Section (Only visible to Administrators) -->
+        <template v-if="isAdmin && adminNavItems.length > 0">
+          <div class="nav-section-header" v-show="!sidebarCollapsed">
+            <span>Administration</span>
+          </div>
+          <div class="nav-section-divider" v-show="sidebarCollapsed"></div>
+          <RouterLink v-for="item in adminNavItems" :key="item.to" :to="item.to" class="nav-item"
+            :class="{ active: route.path.startsWith(item.to) }" v-tooltip.right="sidebarCollapsed ? item.label : undefined">
+            <i :class="item.icon"></i>
+            <span v-show="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
+          </RouterLink>
+        </template>
       </nav>
 
       <div class="sidebar-footer" v-show="!sidebarCollapsed">
@@ -59,6 +72,11 @@ import { parsePermission } from '@/services/ability'
 const { can } = useAbility()
 const sidebarCollapsed = ref(false)
 
+const isAdmin = computed(() => {
+  const role = (authStore.user?.roleName || '').toLowerCase()
+  return role === 'admin' || role === 'administrator' || can('manage', 'all')
+})
+
 const navigationItems = [
   { label: 'Home',       icon: 'pi pi-home',           to: '/',           permission: null },
   { label: 'Students',   icon: 'pi pi-graduation-cap', to: '/students',   permission: 'student.read' },
@@ -67,14 +85,28 @@ const navigationItems = [
   { label: 'Campaigns',  icon: 'pi pi-send',            to: '/campaigns',  permission: 'campaign.read' },
   { label: 'Templates',  icon: 'pi pi-file-edit',       to: '/campaign-templates', permission: 'campaign_template.read' },
   { label: 'Teams',      icon: 'pi pi-users',           to: '/teams',      permission: 'team.read' },
-  { label: 'Roles',      icon: 'pi pi-shield',          to: '/roles',      permission: 'role.read' },
-  { label: 'Accounts',   icon: 'pi pi-users',           to: '/accounts',   permission: 'account.read' },
   { label: 'Dashboard',  icon: 'pi pi-chart-bar',       to: '/dashboard',  permission: 'report.read' },
   { label: 'Error Reports', icon: 'pi pi-flag',         to: '/reports',    permission: null },
 ]
 
+const adminNavigationItems = [
+  { label: 'Accounts',   icon: 'pi pi-user-plus',       to: '/admin/accounts', permission: 'account.read' },
+  { label: 'Roles',      icon: 'pi pi-shield',          to: '/admin/roles',    permission: 'role.read' },
+]
+
 const navItems = computed(() =>
   navigationItems.filter(item => {
+    if (!item.permission) return true
+    const perms = Array.isArray(item.permission) ? item.permission : [item.permission]
+    return perms.some(p => {
+      const { action, subject } = parsePermission(p)
+      return can(action, subject)
+    })
+  })
+)
+
+const adminNavItems = computed(() =>
+  adminNavigationItems.filter(item => {
     if (!item.permission) return true
     const perms = Array.isArray(item.permission) ? item.permission : [item.permission]
     return perms.some(p => {
@@ -208,6 +240,21 @@ onMounted(() => {
 
 .nav-item.active i {
   color: #7ec8e3;
+}
+
+.nav-section-header {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 1rem 1rem 0.35rem;
+}
+
+.nav-section-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0.5rem 0.75rem;
 }
 
 /* Sidebar Footer */

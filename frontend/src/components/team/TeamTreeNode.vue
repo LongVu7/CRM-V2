@@ -47,6 +47,7 @@
           @click="$emit('edit', node.id)"
         />
         <Button
+          v-if="isAdmin"
           icon="pi pi-trash"
           rounded
           text
@@ -75,6 +76,16 @@
 <script setup>
 import { ref, computed } from 'vue'
 import Button from 'primevue/button'
+import { useAuthStore } from '@/stores/auth'
+import { useAbility } from '@casl/vue'
+
+const authStore = useAuthStore()
+const { can } = useAbility()
+
+const isAdmin = computed(() => {
+  const role = (authStore.user?.roleName || '').toLowerCase()
+  return role === 'admin' || role === 'administrator' || can('manage', 'all')
+})
 
 const props = defineProps({
   node: {

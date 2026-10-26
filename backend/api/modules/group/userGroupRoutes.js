@@ -15,7 +15,7 @@ const teamIdorCheck = { resourceModel: 'team' };
 
 // ─── CRUD routes shimmed to teamService
 router.route('/')
-  .get(authenticate, authorize('team.read'), async (req, res) => {
+  .get(authenticate, authorize('read', 'team'), async (req, res) => {
     try {
       const result = await teamService.getAllTeams(req.query, req.permissionScope);
       res.status(200).json({
@@ -36,7 +36,7 @@ router.route('/')
       res.status(status).json({ error: error.message });
     }
   })
-  .post(authenticate, authorize('team.create'), async (req, res) => {
+  .post(authenticate, authorize('create', 'team'), async (req, res) => {
     try {
       const leaderId = req.body.leaderId !== undefined ? req.body.leaderId : req.body.groupLeaderId;
       const data = await teamService.createTeam({
@@ -56,7 +56,7 @@ router.route('/')
   });
 
 router.route('/:id')
-  .get(authenticate, authorize('team.read', teamIdorCheck), async (req, res) => {
+  .get(authenticate, authorize('read', 'team', teamIdorCheck), async (req, res) => {
     try {
       const team = await teamService.getTeamById(req.params.id, req.permissionScope);
       res.status(200).json({
@@ -73,7 +73,7 @@ router.route('/:id')
       res.status(status).json({ error: error.message });
     }
   })
-  .put(authenticate, authorize('team.update', teamIdorCheck), async (req, res) => {
+  .put(authenticate, authorize('update', 'team', teamIdorCheck), async (req, res) => {
     try {
       const leaderId = req.body.leaderId !== undefined ? req.body.leaderId : req.body.groupLeaderId;
       const data = await teamService.updateTeam(req.params.id, {
@@ -91,7 +91,7 @@ router.route('/:id')
       res.status(status).json({ error: error.message });
     }
   })
-  .delete(authenticate, authorize('team.delete', teamIdorCheck), async (req, res) => {
+  .delete(authenticate, authorize('delete', 'team', teamIdorCheck), async (req, res) => {
     try {
       await teamService.deleteTeam(req.params.id);
       res.status(200).json({
@@ -106,7 +106,7 @@ router.route('/:id')
 
 // ─── Group members management shimmed to team members
 router.route('/:id/add-member')
-  .put(authenticate, authorize('team.update', teamIdorCheck), async (req, res) => {
+  .put(authenticate, authorize('update', 'team', teamIdorCheck), async (req, res) => {
     try {
       const { accountId } = req.body;
       if (!accountId) {
@@ -125,7 +125,7 @@ router.route('/:id/add-member')
   });
 
 router.route('/:id/remove-member')
-  .put(authenticate, authorize('team.update', teamIdorCheck), async (req, res) => {
+  .put(authenticate, authorize('update', 'team', teamIdorCheck), async (req, res) => {
     try {
       const { accountId } = req.body;
       if (!accountId) {

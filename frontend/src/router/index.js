@@ -50,24 +50,60 @@ const router = createRouter({
       component: () => import('../views/inquiry/InquiryDetail.vue'),
       meta: { permission: 'inquiry.read' }
     },
+    // ─── Admin Namespace ───
     {
-      path: '/accounts',
-      name: 'accounts',
+      path: '/admin/accounts',
+      name: 'admin-accounts',
       component: () => import('../views/account/Account.vue'),
-      meta: { permission: 'account.read' }
+      meta: { requiresAdmin: true, permission: 'account.read' }
     },
     {
-      path: '/accounts/new',
-      name: 'account-new',
+      path: '/admin/accounts/new',
+      name: 'admin-account-new',
       component: () => import('../views/account/AccountNew.vue'),
-      meta: { permission: 'account.create' }
+      meta: { requiresAdmin: true, permission: 'account.create' }
     },
     {
-      path: '/accounts/:id',
-      name: 'account-detail',
+      path: '/admin/accounts/:id',
+      name: 'admin-account-detail',
       component: () => import('../views/account/AccountDetail.vue'),
-      meta: { permission: 'account.read' }
+      meta: { requiresAdmin: true, permission: 'account.read' }
     },
+    {
+      path: '/admin/roles',
+      name: 'admin-roles',
+      component: () => import('../views/role/RoleList.vue'),
+      meta: { requiresAdmin: true, permission: 'role.read' }
+    },
+    {
+      path: '/admin/roles/new',
+      name: 'admin-role-new',
+      component: () => import('../views/role/RoleNew.vue'),
+      meta: { requiresAdmin: true, permission: 'role.create' }
+    },
+    {
+      path: '/admin/roles/:id',
+      name: 'admin-role-detail',
+      component: () => import('../views/role/RoleDetail.vue'),
+      meta: { requiresAdmin: true, permission: 'role.read' }
+    },
+    {
+      path: '/admin/teams/new',
+      name: 'admin-team-new',
+      component: () => import('../views/team/TeamNew.vue'),
+      meta: { requiresAdmin: true, permission: 'team.create' }
+    },
+
+    // ─── Aliases & Redirects for Admin Routes ───
+    { path: '/accounts', redirect: '/admin/accounts' },
+    { path: '/accounts/new', redirect: '/admin/accounts/new' },
+    { path: '/accounts/:id', redirect: to => `/admin/accounts/${to.params.id}` },
+    { path: '/roles', redirect: '/admin/roles' },
+    { path: '/roles/new', redirect: '/admin/roles/new' },
+    { path: '/roles/:id', redirect: to => `/admin/roles/${to.params.id}` },
+    { path: '/teams/new', redirect: '/admin/teams/new' },
+
+    // ─── Teams (Accessible to Members & Leaders) ───
     {
       path: '/teams',
       name: 'teams',
@@ -75,34 +111,10 @@ const router = createRouter({
       meta: { permission: 'team.read' }
     },
     {
-      path: '/teams/new',
-      name: 'team-new',
-      component: () => import('../views/team/TeamNew.vue'),
-      meta: { permission: 'team.create' }
-    },
-    {
       path: '/teams/:id',
       name: 'team-detail',
       component: () => import('../views/team/TeamDetail.vue'),
       meta: { permission: 'team.read' }
-    },
-    {
-      path: '/roles',
-      name: 'roles',
-      component: () => import('../views/role/RoleList.vue'),
-      meta: { permission: 'role.read' }
-    },
-    {
-      path: '/roles/new',
-      name: 'role-new',
-      component: () => import('../views/role/RoleNew.vue'),
-      meta: { permission: 'role.create' }
-    },
-    {
-      path: '/roles/:id',
-      name: 'role-detail',
-      component: () => import('../views/role/RoleDetail.vue'),
-      meta: { permission: 'role.read' }
     },
     {
       path: '/schools',
@@ -191,6 +203,15 @@ router.beforeEach((to) => {
 
   if (to.path === '/login' && authStore.isLoggedIn) {
     return '/'
+  }
+
+  // Admin guard — strictly for administrator roles
+  if (to.meta.requiresAdmin) {
+    const roleName = (authStore.user?.roleName || '').toLowerCase()
+    const isAdmin = roleName === 'admin' || roleName === 'administrator' || ability.can('manage', 'all')
+    if (!isAdmin) {
+      return '/forbidden'
+    }
   }
 
   // Permission guard — local CASL check, no API call

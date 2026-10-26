@@ -233,8 +233,6 @@ const getRolePermissions = async (roleId) => {
 
 /**
  * Update/replace all permissions and scopes for a role
- * @param {number|string} roleId
- * @param {Array<{permissionId: number, scope: string}>} permissionsWithScope
  */
 const updateRolePermissions = async (roleId, permissionsWithScope) => {
   const role = await prisma.role.findUnique({ where: { id: Number(roleId) } });
@@ -281,9 +279,6 @@ const updateRolePermissions = async (roleId, permissionsWithScope) => {
 
 /**
  * Assign or update a single permission with scope for a role
- * @param {number|string} roleId
- * @param {number|string} permissionId
- * @param {string} scope
  */
 const assignPermissionToRole = async (roleId, permissionId, scope = 'ALL') => {
   const role = await prisma.role.findUnique({ where: { id: Number(roleId) } });

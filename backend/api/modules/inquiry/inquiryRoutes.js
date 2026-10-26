@@ -12,52 +12,52 @@ const inquiryIdorCheck = { resourceModel: 'inquiry' };
 
 // ─── Search routes
 router.route('/search/students')
-    .get(authenticate, authorize(['inquiry.create', 'inquiry.read', 'inquiry.update']), inquiryController.searchStudents);
+    .get(authenticate, authorize([['create', 'inquiry'], ['read', 'inquiry'], ['update', 'inquiry']]), inquiryController.searchStudents);
 
 router.route('/search/accounts')
-    .get(authenticate, authorize(['inquiry.assign', 'inquiry.create']), inquiryController.searchAccounts);
+    .get(authenticate, authorize([['assign', 'inquiry'], ['create', 'inquiry']]), inquiryController.searchAccounts);
 
 // ─── Import routes
 router.route('/import/template')
-    .get(authenticate, authorize('inquiry.import'), inquiryController.downloadTemplate);
+    .get(authenticate, authorize('import', 'inquiry'), inquiryController.downloadTemplate);
 
 router.route('/import/preview')
-    .post(authenticate, authorize('inquiry.import'), upload.single('file'), inquiryController.previewImportInquiry);
+    .post(authenticate, authorize('import', 'inquiry'), upload.single('file'), inquiryController.previewImportInquiry);
 
 router.route('/import/confirm')
-    .post(authenticate, authorize('inquiry.import'), inquiryController.confirmImportInquiry);
+    .post(authenticate, authorize('import', 'inquiry'), inquiryController.confirmImportInquiry);
 
 router.route('/import/sheet-sync')
-    .post(authenticate, authorize('inquiry.import'), inquiryController.importFromGoogleSheets);
+    .post(authenticate, authorize('import', 'inquiry'), inquiryController.importFromGoogleSheets);
 
 router.route('/import-sheets')
-    .post(authenticate, authorize('inquiry.import'), inquiryController.importFromGoogleSheets);
+    .post(authenticate, authorize('import', 'inquiry'), inquiryController.importFromGoogleSheets);
 
 // ─── CRUD routes
 router.route('/')
-    .get(authenticate, authorize('inquiry.read'), inquiryController.getAllInquiries)
-    .post(authenticate, authorize('inquiry.create'), validateBody(createInquirySchema), inquiryController.createInquiry);
+    .get(authenticate, authorize('read', 'inquiry'), inquiryController.getAllInquiries)
+    .post(authenticate, authorize('create', 'inquiry'), validateBody(createInquirySchema), inquiryController.createInquiry);
 
 router.route('/options')
     .get(authenticate, inquiryController.getInquiryOptions);
 
 router.route('/export')
-    .get(authenticate, authorize('inquiry.export'), inquiryController.exportInquiries);
+    .get(authenticate, authorize('export', 'inquiry'), inquiryController.exportInquiries);
 
 router.route('/:id')
-    .get(authenticate, authorize('inquiry.read', inquiryIdorCheck), validateParams(idParamSchema), inquiryController.getInquiryById)
-    .put(authenticate, authorize('inquiry.update', inquiryIdorCheck), validateParams(idParamSchema), validateBody(updateInquirySchema), inquiryController.updateInquiry)
-    .delete(authenticate, authorize('inquiry.delete', inquiryIdorCheck), validateParams(idParamSchema), inquiryController.deleteInquiry);
+    .get(authenticate, authorize('read', 'inquiry', inquiryIdorCheck), validateParams(idParamSchema), inquiryController.getInquiryById)
+    .put(authenticate, authorize('update', 'inquiry', inquiryIdorCheck), validateParams(idParamSchema), validateBody(updateInquirySchema), inquiryController.updateInquiry)
+    .delete(authenticate, authorize('delete', 'inquiry', inquiryIdorCheck), validateParams(idParamSchema), inquiryController.deleteInquiry);
 
 router.route('/:id/status-history')
-    .get(authenticate, authorize('inquiry.read', inquiryIdorCheck), validateParams(idParamSchema), inquiryController.getInquiryStatusHistory);
+    .get(authenticate, authorize('read', 'inquiry', inquiryIdorCheck), validateParams(idParamSchema), inquiryController.getInquiryStatusHistory);
 
 // ─── Assignment routes
 router.route('/:id/assign-student')
-    .put(authenticate, authorize('inquiry.update', inquiryIdorCheck), validateParams(idParamSchema), validateBody(assignStudentSchema), inquiryController.assignStudentToInquiry)
-    .delete(authenticate, authorize('inquiry.update', inquiryIdorCheck), validateParams(idParamSchema), validateBody(assignStudentSchema), inquiryController.unassignStudentFromInquiry);
+    .put(authenticate, authorize('update', 'inquiry', inquiryIdorCheck), validateParams(idParamSchema), validateBody(assignStudentSchema), inquiryController.assignStudentToInquiry)
+    .delete(authenticate, authorize('update', 'inquiry', inquiryIdorCheck), validateParams(idParamSchema), validateBody(assignStudentSchema), inquiryController.unassignStudentFromInquiry);
 
 router.route('/:id/assign-account')
-    .put(authenticate, authorize('inquiry.assign', inquiryIdorCheck), validateParams(idParamSchema), validateBody(assignAccountSchema), inquiryController.assignAccountToInquiry);
+    .put(authenticate, authorize('assign', 'inquiry', inquiryIdorCheck), validateParams(idParamSchema), validateBody(assignAccountSchema), inquiryController.assignAccountToInquiry);
 
 module.exports = router;

@@ -7,8 +7,6 @@ const {
 
 /**
  * List teams with pagination and optional search
- * @param {object} query - { page, limit, search }
- * @param {object} [permissionScope] - CASL query scope if any
  */
 const getAllTeams = async ({ page = 1, limit = 10, search = '' } = {}, permissionScope = {}) => {
   const pageNumber = Math.max(1, parseInt(page, 10) || 1);
@@ -361,7 +359,8 @@ const deleteTeam = async (id) => {
 
 /**
  * Add or transfer a member to a team with a contextual role
- * Enforces Single-Team Membership (1:N) via upsert on accountId
+ * User can be a member of single teams
+ * Enforces Single-Team Membership (1:1) via upsert on accountId
  */
 const addMember = async (teamId, data) => {
   const tid = Number(teamId);
@@ -391,7 +390,8 @@ const addMember = async (teamId, data) => {
     }
   }
 
-  // Single-team membership: upsert by accountId transfers user if already in another team
+  // User can be a member of single teams
+  // Upsert by accountId transfers user if already in another team
   const member = await prisma.teamMember.upsert({
     where: { accountId: aid },
     update: {
@@ -422,8 +422,6 @@ const addMember = async (teamId, data) => {
 
 /**
  * Remove member from team
- * @param {number|string} teamId
- * @param {number|string} accountId
  */
 const removeMember = async (teamId, accountId) => {
   const tid = Number(teamId);

@@ -5,8 +5,8 @@
         <h1><i class="pi pi-users"></i> Team Management</h1>
         <Tag :value="`${teamCount} teams`" severity="info" rounded />
       </div>
-      <div class="header-actions">
-        <Button label="New Team" icon="pi pi-plus" @click="$router.push('/teams/new')" />
+      <div class="header-actions" v-if="isAdmin">
+        <Button label="New Team" icon="pi pi-plus" @click="$router.push('/admin/teams/new')" />
       </div>
     </div>
 
@@ -20,6 +20,16 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import TeamList from '@/components/team/TeamList.vue'
 import { useTeam } from '@/composables/useTeam'
+import { useAuthStore } from '@/stores/auth'
+import { useAbility } from '@casl/vue'
+
+const authStore = useAuthStore()
+const { can } = useAbility()
+
+const isAdmin = computed(() => {
+  const role = (authStore.user?.roleName || '').toLowerCase()
+  return role === 'admin' || role === 'administrator' || can('manage', 'all')
+})
 
 const { teams, fetchTeams } = useTeam()
 

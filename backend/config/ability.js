@@ -28,7 +28,7 @@ function defineAbilityFor(account = {}) {
     return build();
   }
 
-  // 2. Compile dynamic permissions purely from Role (Account Role or Contextual Team Role)
+  // 2. Compile dynamic permissions purely from Role (Account Role/Contextual Team Role)
   const permissions = Array.isArray(account.permissions)
     ? account.permissions
     : (Array.isArray(account.rolePermissions) ? account.rolePermissions : []);

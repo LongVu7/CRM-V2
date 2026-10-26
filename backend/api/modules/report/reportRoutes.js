@@ -10,7 +10,7 @@ const authorize = require('../../../middleware/authorize');
 router.get(
   '/dashboard',
   authenticate,
-  authorize('report.read'),
+  authorize('read', 'report'),
   validateQuery(getDashboardReportSchema.shape.query),
   getDashboardReport
 );

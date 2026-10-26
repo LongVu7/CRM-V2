@@ -51,8 +51,8 @@
             <i class="pi pi-users"></i>
             <h3>No teams found</h3>
             <p>Get started by creating a new team.</p>
-            <div class="empty-actions">
-              <Button label="New Team" icon="pi pi-plus" @click="$router.push('/teams/new')" />
+            <div class="empty-actions" v-if="isAdmin">
+              <Button label="New Team" icon="pi pi-plus" @click="$router.push('/admin/teams/new')" />
             </div>
           </div>
         </template>
@@ -109,7 +109,7 @@
           <template #body="{ data }">
             <div class="action-buttons">
               <Button icon="pi pi-pencil" rounded text severity="info" size="small" v-tooltip.top="'Edit & Members'" @click="$router.push('/teams/' + data.id)" />
-              <Button icon="pi pi-trash" rounded text severity="danger" size="small" v-tooltip.top="'Delete'" @click="confirmDeleteAction(data)" />
+              <Button v-if="isAdmin" icon="pi pi-trash" rounded text severity="danger" size="small" v-tooltip.top="'Delete'" @click="confirmDeleteAction(data)" />
             </div>
           </template>
         </Column>
@@ -152,7 +152,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -163,10 +163,20 @@ import ConfirmDialog from 'primevue/confirmdialog'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useTeam } from '@/composables/useTeam'
+import { useAuthStore } from '@/stores/auth'
+import { useAbility } from '@casl/vue'
 import TeamTreeNode from '@/components/team/TeamTreeNode.vue'
 
 const toast = useToast()
 const confirm = useConfirm()
+const authStore = useAuthStore()
+const { can } = useAbility()
+
+const isAdmin = computed(() => {
+  const role = (authStore.user?.roleName || '').toLowerCase()
+  return role === 'admin' || role === 'administrator' || can('manage', 'all')
+})
+
 const { teams, teamTree, loading, fetchTeams, fetchTeamTree, deleteTeam } = useTeam()
 
 const viewMode = ref('table')

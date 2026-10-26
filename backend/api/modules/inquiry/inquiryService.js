@@ -196,10 +196,11 @@ const getInquiryById = async (id) => {
 };
 
 /**
- * Injects or validates teamId during record creation.
+ * Validates teamId during record creation.
  */
 const resolveCreationTeamId = (reqUser, requestedTeamId) => {
-  if (!reqUser) return requestedTeamId ? parseInt(requestedTeamId, 10) : null;
+  if (!reqUser) 
+    return requestedTeamId ? parseInt(requestedTeamId, 10) : null;
 
   const roleName = (reqUser.roleName || '').toLowerCase();
   if (roleName === 'admin' || roleName === 'administrator') {
@@ -209,7 +210,7 @@ const resolveCreationTeamId = (reqUser, requestedTeamId) => {
   const ledTeamIds = reqUser.ledTeamIds || [];
   const memberTeamId = reqUser.memberTeamId;
 
-  // Single-team member or single-team leader -> enforce automatic attribution
+  // 1. Single-team member or single-team leader -> enforce automatic attribution
   if (ledTeamIds.length <= 1) {
     const defaultTeamId = ledTeamIds[0] || memberTeamId || (reqUser.teamIds && reqUser.teamIds[0]);
     if (!defaultTeamId) {
@@ -218,7 +219,7 @@ const resolveCreationTeamId = (reqUser, requestedTeamId) => {
     return parseInt(defaultTeamId, 10);
   }
 
-  // Multi-team leader -> validate submitted teamId against authorized teams
+  // 2. Multi-team leader -> validate submitted teamId against authorized teams
   if (!requestedTeamId) {
     throw handleError('Multi-team leaders must specify a teamId for new records', 400);
   }

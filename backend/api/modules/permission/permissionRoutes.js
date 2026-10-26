@@ -6,6 +6,6 @@ const permissionController = require('./permissionController');
 
 // ─── List all system permissions 
 router.route('/')
-    .get(authenticate, authorize(['role.read', 'team.assign_perm']), permissionController.getAllPermissions);
+    .get(authenticate, authorize([['read', 'role'], ['assign_perm', 'team']]), permissionController.getAllPermissions);
 
 module.exports = router;

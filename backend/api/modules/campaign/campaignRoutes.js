@@ -11,32 +11,32 @@ const campaignIdorCheck = { resourceModel: 'campaign' };
 
 // ─── Available owners for campaign assignment ───
 router.route('/available-owners')
-    .get(authenticate, authorize(['campaign.create', 'campaign.update', 'campaign.read']), campaignController.getAvailableOwners);
+    .get(authenticate, authorize([['create', 'campaign'], ['update', 'campaign'], ['read', 'campaign']]), campaignController.getAvailableOwners);
 
 // ─── CRUD routes for Campaigns ───
 router.route('/')
-    .get(authenticate, authorize('campaign.read'), campaignController.listCampaigns)
-    .post(authenticate, authorize('campaign.create'), validateBody(campaignSchema), campaignController.createCampaign);
+    .get(authenticate, authorize('read', 'campaign'), campaignController.listCampaigns)
+    .post(authenticate, authorize('create', 'campaign'), validateBody(campaignSchema), campaignController.createCampaign);
 
 router.route('/:id')
-    .get(authenticate, authorize('campaign.read', campaignIdorCheck), validateParams(idParamSchema), campaignController.getCampaignById)
-    .put(authenticate, authorize('campaign.update', campaignIdorCheck), validateParams(idParamSchema), validateBody(updateCampaignSchema), campaignController.updateCampaign)
-    .delete(authenticate, authorize('campaign.delete', campaignIdorCheck), validateParams(idParamSchema), campaignController.deleteCampaign);
+    .get(authenticate, authorize('read', 'campaign', campaignIdorCheck), validateParams(idParamSchema), campaignController.getCampaignById)
+    .put(authenticate, authorize('update', 'campaign', campaignIdorCheck), validateParams(idParamSchema), validateBody(updateCampaignSchema), campaignController.updateCampaign)
+    .delete(authenticate, authorize('delete', 'campaign', campaignIdorCheck), validateParams(idParamSchema), campaignController.deleteCampaign);
 
 // ─── Activity routes  ───
 router.route('/:id/activities')
-    .post(authenticate, authorize('campaign.create'), validateParams(idParamSchema), validateBody(activitySchema), campaignController.createActivity);
+    .post(authenticate, authorize('create', 'campaign'), validateParams(idParamSchema), validateBody(activitySchema), campaignController.createActivity);
 
 router.route('/:id/activities/:activityId')
-    .put(authenticate, authorize('campaign.update'), validateBody(updateActivitySchema), campaignController.updateActivity)
-    .delete(authenticate, authorize('campaign.delete'), campaignController.deleteActivity);
+    .put(authenticate, authorize('update', 'campaign'), validateBody(updateActivitySchema), campaignController.updateActivity)
+    .delete(authenticate, authorize('delete', 'campaign'), campaignController.deleteActivity);
 
 // ─── Activity Recipients ───
 router.route('/:id/activities/:activityId/recipients')
-    .post(authenticate, authorize('campaign.update'), validateBody(activityRecipientSchema), campaignController.addRecipients);
+    .post(authenticate, authorize('update', 'campaign'), validateBody(activityRecipientSchema), campaignController.addRecipients);
 
 // ─── Send Activity (email) ───
 router.route('/:id/activities/:activityId/send')
-    .post(authenticate, authorize('campaign.update'), campaignController.sendActivity);
+    .post(authenticate, authorize('update', 'campaign'), campaignController.sendActivity);
 
 module.exports = router;

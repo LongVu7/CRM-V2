@@ -8,15 +8,15 @@ const { campaignTemplateSchema, updateTemplateSchema } = require('./templateSche
 const templateController = require('./templateController');
 
 router.route('/')
-    .get(authenticate, authorize('campaign_template.read'), templateController.listTemplates)
-    .post(authenticate, authorize('campaign_template.create'), validateBody(campaignTemplateSchema), templateController.createTemplate);
+    .get(authenticate, authorize('read', 'campaign_template'), templateController.listTemplates)
+    .post(authenticate, authorize('create', 'campaign_template'), validateBody(campaignTemplateSchema), templateController.createTemplate);
 
 router.route('/variables')
-    .get(authenticate, authorize('campaign_template.read'), templateController.getVariables);
+    .get(authenticate, authorize('read', 'campaign_template'), templateController.getVariables);
 
 router.route('/:id')
-    .get(authenticate, authorize('campaign_template.read'), validateParams(idParamSchema), templateController.getTemplateById)
-    .patch(authenticate, authorize('campaign_template.update'), validateParams(idParamSchema), validateBody(updateTemplateSchema), templateController.updateTemplate)
-    .delete(authenticate, authorize('campaign_template.delete'), validateParams(idParamSchema), templateController.deleteTemplate);
+    .get(authenticate, authorize('read', 'campaign_template'), validateParams(idParamSchema), templateController.getTemplateById)
+    .patch(authenticate, authorize('update', 'campaign_template'), validateParams(idParamSchema), validateBody(updateTemplateSchema), templateController.updateTemplate)
+    .delete(authenticate, authorize('delete', 'campaign_template'), validateParams(idParamSchema), templateController.deleteTemplate);
 
 module.exports = router;

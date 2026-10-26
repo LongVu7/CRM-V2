@@ -3,10 +3,6 @@ const prisma = require('../../config/db');
 /**
  * Resolves all team IDs in the subtrees rooted at the given team ID(s),
  * including the root team IDs themselves and all their descendants.
- *
- * @param {number|number[]} rootTeamIds - Root team ID or array of root team IDs
- * @param {object} [tx=prisma] - Optional Prisma client or transaction
- * @returns {Promise<number[]>} Array of unique team IDs
  */
 async function getDescendantSubtreeTeamIds(rootTeamIds, tx = prisma) {
   const normalizedIds = (Array.isArray(rootTeamIds) ? rootTeamIds : [rootTeamIds])
@@ -81,9 +77,6 @@ async function validateNoCircularHierarchy(teamId, targetParentId, tx = prisma) 
 
 /**
  * Transforms a flat array of team objects into a nested hierarchical tree.
- *
- * @param {Array<object>} teams - Flat list of team records with `id` and `parentId`
- * @returns {Array<object>} Hierarchical tree structure
  */
 function buildTeamTree(teams = []) {
   const teamMap = new Map();
