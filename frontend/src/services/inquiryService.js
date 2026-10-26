@@ -12,6 +12,11 @@ export const getInquiryById = async (id) => {
   return response.data.data
 }
 
+export const getInquiryStatusHistory = async (id) => {
+  const response = await api.get(`${prefix}/${id}/status-history`)
+  return response.data
+}
+
 export const createInquiry = async (data) => {
   const response = await api.post(`${prefix}/`, data)
   return response.data

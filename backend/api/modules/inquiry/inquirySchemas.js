@@ -49,7 +49,8 @@ const updateInquirySchema = z.object({
   callLog: z.string().max(5000).nullable().optional(),
   recordFile: z.string().nullable().optional(),
   compensationStatus: z.enum(CompensationStatus).nullable().optional(),
-  priority: z.enum(Priority).nullable().optional()
+  priority: z.enum(Priority).nullable().optional(),
+  statusNotes: z.string().max(2000, 'Notes cannot exceed 2000 characters').nullable().optional()
 }).strict().refine((data) => Object.keys(data).length > 0, {
   message: 'Request body cannot be empty'
 });

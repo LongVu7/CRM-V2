@@ -78,10 +78,10 @@ const buildInquiryData = ({ assignedToId, teamId, sourceDataId, statusDataId, da
   ...(dataReceived !== undefined && { dataReceived: dataReceived ? new Date(dataReceived) : null }),
   ...(interactionAt !== undefined && { interactionAt: interactionAt ? new Date(interactionAt) : null }),
   ...(createDate !== undefined && { createDate: createDate ? new Date(createDate) : null }),
-  ...(assignedToId !== undefined && { assignedTo: assignedToId ? { connect: { id: parseInt(assignedToId, 10) } } : { disconnect: true } }),
-  ...(teamId !== undefined && { team: teamId ? { connect: { id: parseInt(teamId, 10) } } : { disconnect: true } }),
-  ...(sourceDataId !== undefined && { sourceData: sourceDataId ? { connect: { id: parseInt(sourceDataId, 10) } } : { disconnect: true } }),
-  ...(statusDataId !== undefined && { statusData: statusDataId ? { connect: { id: parseInt(statusDataId, 10) } } : { disconnect: true } })
+  ...(assignedToId ? { assignedTo: { connect: { id: parseInt(assignedToId, 10) } } } : {}),
+  ...(teamId ? { team: { connect: { id: parseInt(teamId, 10) } } } : {}),
+  ...(sourceDataId ? { sourceData: { connect: { id: parseInt(sourceDataId, 10) } } } : {}),
+  ...(statusDataId ? { statusData: { connect: { id: parseInt(statusDataId, 10) } } } : {})
 });
 
 
@@ -248,12 +248,12 @@ const createInquiry = async ({ studentId, student, assignedToId, teamId, ...inqu
     ...inquiryFields
   });
 
-  if (studentId) return _createWithExistingStudent(inquiryData, studentId);
-  if (student?.fullName) return _createWithNewStudent(inquiryData, student);
-  return _createAlone(inquiryData);
+  if (studentId) return _createWithExistingStudent(inquiryData, studentId, user, effectiveTeamId);
+  if (student?.fullName) return _createWithNewStudent(inquiryData, student, user, effectiveTeamId);
+  return _createAlone(inquiryData, user, effectiveTeamId);
 };
 
-const _createWithExistingStudent = async (inquiryData, studentId) => {
+const _createWithExistingStudent = async (inquiryData, studentId, user, effectiveTeamId) => {
   const sid = parseInt(studentId, 10);
 
   const existing = await prisma.student.findUnique({ where: { id: sid } });
@@ -274,15 +274,30 @@ const _createWithExistingStudent = async (inquiryData, studentId) => {
     );
   }
 
+  // Re
   try {
     return await prisma.$transaction(async (tx) => {
       let milestoneUpdates = {};
-      if (inquiryData.statusData?.connect?.id) {
-        milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: inquiryData.statusData.connect.id });
+      const statusId = inquiryData.statusData?.connect?.id;
+      if (statusId) {
+        milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: statusId });
       }
       const { id } = await tx.inquiry.create({
         data: { ...inquiryData, ...milestoneUpdates, student: { connect: { id: sid } } }
       });
+      if (statusId) {
+        await tx.inquiryStatusHistory.create({
+          data: {
+            inquiryId: id,
+            previousStatusId: null,
+            newStatusId: statusId,
+            changedById: user?.accountId || null,
+            teamId: effectiveTeamId || inquiryData.team?.connect?.id || null,
+            notes: null,
+            changedAt: new Date()
+          }
+        });
+      }
       return fetchInquiry(tx, id);
     });
   } catch (error) {
@@ -301,13 +316,14 @@ const _createWithExistingStudent = async (inquiryData, studentId) => {
 };
 
 //Private method 
-const _createWithNewStudent = async (inquiryData, student) => {
+const _createWithNewStudent = async (inquiryData, student, user, effectiveTeamId) => {
   const { specializedRegister, education, ...studentData } = student;
   try {
     return await prisma.$transaction(async (tx) => {
       let milestoneUpdates = {};
-      if (inquiryData.statusData?.connect?.id) {
-        milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: inquiryData.statusData.connect.id });
+      const statusId = inquiryData.statusData?.connect?.id;
+      if (statusId) {
+        milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: statusId });
       }
       const { id } = await tx.inquiry.create({
         data: {
@@ -331,6 +347,19 @@ const _createWithNewStudent = async (inquiryData, student) => {
           }
         }
       });
+      if (statusId) {
+        await tx.inquiryStatusHistory.create({
+          data: {
+            inquiryId: id,
+            previousStatusId: null,
+            newStatusId: statusId,
+            changedById: user?.accountId || null,
+            teamId: effectiveTeamId || inquiryData.team?.connect?.id || null,
+            notes: null,
+            changedAt: new Date()
+          }
+        });
+      }
       return fetchInquiry(tx, id);
     });
   } catch (error) {
@@ -350,21 +379,35 @@ const _createWithNewStudent = async (inquiryData, student) => {
   }
 };
 
-const _createAlone = async (inquiryData) => {
+const _createAlone = async (inquiryData, user, effectiveTeamId) => {
   return await prisma.$transaction(async (tx) => {
     let milestoneUpdates = {};
-    if (inquiryData.statusData?.connect?.id) {
-      milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: inquiryData.statusData.connect.id });
+    const statusId = inquiryData.statusData?.connect?.id;
+    if (statusId) {
+      milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: statusId });
     }
     const { id } = await tx.inquiry.create({ data: { ...inquiryData, ...milestoneUpdates } });
+    if (statusId) {
+      await tx.inquiryStatusHistory.create({
+        data: {
+          inquiryId: id,
+          previousStatusId: null,
+          newStatusId: statusId,
+          changedById: user?.accountId || null,
+          teamId: effectiveTeamId || inquiryData.team?.connect?.id || null,
+          notes: null,
+          changedAt: new Date()
+        }
+      });
+    }
     return fetchInquiry(tx, id);
   });
 };
 
 
 // ─── Update inquiry
-const updateInquiry = async (id, updateData) => {
-  const { sourceDataId, statusDataId, assignedToId, teamId, ...rest } = updateData;
+const updateInquiry = async (id, updateData, user) => {
+  const { sourceDataId, statusDataId, assignedToId, teamId, statusNotes, ...rest } = updateData;
 
   const data = {
     ...rest,
@@ -413,6 +456,22 @@ const updateInquiry = async (id, updateData) => {
           tx,
           inquiry: currentInquiry,
           newStatusDataId
+        });
+
+        const effectiveTeamId = (teamId !== undefined && teamId !== null)
+          ? parseInt(teamId, 10)
+          : currentInquiry.teamId;
+
+        await tx.inquiryStatusHistory.create({
+          data: {
+            inquiryId: currentInquiry.id,
+            previousStatusId: currentInquiry.statusDataId,
+            newStatusId: newStatusDataId,
+            changedById: user?.accountId || null,
+            teamId: effectiveTeamId || null,
+            notes: statusNotes || null,
+            changedAt: new Date()
+          }
         });
       }
 
@@ -652,6 +711,29 @@ const exportInquiries = async (filters, permissionScope = {}) => {
   }));
 };
 
+// ─── Get Inquiry Status History
+const getInquiryStatusHistory = async (inquiryId) => {
+  const parsedId = parseInt(inquiryId, 10);
+  return await prisma.inquiryStatusHistory.findMany({
+    where: { inquiryId: parsedId },
+    include: {
+      previousStatus: {
+        select: { id: true, name: true, label: true, level: true }
+      },
+      newStatus: {
+        select: { id: true, name: true, label: true, level: true }
+      },
+      changedBy: {
+        select: { id: true, fullName: true, email: true }
+      },
+      team: {
+        select: { id: true, name: true }
+      }
+    },
+    orderBy: { changedAt: 'asc' }
+  });
+};
+
 module.exports = {
   getAllInquiries,
   getInquiryById,
@@ -665,5 +747,6 @@ module.exports = {
   searchAccounts,
   exportInquiries,
   getInquiryOptions,
-  resolveCreationTeamId
+  resolveCreationTeamId,
+  getInquiryStatusHistory
 };

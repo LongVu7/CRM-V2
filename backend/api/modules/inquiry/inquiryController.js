@@ -97,13 +97,23 @@ const createInquiry = async (req, res) => {
 // ─── Update inquiry
 const updateInquiry = async (req, res) => {
   try {
-    const data = await inquiryService.updateInquiry(req.params.id, req.body);
+    const data = await inquiryService.updateInquiry(req.params.id, req.body, req.user);
     res.status(200).json({
       message: 'Inquiry updated successfully',
       requestedByRole: req.user?.roleName,
       requestedByAccountId: req.user?.accountId,
       data
     });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+// ─── Get inquiry status history
+const getInquiryStatusHistory = async (req, res) => {
+  try {
+    const data = await inquiryService.getInquiryStatusHistory(req.params.id);
+    res.status(200).json(data);
   } catch (error) {
     handleError(res, error);
   }
@@ -336,5 +346,6 @@ module.exports = {
   previewImportInquiry,
   confirmImportInquiry,
   importFromGoogleSheets,
-  getInquiryOptions
+  getInquiryOptions,
+  getInquiryStatusHistory
 };

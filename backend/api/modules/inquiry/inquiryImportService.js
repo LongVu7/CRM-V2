@@ -357,6 +357,7 @@ const previewImportInquiry = async (parsedData, accountId) => {
 
 
 const insertInquiryRows = async (rows, context) => {
+  const accountId = context?.accountId || null;
   let newStudentsCreated = 0;
   let newInquiriesForExisting = 0;
   let skipped = 0;
@@ -413,7 +414,7 @@ const insertInquiryRows = async (rows, context) => {
           if (row.statusDataId) {
             milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: row.statusDataId });
           }
-          await tx.inquiry.create({
+          const createdInquiry = await tx.inquiry.create({
             data: {
               assignedToId: row.assignedToId,
               description: row.description,
@@ -426,6 +427,20 @@ const insertInquiryRows = async (rows, context) => {
               ...milestoneUpdates
             }
           });
+
+          if (row.statusDataId) {
+            await tx.inquiryStatusHistory.create({
+              data: {
+                inquiryId: createdInquiry.id,
+                previousStatusId: null,
+                newStatusId: row.statusDataId,
+                changedById: accountId || null,
+                teamId: null,
+                notes: 'Initial import status',
+                changedAt: new Date()
+              }
+            });
+          }
         });
         newStudentsCreated++;
       } catch (err) {
@@ -451,7 +466,7 @@ const insertInquiryRows = async (rows, context) => {
           if (row.statusDataId) {
             milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: row.statusDataId });
           }
-          await tx.inquiry.create({
+          const createdInquiry = await tx.inquiry.create({
             data: {
               assignedToId: row.assignedToId,
               description: row.description,
@@ -463,6 +478,20 @@ const insertInquiryRows = async (rows, context) => {
               ...milestoneUpdates
             }
           });
+
+          if (row.statusDataId) {
+            await tx.inquiryStatusHistory.create({
+              data: {
+                inquiryId: createdInquiry.id,
+                previousStatusId: null,
+                newStatusId: row.statusDataId,
+                changedById: accountId || null,
+                teamId: null,
+                notes: 'Initial import status',
+                changedAt: new Date()
+              }
+            });
+          }
         });
         newInquiriesForExisting++;
       } catch (err) {

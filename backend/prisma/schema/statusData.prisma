@@ -17,6 +17,8 @@ model StatusData {
   children StatusData[] @relation("StatusHierarchy")
 
   inquiries Inquiry[]
+  previousStatusHistories InquiryStatusHistory[] @relation("PreviousStatusHistory")
+  newStatusHistories      InquiryStatusHistory[] @relation("NewStatusHistory")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()

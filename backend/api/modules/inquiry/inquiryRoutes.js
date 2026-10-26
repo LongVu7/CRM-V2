@@ -49,6 +49,9 @@ router.route('/:id')
     .put(authenticate, authorize('inquiry.update', inquiryIdorCheck), validateParams(idParamSchema), validateBody(updateInquirySchema), inquiryController.updateInquiry)
     .delete(authenticate, authorize('inquiry.delete', inquiryIdorCheck), validateParams(idParamSchema), inquiryController.deleteInquiry);
 
+router.route('/:id/status-history')
+    .get(authenticate, authorize('inquiry.read', inquiryIdorCheck), validateParams(idParamSchema), inquiryController.getInquiryStatusHistory);
+
 // ─── Assignment routes
 router.route('/:id/assign-student')
     .put(authenticate, authorize('inquiry.update', inquiryIdorCheck), validateParams(idParamSchema), validateBody(assignStudentSchema), inquiryController.assignStudentToInquiry)

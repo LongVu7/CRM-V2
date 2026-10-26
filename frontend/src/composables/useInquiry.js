@@ -121,6 +121,19 @@ export function useInquiry() {
     }
   }
 
+  const fetchInquiryStatusHistory = async (id) => {
+    loading.value = true
+    error.value = null
+    try {
+      return await api.getInquiryStatusHistory(id)
+    } catch (err) {
+      error.value = err.response?.data?.error || err.response?.data?.details || err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   return {
     inquiries,
     inquiry,
@@ -129,6 +142,7 @@ export function useInquiry() {
     error,
     fetchInquiries,
     fetchInquiryById,
+    fetchInquiryStatusHistory,
     createInquiry,
     updateInquiry,
     deleteInquiry,

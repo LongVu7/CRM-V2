@@ -273,25 +273,43 @@
         </template>
       </Column>
       <!-- View Detail Column -->
-      <Column header="View Detail" style="width: 100px; text-align: center" :exportable="false">
+      <Column header="View Detail" style="width: 120px; text-align: center" :exportable="false">
         <template #body="{ data }">
-          <Button 
-            v-if="canRead(data)" 
-            icon="pi pi-eye" 
-            rounded 
-            text 
-            severity="info" 
-            aria-label="View Inquiry Details" 
-            v-tooltip.top="'View Details'"
-            @click="emit('show', data.id)" 
-          />
-          <span v-else class="null-text">—</span>
+          <div class="action-buttons" style="justify-content: center;">
+            <Button 
+              v-if="canRead(data)" 
+              icon="pi pi-history" 
+              rounded 
+              text 
+              severity="secondary" 
+              aria-label="Status Transition History" 
+              v-tooltip.top="'Status Transition History'"
+              @click="openStatusHistory(data.id)" 
+            />
+            <Button 
+              v-if="canRead(data)" 
+              icon="pi pi-eye" 
+              rounded 
+              text 
+              severity="info" 
+              aria-label="View Inquiry Details" 
+              v-tooltip.top="'View Details'"
+              @click="emit('show', data.id)" 
+            />
+            <span v-if="!canRead(data)" class="null-text">—</span>
+          </div>
         </template>
       </Column>
     </DataTable>
 
     <!-- Confirmation Dialog -->
     <ConfirmDialog />
+
+    <!-- Status Transition History Dialog -->
+    <InquiryStatusHistoryDialog
+      v-model:visible="statusHistoryDialogVisible"
+      :inquiryId="selectedInquiryIdForHistory"
+    />
   </div>
 </template>
 
@@ -313,6 +331,15 @@ import { useSchoolOptions } from '@/composables/useSchoolOptions'
 import { getStatusLevel } from '@/utils/inquiryLabels'
 import { formatCompactDate, formatCompactTime } from '@/utils/dateUtils'
 import { canPerform } from '@/services/ability'
+import InquiryStatusHistoryDialog from '@/components/inquiry/InquiryStatusHistoryDialog.vue'
+
+const statusHistoryDialogVisible = ref(false)
+const selectedInquiryIdForHistory = ref(null)
+
+const openStatusHistory = (id) => {
+  selectedInquiryIdForHistory.value = id
+  statusHistoryDialogVisible.value = true
+}
 
 defineProps({
   inquiries: { type: Array, default: () => [] },

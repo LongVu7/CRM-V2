@@ -174,31 +174,96 @@ const getTimelineCounts = async (scope, { fromInstant, toExclusiveInstant }, fil
     prisma.$queryRaw`
       ${cte}
       SELECT
-        to_char(first_processed_at AT TIME ZONE ${BUSINESS_TZ}, 'YYYY-MM') AS month_val,
-        COUNT(DISTINCT id)::int AS count_val
-      FROM FilteredInquiry
-      WHERE first_processed_at >= ${fromInstant}::timestamptz 
-        AND first_processed_at < ${toExclusiveInstant}::timestamptz
+        to_char(event_time AT TIME ZONE ${BUSINESS_TZ}, 'YYYY-MM') AS month_val,
+        COUNT(DISTINCT inquiry_id)::int AS count_val
+      FROM (
+        SELECT
+          ish.inquiry_id,
+          ish.changed_at AS event_time
+        FROM inquiry_status_history ish
+        JOIN FilteredInquiry fi ON fi.id = ish.inquiry_id
+        JOIN resolved_status rs ON rs.status_data_id = ish.new_status_id
+        WHERE ish.changed_at >= ${fromInstant}::timestamptz
+          AND ish.changed_at < ${toExclusiveInstant}::timestamptz
+          AND rs.interaction_status IN ('interacted', 'not_interacted', 'not_interested', 'wrong_number')
+
+        UNION ALL
+
+        SELECT
+          fi.id AS inquiry_id,
+          fi.first_processed_at AS event_time
+        FROM FilteredInquiry fi
+        WHERE fi.first_processed_at IS NOT NULL
+          AND fi.first_processed_at >= ${fromInstant}::timestamptz
+          AND fi.first_processed_at < ${toExclusiveInstant}::timestamptz
+          AND NOT EXISTS (
+            SELECT 1 FROM inquiry_status_history ish WHERE ish.inquiry_id = fi.id
+          )
+      ) t
       GROUP BY month_val
     `,
     prisma.$queryRaw`
       ${cte}
       SELECT
-        to_char(first_interacted_at AT TIME ZONE ${BUSINESS_TZ}, 'YYYY-MM') AS month_val,
-        COUNT(DISTINCT id)::int AS count_val
-      FROM FilteredInquiry
-      WHERE first_interacted_at >= ${fromInstant}::timestamptz 
-        AND first_interacted_at < ${toExclusiveInstant}::timestamptz
+        to_char(event_time AT TIME ZONE ${BUSINESS_TZ}, 'YYYY-MM') AS month_val,
+        COUNT(DISTINCT inquiry_id)::int AS count_val
+      FROM (
+        SELECT
+          ish.inquiry_id,
+          ish.changed_at AS event_time
+        FROM inquiry_status_history ish
+        JOIN FilteredInquiry fi ON fi.id = ish.inquiry_id
+        JOIN resolved_status rs ON rs.status_data_id = ish.new_status_id
+        WHERE ish.changed_at >= ${fromInstant}::timestamptz
+          AND ish.changed_at < ${toExclusiveInstant}::timestamptz
+          AND rs.interaction_status = 'interacted'
+
+        UNION ALL
+
+        SELECT
+          fi.id AS inquiry_id,
+          fi.first_interacted_at AS event_time
+        FROM FilteredInquiry fi
+        WHERE fi.first_interacted_at IS NOT NULL
+          AND fi.first_interacted_at >= ${fromInstant}::timestamptz
+          AND fi.first_interacted_at < ${toExclusiveInstant}::timestamptz
+          AND fi.interaction_status = 'interacted'
+          AND NOT EXISTS (
+            SELECT 1 FROM inquiry_status_history ish WHERE ish.inquiry_id = fi.id
+          )
+      ) t
       GROUP BY month_val
     `,
     prisma.$queryRaw`
       ${cte}
       SELECT
-        to_char(nb_at AT TIME ZONE ${BUSINESS_TZ}, 'YYYY-MM') AS month_val,
-        COUNT(DISTINCT id)::int AS count_val
-      FROM FilteredInquiry
-      WHERE nb_at >= ${fromInstant}::timestamptz 
-        AND nb_at < ${toExclusiveInstant}::timestamptz
+        to_char(event_time AT TIME ZONE ${BUSINESS_TZ}, 'YYYY-MM') AS month_val,
+        COUNT(DISTINCT inquiry_id)::int AS count_val
+      FROM (
+        SELECT
+          ish.inquiry_id,
+          ish.changed_at AS event_time
+        FROM inquiry_status_history ish
+        JOIN FilteredInquiry fi ON fi.id = ish.inquiry_id
+        JOIN resolved_status rs ON rs.status_data_id = ish.new_status_id
+        WHERE ish.changed_at >= ${fromInstant}::timestamptz
+          AND ish.changed_at < ${toExclusiveInstant}::timestamptz
+          AND rs.general_status = 'payment_completed_nb'
+
+        UNION ALL
+
+        SELECT
+          fi.id AS inquiry_id,
+          fi.nb_at AS event_time
+        FROM FilteredInquiry fi
+        WHERE fi.nb_at IS NOT NULL
+          AND fi.nb_at >= ${fromInstant}::timestamptz
+          AND fi.nb_at < ${toExclusiveInstant}::timestamptz
+          AND fi.general_status = 'payment_completed_nb'
+          AND NOT EXISTS (
+            SELECT 1 FROM inquiry_status_history ish WHERE ish.inquiry_id = fi.id
+          )
+      ) t
       GROUP BY month_val
     `
   ]);

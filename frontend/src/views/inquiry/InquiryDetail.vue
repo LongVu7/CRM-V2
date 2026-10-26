@@ -2,7 +2,16 @@
   <div class="inquiry-detail-view">
     <div class="page-header">
       <h1>Edit Inquiry #{{ $route.params.id }}</h1>
-      <Button label="Back to List" severity="secondary" icon="pi pi-arrow-left" @click="$router.push('/inquiries')" />
+      <div class="header-actions">
+        <Button
+          label="Status History"
+          icon="pi pi-history"
+          severity="secondary"
+          outlined
+          @click="statusHistoryDialogVisible = true"
+        />
+        <Button label="Back to List" severity="secondary" icon="pi pi-arrow-left" @click="$router.push('/inquiries')" />
+      </div>
     </div>
 
     <div v-if="loading" class="loading-state">
@@ -21,7 +30,11 @@
         <div class="card-header">
           <h2><i class="pi pi-info-circle"></i> Inquiry Details</h2>
         </div>
-        <InquiryForm v-model="inquiryForm" :initialSourceDataId="initialSourceDataId" :initialStatusDataId="initialStatusDataId" />
+        <InquiryForm
+          v-model="inquiryForm"
+          :initialSourceDataId="initialSourceDataId"
+          :initialStatusDataId="initialStatusDataId"
+        />
       </div>
 
       <InquiryStudentAssign ref="studentAssignRef" :initialStudent="linkedStudent"
@@ -29,29 +42,89 @@
 
       <InquiryAccountAssign ref="accountAssignRef" :initialAccount="selectedStaff" />
 
+      <div class="section-card">
+        <div class="card-header flex justify-between items-center">
+          <h2><i class="pi pi-history"></i> Status History</h2>
+          <Button
+            label="Open Dialog"
+            icon="pi pi-window-maximize"
+            text
+            size="small"
+            @click="statusHistoryDialogVisible = true"
+          />
+        </div>
+        <InquiryStatusTimeline :inquiryId="$route.params.id" />
+      </div>
+
       <div class="global-actions">
         <Button label="Update Inquiry" icon="pi pi-check" size="large" @click="submitGlobal" :loading="isSubmitting" />
       </div>
     </div>
+
+    <!-- Status History Dialog -->
+    <InquiryStatusHistoryDialog
+      v-model:visible="statusHistoryDialogVisible"
+      :inquiryId="$route.params.id"
+    />
+
+    <!-- Status Change Notes Modal Dialog -->
+    <Dialog
+      v-model:visible="statusNotesDialogVisible"
+      header="Status Change Notes"
+      modal
+      :style="{ width: '500px' }"
+      :closable="true"
+    >
+      <div class="status-notes-modal-body">
+        <p class="modal-hint">
+          <i class="pi pi-info-circle text-primary"></i>
+          The inquiry's status has been modified. Would you like to add remarks or notes for this status transition?
+        </p>
+        <div class="form-field mt-3">
+          <label for="statusNotesTextarea" class="block font-medium text-sm mb-1">Remarks / Notes (Optional)</label>
+          <Textarea
+            id="statusNotesTextarea"
+            v-model="transitionNotes"
+            rows="4"
+            placeholder="Enter details, reason, or appointment info for this status change..."
+            class="w-full"
+            :maxlength="2000"
+            autoResize
+          />
+          <small class="text-xs text-muted block text-right mt-1">{{ transitionNotes?.length || 0 }} / 2000</small>
+        </div>
+      </div>
+      <template #footer>
+        <Button label="Cancel" severity="secondary" text @click="statusNotesDialogVisible = false" />
+        <Button label="Skip & Update" severity="secondary" outlined @click="handleSkipNotesAndUpdate" :loading="isSubmitting" />
+        <Button label="Save Notes & Update" icon="pi pi-check" @click="handleSaveNotesAndUpdate" :loading="isSubmitting" />
+      </template>
+    </Dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
+import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
 import { useInquiry } from '@/composables/useInquiry'
 import { useStudent } from '@/composables/useStudent'
 import InquiryForm from '@/components/inquiry/InquiryForm.vue'
 import InquiryStudentAssign from '@/components/inquiry/InquiryStudentAssign.vue'
 import InquiryAccountAssign from '@/components/inquiry/InquiryAccountAssign.vue'
+import InquiryStatusTimeline from '@/components/inquiry/InquiryStatusTimeline.vue'
+import InquiryStatusHistoryDialog from '@/components/inquiry/InquiryStatusHistoryDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
 const { fetchInquiryById, updateInquiry, assignStudent, unassignStudent } = useInquiry()
 const { createStudent } = useStudent()
+
+const statusHistoryDialogVisible = ref(false)
 
 const studentAssignRef = ref(null)
 const accountAssignRef = ref(null)
@@ -65,6 +138,21 @@ const notFound = ref(false)
 const isSubmitting = ref(false)
 const initialSourceDataId = ref(null)
 const initialStatusDataId = ref(null)
+
+const statusNotesDialogVisible = ref(false)
+const transitionNotes = ref('')
+let pendingStudentData = null
+
+const handleSkipNotesAndUpdate = async () => {
+  statusNotesDialogVisible.value = false
+  await executeUpdate(pendingStudentData, null)
+}
+
+const handleSaveNotesAndUpdate = async () => {
+  const notes = transitionNotes.value ? transitionNotes.value.trim() : null
+  statusNotesDialogVisible.value = false
+  await executeUpdate(pendingStudentData, notes)
+}
 
 onMounted(async () => {
   try {
@@ -96,15 +184,36 @@ const submitGlobal = async () => {
     return
   }
 
+  // Check if user changed the status fields
+  const currentStatusId = inquiryForm.value.statusDataId || null
+  const prevStatusId = initialStatusDataId.value || null
+  const statusChanged = currentStatusId !== prevStatusId
+
+  if (statusChanged) {
+    pendingStudentData = studentData
+    transitionNotes.value = ''
+    statusNotesDialogVisible.value = true
+    return
+  }
+
+  // If status did not change, proceed directly with update
+  await executeUpdate(studentData, null)
+}
+
+const executeUpdate = async (studentData, notes = null) => {
   // Build inquiry payload — include null for nullable fields so backend can clear them
   const payload = {}
   const nullableFields = ['statusDataId', 'sourceDataId', 'dataReceived', 'groupTele']
   for (const [key, value] of Object.entries(inquiryForm.value)) {
-    if (value !== '' && value !== null && value !== undefined) {
+    if (value !== '' && value !== null && value !== undefined && key !== 'statusNotes') {
       payload[key] = value
     } else if (nullableFields.includes(key)) {
       payload[key] = null
     }
+  }
+
+  if (notes) {
+    payload.statusNotes = notes
   }
 
   const accountId = accountAssignRef.value?.getPayload ? accountAssignRef.value.getPayload() : undefined
@@ -120,11 +229,11 @@ const submitGlobal = async () => {
     await updateInquiry(inquiryId, payload)
 
     // 2. Handle student assignment
-    if (studentData.isCreating && studentData.studentPayload) {
+    if (studentData?.isCreating && studentData?.studentPayload) {
       // Create new student, then assign to inquiry
       const created = await createStudent(studentData.studentPayload)
       await assignStudent(inquiryId, created.student.id)
-    } else if (!studentData.isCreating && studentData.studentId) {
+    } else if (!studentData?.isCreating && studentData?.studentId) {
       // Assign existing student to inquiry
       await assignStudent(inquiryId, studentData.studentId)
     }
@@ -232,5 +341,23 @@ const handleRemoveStudent = async (studentId) => {
   justify-content: flex-end;
   padding-top: 1rem;
   border-top: 1px solid var(--p-surface-200);
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+
+
+.modal-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--p-text-muted-color);
+  line-height: 1.4;
+  margin-bottom: 0.5rem;
 }
 </style>

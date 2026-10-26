@@ -21,6 +21,7 @@ model Account {
   campaignsCreated Campaign[]         @relation("CampaignCreator")
   templatesCreated CampaignTemplate[]
   errorReports     ErrorReport[]
+  inquiryStatusHistories InquiryStatusHistory[]
 
   @@map("account")
 }

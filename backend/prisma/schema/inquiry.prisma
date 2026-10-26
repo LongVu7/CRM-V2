@@ -41,6 +41,7 @@ model Inquiry {
   student   Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
 
   campaignRecipients CampaignRecipient[]
+  statusHistories    InquiryStatusHistory[]
 
   @@index([createdAt])
   @@index([sourceDataId])
@@ -49,6 +50,36 @@ model Inquiry {
   @@index([nbAt])
   @@index([teamId])
   @@map("inquiry")
+}
+
+model InquiryStatusHistory {
+  id               Int         @id @default(autoincrement())
+
+  inquiryId        Int         @map("inquiry_id")
+  inquiry          Inquiry     @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  previousStatusId Int?        @map("previous_status_id")
+  previousStatus   StatusData? @relation("PreviousStatusHistory", fields: [previousStatusId], references: [id], onDelete: SetNull)
+
+  newStatusId      Int         @map("new_status_id")
+  newStatus        StatusData  @relation("NewStatusHistory", fields: [newStatusId], references: [id], onDelete: Restrict)
+
+  changedById      Int?        @map("changed_by_id")
+  changedBy        Account?    @relation(fields: [changedById], references: [id], onDelete: SetNull)
+
+  teamId           Int?        @map("team_id")
+  team             Team?       @relation(fields: [teamId], references: [id], onDelete: SetNull)
+
+  notes            String?     @db.Text
+
+  changedAt        DateTime    @default(now()) @map("changed_at") @db.Timestamptz()
+
+  @@index([inquiryId])
+  @@index([changedAt])
+  @@index([teamId])
+  @@index([newStatusId])
+  @@index([changedAt, newStatusId])
+  @@map("inquiry_status_history")
 }
 
 enum EventName {
