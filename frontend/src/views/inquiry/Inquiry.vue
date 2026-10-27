@@ -1,6 +1,5 @@
 <template>
   <div class="inquiry-list-view">
-    <!-- Breadcrumb & Page Header -->
     <div class="page-header">
       <div class="header-left">
         <div class="breadcrumb-bar">

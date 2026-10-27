@@ -119,7 +119,7 @@ const validateInquiryRows = async (rawData) => {
     return r;
   });
 
-  // Check file duplicates
+  // Check file duplicates with unique mobile number
   const mobileMap = new Map();
   for (const row of parsedRows) {
     if (row.mobile) {
