@@ -96,8 +96,11 @@ model StudentEducation {
   schoolId Int?    @map("school_id")
   school   School? @relation(fields: [schoolId], references: [id], onDelete: Restrict)
 
-  newProvinceId Int         @map("new_province_id")
-  newProvince   NewProvince @relation(fields: [newProvinceId], references: [id])
+  oldProvinceId Int?         @map("old_province_id")
+  oldProvince   OldProvince? @relation(fields: [oldProvinceId], references: [id], onDelete: Restrict)
+
+  newProvinceId Int?         @map("new_province_id")
+  newProvince   NewProvince? @relation(fields: [newProvinceId], references: [id])
 
   countryId Int     @map("country_id")
   country   Country @relation(fields: [countryId], references: [id])
@@ -112,6 +115,7 @@ model StudentEducation {
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
 
   @@index([schoolId])
+  @@index([oldProvinceId])
   @@index([newProvinceId])
   @@index([countryId])
   @@map("student_education")

@@ -60,7 +60,7 @@ export const ALLOWED_STUDENT_FIELDS = [
 ]
 
 export const ALLOWED_EDUCATION_FIELDS = [
-  'schoolId', 'newProvinceId', 'countryId', 'provinceGroup', 'schoolType', 'class'
+  'schoolId', 'oldProvinceId', 'newProvinceId', 'countryId', 'provinceGroup', 'schoolType', 'class'
 ]
 
 export const ALLOWED_SR_FIELDS = [

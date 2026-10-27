@@ -15,15 +15,8 @@ const { resolveHierarchy, normalizeHierarchyText } = require('../../utils/hierar
 // HO_CHI_MINH    → TP HCM khu vực (TP.HCM, Bình Dương, Vũng Tàu)
 // CORE_PROVINCE  → Tỉnh ruột (Đồng Nai, Lâm Đồng, Khánh Hòa, ...)
 // OTHER_PROVINCE → Tỉnh ngoài (any recognized domestic province not in Tier 1/2)
-// FOREIGN        → Nước ngoài (unrecognized or international)
+// FOREIGN        → Nước ngoài (unrecognized from oldProvince)
 
-/**
- * Province-to-Group mapping. Each key is the normalized (no-diacritics, lowercase)
- * province name; value is the Province Group enum.
- *
- * To reassign a province, move its entry to a different group.
- * To add a new province, add it here with the desired group.
- */
 const PROVINCE_GROUP_RULES = {
   // ── Tier 1: HO_CHI_MINH ──
   'thanh pho ho chi minh': 'HO_CHI_MINH',
@@ -129,10 +122,7 @@ const SHEETS_REGISTRY = [
   }
 ];
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// §3. GOOGLE SHEETS API LAYER
-// ═══════════════════════════════════════════════════════════════════════════════
-
+// GOOGLE SHEETS API 
 /**
  * Fetches all data rows from the first tab of a Google Sheet.
  * Returns an array of objects keyed by header names.
@@ -220,7 +210,6 @@ async function fetchReferenceData() {
     majorData,
     sourceData,
     defaultInitialStatus: statusData.find(s => !s.parentId),
-    fallbackNewProvinceId: newProvinces.length > 0 ? newProvinces[0].id : null,
     fallbackCountryId: countries.length > 0 ? countries[0].id : null
   };
 }
@@ -573,7 +562,7 @@ async function validateSheetInquiryRows(rawData, sheetMetadata = {}) {
     resolveSchool(row, matchedProv, refData.schools);
 
     row.primaryAddress = row.primaryAddress || null;
-    row.newProvinceId = refData.fallbackNewProvinceId;
+    row.newProvinceId = null;
     row.countryId = refData.fallbackCountryId;
 
     // 3c. Academics: Major, Class, School Type
@@ -601,13 +590,11 @@ async function validateSheetInquiryRows(rawData, sheetMetadata = {}) {
  * Resolves fallback newProvinceId and countryId within a transaction.
  */
 async function resolveDefaultGeoIds(tx, row) {
-  let npId = row.newProvinceId;
+  let npId = row.newProvinceId || null;
   let cId = row.countryId;
-  if (!npId || !cId) {
-    const defaultNp = await tx.newProvince.findFirst();
+  if (!cId) {
     const defaultC = await tx.country.findFirst();
-    npId = npId || defaultNp?.id;
-    cId = cId || defaultC?.id;
+    cId = defaultC?.id;
   }
   return { npId, cId };
 }
@@ -619,7 +606,8 @@ function buildEducationData(studentId, row, npId, cId) {
   return {
     studentId,
     schoolId: row.schoolId || null,
-    newProvinceId: npId,
+    oldProvinceId: row.oldProvinceId || null,
+    newProvinceId: npId || null,
     countryId: cId,
     provinceGroup: row.provinceGroup || 'OTHER_PROVINCE',
     schoolType: row.resolvedSchoolType || 'NONE',
@@ -730,6 +718,10 @@ async function upsertStudentData(tx, studentId, row) {
 
     if (row.schoolId && row.schoolId !== student.education.schoolId) {
       eduUpdates.schoolId = row.schoolId;
+    }
+
+    if (row.oldProvinceId && row.oldProvinceId !== student.education.oldProvinceId) {
+      eduUpdates.oldProvinceId = row.oldProvinceId;
     }
 
     if (row.resolvedClass && row.resolvedClass !== 'NONE' && row.resolvedClass !== student.education.class) {

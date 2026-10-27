@@ -143,7 +143,10 @@ const buildInquiryWhere = (filters, permissionScope = {}) => {
 
     if (filters.oldProvinceId) {
       where.student.education = {
-        school: { oldProvinceId: parseInt(filters.oldProvinceId, 10) }
+        OR: [
+          { oldProvinceId: parseInt(filters.oldProvinceId, 10) },
+          { school: { oldProvinceId: parseInt(filters.oldProvinceId, 10) } }
+        ]
       };
     }
   }

@@ -3,6 +3,7 @@ model OldProvince {
   name String @db.VarChar(255)
 
   schools School[]
+  studentEducations StudentEducation[]
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()

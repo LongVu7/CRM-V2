@@ -62,9 +62,10 @@ watch(
     }
     errors.value = {}
     
-    // Restore old province selection when editing an existing student with school data
-    if (newVal.education?.school?.oldProvince?.id) {
-      selectedOldProvinceId.value = newVal.education.school.oldProvince.id
+    // Restore old province selection when editing an existing student
+    const existingOldProvinceId = newVal.education?.oldProvinceId || newVal.education?.oldProvince?.id || newVal.education?.school?.oldProvince?.id
+    if (existingOldProvinceId) {
+      selectedOldProvinceId.value = existingOldProvinceId
       fetchSchools(selectedOldProvinceId.value)
     } else {
       selectedOldProvinceId.value = null
@@ -87,9 +88,10 @@ onMounted(async () => {
   fetchNewProvinces()
   fetchCountries()
   
-  // If editing student with existing school, load the school's old province dropdown
-  if (props.student.education?.school?.oldProvince?.id) {
-    selectedOldProvinceId.value = props.student.education.school.oldProvince.id
+  // If editing student with existing old province or school
+  const existingOldProvinceId = props.student.education?.oldProvinceId || props.student.education?.oldProvince?.id || props.student.education?.school?.oldProvince?.id
+  if (existingOldProvinceId) {
+    selectedOldProvinceId.value = existingOldProvinceId
     fetchSchools(selectedOldProvinceId.value)
   }
 
@@ -102,6 +104,7 @@ onMounted(async () => {
 
 // Methods
 const onOldProvinceChange = () => {
+  form.value.education.oldProvinceId = selectedOldProvinceId.value || null
   form.value.education.schoolId = null
   if (selectedOldProvinceId.value) {
     fetchSchools(selectedOldProvinceId.value)

@@ -70,6 +70,7 @@ const createStudent = async (data) => {
         include: {
           education: {
             include: {
+              oldProvince: { select: { id: true, name: true } },
               school: { select: { id: true, name: true, oldProvince: { select: { id: true, name: true } } } },
               newProvince: { select: { id: true, name: true } },
               country: { select: { id: true, name: true } }
@@ -125,7 +126,12 @@ const buildStudentWhere = ({ search, oldProvinceId, newProvinceId, countryId, pr
   // Education filters
   if (oldProvinceId || newProvinceId || countryId || provinceGroup || schoolType || studentClass) {
     where.education = {
-      ...(oldProvinceId && { school: { oldProvinceId: parseInt(oldProvinceId, 10) } }),
+      ...(oldProvinceId && {
+        OR: [
+          { oldProvinceId: parseInt(oldProvinceId, 10) },
+          { school: { oldProvinceId: parseInt(oldProvinceId, 10) } }
+        ]
+      }),
       ...(newProvinceId && { newProvinceId: parseInt(newProvinceId, 10) }),
       ...(countryId && { countryId: parseInt(countryId, 10) }),
       ...(provinceGroup && { provinceGroup }),
@@ -163,6 +169,7 @@ const getAllStudents = async (filters) => {
       include: {
         education: {
           include: {
+            oldProvince: { select: { id: true, name: true } },
             school: { select: { id: true, name: true, oldProvince: { select: { id: true, name: true } } } },
             newProvince: { select: { id: true, name: true } },
             country: { select: { id: true, name: true } }
@@ -193,6 +200,7 @@ const getStudentById = async (id) => {
     include: {
       education: {
         include: {
+          oldProvince: { select: { id: true, name: true } },
           school: { select: { id: true, name: true, oldProvince: { select: { id: true, name: true } } } },
           newProvince: { select: { id: true, name: true } },
           country: { select: { id: true, name: true } }
@@ -266,6 +274,7 @@ const updateStudent = async (id, data) => {
         include: {
           education: {
             include: {
+              oldProvince: { select: { id: true, name: true } },
               school: { select: { id: true, name: true, oldProvince: { select: { id: true, name: true } } } },
               newProvince: { select: { id: true, name: true } },
               country: { select: { id: true, name: true } }
@@ -676,6 +685,7 @@ const exportStudents = async (filters) => {
       },
       education: {
         include: {
+          oldProvince: true,
           school: { include: { oldProvince: true } },
           newProvince: true,
           country: true
@@ -696,7 +706,7 @@ const exportStudents = async (filters) => {
 
     // Education
     'School Name': s.education?.school?.name || '',
-    'School City': s.education?.school?.oldProvince?.name || '',
+    'School City': s.education?.oldProvince?.name || s.education?.school?.oldProvince?.name || '',
     'New Province': s.education?.newProvince?.name || '',
     'Country': s.education?.country?.name || '',
     'Province Group': PROVINCE_GROUP_LABELS[s.education?.provinceGroup] || s.education?.provinceGroup || '',

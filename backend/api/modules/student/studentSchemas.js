@@ -47,7 +47,8 @@ const specializedRegisterSchema = z.object({
 
 const educationSchema = z.object({
   schoolId: z.number().int().positive('schoolId must be a positive integer').nullable().optional(),
-  newProvinceId: z.number().int().positive('newProvinceId must be a positive integer'),
+  oldProvinceId: z.number().int().positive('oldProvinceId must be a positive integer').nullable().optional(),
+  newProvinceId: z.number().int().positive('newProvinceId must be a positive integer').nullable().optional(),
   countryId: z.number().int().positive('countryId must be a positive integer'),
   provinceGroup: z.enum(ProvinceGroup),
   schoolType: z.enum(SchoolType),

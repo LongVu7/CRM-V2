@@ -135,7 +135,7 @@ const navigateToEdit = () => {
           </div>
           <div class="field-item">
             <span class="field-label">Old Province</span>
-            <span class="field-value">{{ studentData.education?.school?.oldProvince?.name || '—' }}</span>
+            <span class="field-value">{{ studentData.education?.oldProvince?.name || studentData.education?.school?.oldProvince?.name || '—' }}</span>
           </div>
           <div class="field-item">
             <span class="field-label">New Province</span>
