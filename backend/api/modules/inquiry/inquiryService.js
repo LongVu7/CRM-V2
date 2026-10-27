@@ -36,7 +36,24 @@ const getInquiryOptions = async () => {
 
 // ─── Shared query 
 const inquiryInclude = {
-  student: true,
+  student: {
+    include: {
+      education: {
+        include: {
+          school: { select: { id: true, name: true, oldProvince: { select: { id: true, name: true } } } },
+          oldProvince: { select: { id: true, name: true } },
+          newProvince: { select: { id: true, name: true } },
+          country: { select: { id: true, name: true } }
+        }
+      },
+      specializedRegister: {
+        include: {
+          interestedMajor: { select: { id: true, name: true, label: true } },
+          specificMajor: { select: { id: true, name: true, label: true } }
+        }
+      }
+    }
+  },
   team: {
     select: { id: true, name: true }
   },
@@ -606,15 +623,23 @@ const searchStudents = async (query) => {
 
   return prisma.student.findMany({
     where,
-    select: {
-      id: true,
-      fullName: true,
-      email: true,
-      mobile: true,
-      birthDate: true,
-      gender: true,
+    include: {
       inquiry: {
         select: { id: true }
+      },
+      education: {
+        include: {
+          school: { select: { id: true, name: true, oldProvince: { select: { id: true, name: true } } } },
+          oldProvince: { select: { id: true, name: true } },
+          newProvince: { select: { id: true, name: true } },
+          country: { select: { id: true, name: true } }
+        }
+      },
+      specializedRegister: {
+        include: {
+          interestedMajor: { select: { id: true, name: true, label: true } },
+          specificMajor: { select: { id: true, name: true, label: true } }
+        }
       }
     },
     take: 1000,
