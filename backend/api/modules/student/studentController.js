@@ -141,7 +141,7 @@ const previewImport = async (req, res) => {
 
     res.status(200).json({
       message: 'Analysis complete. Please review data before confirming.',
-      token: importToken,
+      importToken,
       summary,
       preview: rows.slice(0, 100),
       totalRows: rows.length
@@ -158,14 +158,14 @@ const previewImport = async (req, res) => {
 
 const confirmImport = async (req, res) => {
   try {
-    const { token } = req.body;
+    const { importToken } = req.body;
     
-    if (!token) {
-      return res.status(400).json({ error: 'No import token provided' });
+    if (!importToken) {
+      return res.status(400).json({ error: 'importToken is required' });
     }
 
     const accountId = req.user.accountId;
-    const result = await studentService.confirmImportStudents(token, accountId);
+    const result = await studentService.confirmImportStudents(importToken, accountId);
 
     res.status(200).json({
       message: 'Import successful',

@@ -116,7 +116,7 @@ import Column from 'primevue/column'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
 import { useToast } from 'primevue/usetoast'
-import { previewImport, confirmImport } from '@/services/studentService'
+import { previewImportStudent, confirmImportStudent } from '@/services/studentService'
 
 const emit = defineEmits(['cancel', 'success'])
 const router = useRouter()
@@ -144,9 +144,9 @@ const onUpload = async (event) => {
 
   isUploading.value = true
   try {
-    const analysis = await previewImport(files)
+    const analysis = await previewImportStudent(files)
     
-    importToken.value = analysis.token
+    importToken.value = analysis.importToken
     summary.value = analysis.summary || summary.value
     previewData.value = analysis.preview || []
     
@@ -171,7 +171,7 @@ const submitConfirm = async () => {
   if (!importToken.value) return
   isConfirming.value = true
   try {
-    const result = await confirmImport(importToken.value)
+    const result = await confirmImportStudent(importToken.value)
     const inserted = result.summary?.insertedCount || result.summary?.readyNew || 0
     const skipped = result.summary?.skipped || 0
     toast.add({ severity: 'success', summary: 'Import Successful', detail: `Inserted: ${inserted}, Skipped: ${skipped}`, life: 5000 })

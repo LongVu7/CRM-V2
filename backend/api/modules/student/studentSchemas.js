@@ -137,7 +137,7 @@ const importStudentSchema = z.object({
 }).loose();
 
 const importStudentsPayloadSchema = z.object({
-  students: z.array(importStudentSchema).min(1, 'At least one student must be provided for import')
+  importToken: z.string({ required_error: 'importToken is required' })
 });
 
 module.exports = { createStudentSchema, updateStudentSchema, importStudentsPayloadSchema, capitalizeName };

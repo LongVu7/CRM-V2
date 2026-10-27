@@ -414,7 +414,7 @@ const previewImportStudents = async (parsedStudents, accountId) => {
   }
 
   const newProvinceNames = [...new Set(processedRows.map(s => String(s.newProvince || s['New Province'] || '').trim()).filter(Boolean))];
-  
+
   const npLookup = new Map();
   if (newProvinceNames.length > 0) {
     const nps = await prisma.newProvince.findMany({ where: { name: { in: newProvinceNames, mode: 'insensitive' } } });
@@ -480,7 +480,7 @@ const previewImportStudents = async (parsedStudents, accountId) => {
       let norm = normalizeEnum(pgVal);
       s.provinceGroup = PROVINCE_MAP[norm] || norm;
       if (!Object.keys(ProvinceGroup).includes(s.provinceGroup))
-         s._meta.errors.push(`Invalid Province Group: ${pgVal}`);
+        s._meta.errors.push(`Invalid Province Group: ${pgVal}`);
     }
 
     let stVal = s.schoolType || s['School Type'];
@@ -613,7 +613,7 @@ const confirmImportStudents = async (importToken, accountId) => {
       try {
         await prisma.$transaction(async (tx) => {
           let srId = null;
-          // 1. Create SR conditionally
+          // 1. Create specializedRegister
           if (row.interestedMajorId || row.admissionYear || row.englishCertificate || row.gpa || row.programScore) {
             const sr = await tx.specializedRegister.create({
               data: {

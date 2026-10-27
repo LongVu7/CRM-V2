@@ -1,9 +1,18 @@
 const xlsx = require('xlsx');
-const { ProvinceGroup, SchoolType, StudentClass, Priority, EnglishCertificate, GPA, ProgramScore } = require('@prisma/client');
+const {
+  ProvinceGroup,
+  SchoolType,
+  StudentClass,
+  Priority,
+  EnglishCertificate,
+  GPA,
+  ProgramScore
+} = require('@prisma/client');
 const prisma = require('../../../config/db');
 const crypto = require('crypto');
 const {
   normalizeEnum,
+  normalizeProvinceName,
   PROVINCE_MAP,
   CLASS_MAP,
   GPA_MAP,
@@ -12,17 +21,11 @@ const {
 } = require('../../utils/enumMapper');
 const { applyStatusTransition } = require('../../utils/statusTransition');
 const { resolveHierarchy } = require('../../utils/hierarchyUtils');
-
 const importTokens = require('../../utils/importTokenManager');
 
-/**
- * Notes: {'USER' | 'SYSTEM'} type - The actor type executing the import
- * For audit log 
- */
-
-// !----- Template generation ------!
-// RequiredStruct => Required in file structure (columm Header)
-// RequiredNew => Required when create new student (Value in Row)
+// ─── Column Configuration ──────────────────────────────────────────
+// requiredStruct: Must be present in the uploaded spreadsheet header row
+// requiredNew: Mandatory value when creating a new Student record
 const COLUMN_MAP = {
   'Full Name': { key: 'fullName', requiredStruct: true, requiredNew: true },
   'Gender': { key: 'gender', requiredStruct: false, requiredNew: false },
@@ -67,12 +70,11 @@ const generateTemplate = () => {
   return xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 };
 
-// --- Helpers ---
+// ─── Normalization & Extraction Helpers ─────────────────────────────
 const normalizeMobile = (val) => {
   if (!val) return null;
   const str = String(val).trim();
   if (!str) return null;
-  // Normalize Mobile: enforce 10 digits starting with 0.
   let cleaned = str.replace(/\D/g, '');
   if (cleaned.length === 9 && !cleaned.startsWith('0')) {
     cleaned = '0' + cleaned;
@@ -89,29 +91,225 @@ const parseExcelDate = (val) => {
   return isNaN(d.getTime()) ? null : d;
 };
 
+/**
+ *  Case-insensitive column extractor 
+ * Tolerates whitespace, case variations, or direct camelCase key names.
+ */
+const getFieldValue = (row, header, configKey) => {
+  if (row[header] !== undefined) return row[header];
+  if (configKey && row[configKey] !== undefined) return row[configKey];
+  const target = header.toLowerCase().replace(/[\s_]/g, '');
+  const key = Object.keys(row).find(k => k.toLowerCase().replace(/[\s_]/g, '') === target);
+  return key ? row[key] : undefined;
+};
 
-const validateInquiryRows = async (rawData) => {
+const validateRequiredHeaders = (rawData) => {
   if (rawData.length === 0) {
     const error = new Error('The uploaded file is empty');
     error.status = 400;
     throw error;
   }
 
-  // Validate required column headers
   const fileHeaders = Object.keys(rawData[0] || {});
+  const normalizedFileHeaders = new Set(fileHeaders.map(h => h.trim().toLowerCase().replace(/[\s_]/g, '')));
+
   for (const [header, config] of Object.entries(COLUMN_MAP)) {
-    if (config.requiredStruct && !fileHeaders.includes(header)) {
-      const error = new Error(`COLUMN_MISSING: Missing required header "${header}"`);
-      error.status = 400;
-      throw error;
+    if (config.requiredStruct) {
+      const headerTarget = header.toLowerCase().replace(/[\s_]/g, '');
+      const keyTarget = config.key.toLowerCase().replace(/[\s_]/g, '');
+      const isPresent = fileHeaders.includes(header) ||
+        normalizedFileHeaders.has(headerTarget) ||
+        normalizedFileHeaders.has(keyTarget);
+      if (!isPresent) {
+        const error = new Error(`COLUMN_MISSING: Missing required header "${header}"`);
+        error.status = 400;
+        throw error;
+      }
+    }
+  }
+};
+
+// ─── Validation Helpers ─────────────────────────────────────────────
+const resolveEnumField = (row, field, { enumType, map = {}, fallback = null, errorLabel, preTransform }) => {
+  const rawVal = row[field];
+  if (!rawVal) {
+    row[field] = fallback;
+    return;
+  }
+
+  let norm = normalizeEnum(rawVal);
+  if (preTransform) norm = preTransform(norm);
+  const mapped = map[norm] || norm;
+
+  if (Object.keys(enumType).includes(mapped)) {
+    row[field] = mapped;
+  } else {
+    row[field] = mapped;
+    row._meta.errors.push(`Invalid ${errorLabel}: ${mapped}`);
+  }
+};
+
+const resolveStudentEnums = (row) => {
+  resolveEnumField(row, 'provinceGroup', {
+    enumType: ProvinceGroup,
+    map: PROVINCE_MAP,
+    fallback: 'OTHER_PROVINCE',
+    errorLabel: 'Province Group'
+  });
+  resolveEnumField(row, 'schoolType', {
+    enumType: SchoolType,
+    fallback: 'NONE',
+    errorLabel: 'School Type',
+    preTransform: (v) => (v === 'A_' ? 'A_STAR' : v)
+  });
+  resolveEnumField(row, 'class', {
+    enumType: StudentClass,
+    map: CLASS_MAP,
+    fallback: 'NONE',
+    errorLabel: 'Class'
+  });
+  resolveEnumField(row, 'priority', {
+    enumType: Priority,
+    fallback: null,
+    errorLabel: 'Priority'
+  });
+  resolveEnumField(row, 'gpa', {
+    enumType: GPA,
+    map: GPA_MAP,
+    fallback: 'OTHER',
+    errorLabel: 'GPA'
+  });
+  resolveEnumField(row, 'programScore', {
+    enumType: ProgramScore,
+    map: PROGRAM_SCORE_MAP,
+    fallback: 'OTHER',
+    errorLabel: 'Program Score'
+  });
+  resolveEnumField(row, 'englishCertificate', {
+    enumType: EnglishCertificate,
+    map: ENGLISH_CERT_MAP,
+    fallback: null,
+    errorLabel: 'English Certificate'
+  });
+};
+
+// !--- Help function to find province with alias ---!
+const findProvinceWithAlias = (provinceList, rawInput) => {
+  if (!rawInput) return null;
+  const rawTrimmedLower = String(rawInput).trim().toLowerCase();
+  const normalizedInput = normalizeProvinceName(rawInput);
+
+  return provinceList.find(p => {
+    if (p.name.toLowerCase() === rawTrimmedLower) return true;
+    return normalizeProvinceName(p.name) === normalizedInput;
+  });
+};
+
+const resolveLocationAndSchool = (row, { oldProvinces, schools, newProvinces, countries }) => {
+  if (row.oldProvince) {
+    const op = findProvinceWithAlias(oldProvinces, row.oldProvince);
+    if (!op) {
+      row._meta.errors.push(`UNRESOLVED_MAPPING: Old Province "${row.oldProvince}"`);
+    } else {
+      row.oldProvinceId = op.id;
+      if (row.school) {
+        const sch = schools.find(s => s.name.toLowerCase() === row.school.toLowerCase() && s.oldProvinceId === op.id);
+        if (!sch) {
+          row._meta.errors.push(`UNRESOLVED_MAPPING: School "${row.school}" not found in province`);
+        } else {
+          row.schoolId = sch.id;
+        }
+      }
     }
   }
 
-  // Parse and Normalize
+  if (row.newProvince) {
+    const np = findProvinceWithAlias(newProvinces, row.newProvince);
+    if (!np) row._meta.errors.push(`UNRESOLVED_MAPPING: New Province "${row.newProvince}"`);
+    else row.newProvinceId = np.id;
+  } else if (newProvinces.length > 0) {
+    row.newProvinceId = newProvinces[0].id;
+  }
+
+  if (row.country) {
+    const c = countries.find(x => x.name.toLowerCase() === row.country.toLowerCase());
+    if (!c) row._meta.errors.push(`UNRESOLVED_MAPPING: Country "${row.country}"`);
+    else row.countryId = c.id;
+  } else if (countries.length > 0) {
+    row.countryId = countries[0].id;
+  }
+};
+
+const resolveCommonInquiryFields = (row, { accounts, statusData, sourceData }) => {
+  if (row.assignedTo) {
+    const acc = accounts.find(a => a.email.toLowerCase() === row.assignedTo.toLowerCase());
+    if (!acc) row._meta.errors.push(`UNRESOLVED_MAPPING: Assigned account Email "${row.assignedTo} is invalid"`);
+    else row.assignedToId = acc.id;
+  }
+
+  if (row.statusInteraction || row.statusGeneral || row.statusDetail) {
+    const statRes = resolveHierarchy(statusData, ['interaction', 'general', 'detail'], [row.statusInteraction, row.statusGeneral, row.statusDetail]);
+    if (statRes.error) row._meta.errors.push(`INVALID_RELATION (Status): ${statRes.error}`);
+    else row.statusDataId = statRes.resolvedId;
+  }
+
+  if (row.source || row.sourceDetail || row.approachMethod) {
+    const srcRes = resolveHierarchy(sourceData, ['source', 'sourceDetail', 'approachMethod'], [row.source, row.sourceDetail, row.approachMethod]);
+    if (srcRes.error) row._meta.errors.push(`INVALID_RELATION (Source): ${srcRes.error}`);
+    else row.sourceDataId = srcRes.resolvedId;
+  }
+};
+
+const resolveMajorAndAcademicIntentions = (row, majorData) => {
+  if (row.interestedMajor || row.specificMajor) {
+    const majorRes = resolveHierarchy(majorData, ['interestedMajor', 'specificMajor'], [row.interestedMajor, row.specificMajor]);
+    if (majorRes.error) {
+      row._meta.errors.push(`INVALID_RELATION (Major): ${majorRes.error}`);
+    } else {
+      row.interestedMajorId = majorRes.resolvedIds && majorRes.resolvedIds[0];
+      row.specificMajorId = majorRes.resolvedIds && majorRes.resolvedIds[1];
+    }
+  }
+
+  const hasAcademicIntentions = row.interestedMajorId || row.admissionYear || row.englishCertificate || row.gpa || row.programScore;
+  if (hasAcademicIntentions && !row.interestedMajorId) {
+    row._meta.errors.push('Interested Major is required when Academic Intentions are provided');
+  }
+};
+
+const classifyRow = (row, isNew, student) => {
+  if (row._meta.errors.length > 0) {
+    const hasUnresolved = row._meta.errors.some(e => e.includes('UNRESOLVED_MAPPING') || e.includes('INVALID_RELATION'));
+    row._meta.classification = hasUnresolved ? 'MAPPING_ISSUE' : 'INVALID';
+  } else {
+    row._meta.classification = isNew ? 'READY_NEW_STUDENT_AND_INQUIRY' : 'READY_EXISTING_STUDENT_NEW_INQUIRY';
+    if (!isNew && student) {
+      row.existingStudentId = student.id;
+    }
+  }
+};
+
+const buildSummary = (rows) => ({
+  total: rows.length,
+  readyNew: rows.filter(r => r._meta.classification === 'READY_NEW_STUDENT_AND_INQUIRY').length,
+  readyExisting: rows.filter(r => r._meta.classification === 'READY_EXISTING_STUDENT_NEW_INQUIRY').length,
+  existingInquiry: rows.filter(r => r._meta.classification === 'EXISTING_INQUIRY').length,
+  duplicateInFile: rows.filter(r => r._meta.classification === 'DUPLICATE_IN_FILE').length,
+  mappingIssue: rows.filter(r => r._meta.classification === 'MAPPING_ISSUE').length,
+  invalid: rows.filter(r => r._meta.classification === 'INVALID').length,
+});
+
+// !------ Import process -------!
+// Validate headers and structure
+const validateInquiryRows = async (rawData) => {
+  validateRequiredHeaders(rawData);
+
+  // 1. Parse and normalize row data
   const parsedRows = rawData.map((row, index) => {
     const r = { _meta: { rowNumber: index + 2, errors: [], warnings: [], raw: row } };
     for (const [header, config] of Object.entries(COLUMN_MAP)) {
-      r[config.key] = typeof row[header] === 'string' ? row[header].trim() : row[header];
+      const val = getFieldValue(row, header, config.key);
+      r[config.key] = typeof val === 'string' ? val.trim() : val;
     }
     r.mobile = normalizeMobile(r.mobile);
     r.birthDate = parseExcelDate(r.birthDate);
@@ -119,7 +317,7 @@ const validateInquiryRows = async (rawData) => {
     return r;
   });
 
-  // Check file duplicates with unique mobile number
+  // 2. Check duplicate mobile in file
   const mobileMap = new Map();
   for (const row of parsedRows) {
     if (row.mobile) {
@@ -135,25 +333,35 @@ const validateInquiryRows = async (rawData) => {
     }
   }
 
-  // Pre-load reference data
+  // 3. Batch preload reference data concurrently to check duplicate mobile in database
   const mobiles = [...new Set(parsedRows.map(r => r.mobile).filter(Boolean))];
-  const existingStudents = await prisma.student.findMany({
-    where: { mobile: { in: mobiles } },
-    include: { inquiry: true }
-  });
+  const [
+    existingStudents,
+    oldProvinces,
+    schools,
+    newProvinces,
+    countries,
+    majorData,
+    statusData,
+    sourceData,
+    accounts
+  ] = await Promise.all([
+    prisma.student.findMany({ where: { mobile: { in: mobiles } }, include: { inquiry: true } }),
+    prisma.oldProvince.findMany(),
+    prisma.school.findMany(),
+    prisma.newProvince.findMany(),
+    prisma.country.findMany(),
+    prisma.majorData.findMany({ where: { isActive: true } }),
+    prisma.statusData.findMany({ where: { isActive: true } }),
+    prisma.sourceData.findMany({ where: { isActive: true } }),
+    prisma.account.findMany({ where: { isActive: true } })
+  ]);
 
-  const oldProvinces = await prisma.oldProvince.findMany();
-  const schools = await prisma.school.findMany();
-  const newProvinces = await prisma.newProvince.findMany();
-  const countries = await prisma.country.findMany();
-  const majorData = await prisma.majorData.findMany({ where: { isActive: true } });
-  const statusData = await prisma.statusData.findMany({ where: { isActive: true } });
-  const sourceData = await prisma.sourceData.findMany({ where: { isActive: true } });
-  const accounts = await prisma.account.findMany({ where: { isActive: true } });
+  const refData = { oldProvinces, schools, newProvinces, countries, accounts, statusData, sourceData };
 
-  // Process rows
+  // 4. Validate and classify each row
   for (const row of parsedRows) {
-    if (row._meta.classification) continue; // Skip if already classified (DUPLICATE/INVALID)
+    if (row._meta.classification) continue;
 
     const student = existingStudents.find(s => s.mobile === row.mobile);
     const isNew = !student;
@@ -163,185 +371,30 @@ const validateInquiryRows = async (rawData) => {
       continue;
     }
 
-    // New Student Validation
     if (isNew) {
-      // Row Required checks
       for (const [header, config] of Object.entries(COLUMN_MAP)) {
         if (config.requiredNew && (row[config.key] === null || row[config.key] === '' || row[config.key] === undefined)) {
           row._meta.errors.push(`MISSING_REQUIRED_FIELD: ${header} is required for new students`);
         }
       }
 
-      // References
-      if (row.oldProvince) {
-        const op = oldProvinces.find(p => p.name.toLowerCase() === row.oldProvince.toLowerCase());
-        if (!op) {
-          row._meta.errors.push(`UNRESOLVED_MAPPING: Old Province "${row.oldProvince}"`);
-        } else {
-          row.oldProvinceId = op.id;
-          if (row.school) {
-            const sch = schools.find(s => s.name.toLowerCase() === row.school.toLowerCase() && s.oldProvinceId === op.id);
-            if (!sch) {
-              row._meta.errors.push(`UNRESOLVED_MAPPING: School "${row.school}" not found in province`);
-            } else {
-              row.schoolId = sch.id;
-            }
-          }
-        }
-      }
-
-      if (row.newProvince) {
-        const np = newProvinces.find(p => p.name.toLowerCase() === row.newProvince.toLowerCase());
-        if (!np) row._meta.errors.push(`UNRESOLVED_MAPPING: New Province "${row.newProvince}"`);
-        else row.newProvinceId = np.id;
-      } else if (newProvinces.length > 0) {
-        row.newProvinceId = newProvinces[0].id; // Fallback to first available New Province
-      }
-
-      if (row.country) {
-        const c = countries.find(x => x.name.toLowerCase() === row.country.toLowerCase());
-        if (!c) row._meta.errors.push(`UNRESOLVED_MAPPING: Country "${row.country}"`);
-        else row.countryId = c.id;
-      } else if (countries.length > 0) {
-        row.countryId = countries[0].id; // Fallback to first available Country
-      }
-
-      // Enums (basic check and localized mapping)
-
-      if (row.provinceGroup) {
-        let norm = normalizeEnum(row.provinceGroup);
-        row.provinceGroup = PROVINCE_MAP[norm] || norm;
-        if (!Object.keys(ProvinceGroup).includes(row.provinceGroup)) {
-          row._meta.errors.push(`Invalid Province Group: ${row.provinceGroup}`);
-        }
-      } else {
-        row.provinceGroup = 'OTHER_PROVINCE'; // Fallback
-      }
-
-      if (row.schoolType) {
-        row.schoolType = normalizeEnum(row.schoolType);
-        if (row.schoolType === 'A_') row.schoolType = 'A_STAR'; // Special case for A*
-        if (!Object.keys(SchoolType).includes(row.schoolType)) {
-          row._meta.errors.push(`Invalid School Type: ${row.schoolType}`);
-        }
-      } else {
-        row.schoolType = 'NONE'; // Fallback
-      }
-
-      if (row.class) {
-        let norm = normalizeEnum(row.class);
-        row.class = CLASS_MAP[norm] || norm;
-        if (!Object.keys(StudentClass).includes(row.class)) {
-          row._meta.errors.push(`Invalid Class: ${row.class}`);
-        }
-      } else {
-        row.class = 'NONE'; // Fallback
-      }
-
-      if (row.priority) {
-        row.priority = normalizeEnum(row.priority);
-        if (!Object.keys(Priority).includes(row.priority)) {
-          row._meta.errors.push(`Invalid Priority: ${row.priority}`);
-        }
-      }
-
-      if (row.gpa) {
-        let norm = normalizeEnum(row.gpa);
-        // Sometimes `<` and `>` might not be replaced by the regex.
-        norm = norm.replace(/</g, '<').replace(/>/g, '>');
-        row.gpa = GPA_MAP[norm] || norm;
-        if (!Object.keys(GPA).includes(row.gpa)) {
-          row._meta.errors.push(`Invalid GPA: ${row.gpa}`);
-        }
-      } else {
-        row.gpa = 'OTHER'; // B/c it is a prisma required field
-      }
-
-      if (row.programScore) {
-        let norm = normalizeEnum(row.programScore);
-        row.programScore = PROGRAM_SCORE_MAP[norm] || norm;
-        if (!Object.keys(ProgramScore).includes(row.programScore)) {
-          row._meta.errors.push(`Invalid Program Score: ${row.programScore}`);
-        }
-      } else {
-        row.programScore = 'OTHER'; // B/c it is a prisma required field
-      }
-
-      if (row.englishCertificate) {
-        let norm = normalizeEnum(row.englishCertificate);
-        row.englishCertificate = ENGLISH_CERT_MAP[norm] || norm;
-        if (!Object.keys(EnglishCertificate).includes(row.englishCertificate)) {
-          row._meta.errors.push(`Invalid English Certificate: ${row.englishCertificate}`);
-        }
-      } else {
-        row.englishCertificate = null;
-      }
-
-      // Major Hierarchy
-      if (row.interestedMajor || row.specificMajor) {
-        const majorRes = resolveHierarchy(majorData, ['interestedMajor', 'specificMajor'], [row.interestedMajor, row.specificMajor]);
-        if (majorRes.error) row._meta.errors.push(`INVALID_RELATION (Major): ${majorRes.error}`);
-        else {
-          row.interestedMajorId = majorRes.resolvedIds && majorRes.resolvedIds[0];
-          row.specificMajorId = majorRes.resolvedIds && majorRes.resolvedIds[1];
-        }
-      }
-
-      // Academic Intentions cross-validation
-      const hasAcademicIntentions = row.interestedMajorId || row.admissionYear || row.englishCertificate || row.gpa || row.programScore;
-      if (hasAcademicIntentions) {
-        if (!row.interestedMajorId) row._meta.errors.push(`Interested Major is required when Academic Intentions are provided`);
-      }
+      resolveLocationAndSchool(row, refData);
+      resolveStudentEnums(row);
+      resolveMajorAndAcademicIntentions(row, majorData);
     } else {
       row._meta.warnings.push('Uploaded Student, Education, and Specialized Register data will be ignored as the student already exists.');
     }
 
-    // Common Inquiry Fields Validation
-    if (row.assignedTo) {
-      const acc = accounts.find(a => a.email.toLowerCase() === row.assignedTo.toLowerCase());
-      if (!acc) row._meta.errors.push(`UNRESOLVED_MAPPING: Assigned account Email "${row.assignedTo} is invalid"`);
-      else row.assignedToId = acc.id;
-    }
-
-    if (row.statusInteraction || row.statusGeneral || row.statusDetail) {
-      const statRes = resolveHierarchy(statusData, ['interaction', 'general', 'detail'], [row.statusInteraction, row.statusGeneral, row.statusDetail]);
-      if (statRes.error) row._meta.errors.push(`INVALID_RELATION (Status): ${statRes.error}`);
-      else row.statusDataId = statRes.resolvedId;
-    }
-
-    if (row.source || row.sourceDetail || row.approachMethod) {
-      const srcRes = resolveHierarchy(sourceData, ['source', 'sourceDetail', 'approachMethod'], [row.source, row.sourceDetail, row.approachMethod]);
-      if (srcRes.error) row._meta.errors.push(`INVALID_RELATION (Source): ${srcRes.error}`);
-      else row.sourceDataId = srcRes.resolvedId;
-    }
-
-    if (row._meta.errors.length > 0) {
-      const hasUnresolved = row._meta.errors.some(e => e.includes('UNRESOLVED_MAPPING') || e.includes('INVALID_RELATION'));
-      row._meta.classification = hasUnresolved ? 'MAPPING_ISSUE' : 'INVALID';
-    } else {
-      row._meta.classification = isNew ? 'READY_NEW_STUDENT_AND_INQUIRY' : 'READY_EXISTING_STUDENT_NEW_INQUIRY';
-      // Map existing student ID for confirm logic
-      if (!isNew) row.existingStudentId = student.id;
-    }
+    resolveCommonInquiryFields(row, refData);
+    classifyRow(row, isNew, student);
   }
 
-  const summary = {
-    total: parsedRows.length,
-    readyNew: parsedRows.filter(r => r._meta.classification === 'READY_NEW_STUDENT_AND_INQUIRY').length,
-    readyExisting: parsedRows.filter(r => r._meta.classification === 'READY_EXISTING_STUDENT_NEW_INQUIRY').length,
-    existingInquiry: parsedRows.filter(r => r._meta.classification === 'EXISTING_INQUIRY').length,
-    duplicateInFile: parsedRows.filter(r => r._meta.classification === 'DUPLICATE_IN_FILE').length,
-    mappingIssue: parsedRows.filter(r => r._meta.classification === 'MAPPING_ISSUE').length,
-    invalid: parsedRows.filter(r => r._meta.classification === 'INVALID').length,
-  };
-
-  return { summary, rows: parsedRows };
+  return { summary: buildSummary(parsedRows), rows: parsedRows };
 };
 
 const previewImportInquiry = async (parsedData, accountId) => {
   const { summary, rows: parsedRows } = await validateInquiryRows(parsedData);
 
-  // Create Token
   const importToken = crypto.randomUUID();
   importTokens.set(importToken, {
     accountId,
@@ -354,7 +407,87 @@ const previewImportInquiry = async (parsedData, accountId) => {
   return { importToken, summary, rows: parsedRows };
 };
 
+// ─── Database Mutation Helpers ──────────────────────────────────────
+const createStudentRecord = async (tx, row) => {
+  let srId = null;
+  if (row.interestedMajorId || row.admissionYear || row.englishCertificate || row.gpa || row.programScore) {
+    const sr = await tx.specializedRegister.create({
+      data: {
+        interestedMajorId: row.interestedMajorId,
+        specificMajorId: row.specificMajorId,
+        admissionYear: row.admissionYear ? Number(row.admissionYear) : null,
+        englishCertificate: row.englishCertificate,
+        gpa: row.gpa,
+        programScore: row.programScore
+      }
+    });
+    srId = sr.id;
+  }
 
+  const student = await tx.student.create({
+    data: {
+      fullName: row.fullName,
+      gender: row.gender || 'Unknown',
+      email: row.email || null,
+      mobile: row.mobile,
+      otherPhone: row.otherPhone || null,
+      birthDate: row.birthDate || null,
+      primaryAddress: row.primaryAddress || null,
+      specializedRegisterId: srId
+    }
+  });
+
+  await tx.studentEducation.create({
+    data: {
+      studentId: student.id,
+      schoolId: row.schoolId,
+      newProvinceId: row.newProvinceId,
+      countryId: row.countryId,
+      provinceGroup: row.provinceGroup,
+      schoolType: row.schoolType,
+      class: row.class
+    }
+  });
+
+  return student;
+};
+
+const createInquiryWithMilestones = async (tx, studentId, row, accountId) => {
+  let milestoneUpdates = {};
+  if (row.statusDataId) {
+    milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: row.statusDataId });
+  }
+
+  const createdInquiry = await tx.inquiry.create({
+    data: {
+      assignedToId: row.assignedToId,
+      description: row.description,
+      dataReceived: row.dataReceived,
+      groupTele: row.groupTele,
+      priority: row.priority || null,
+      statusDataId: row.statusDataId,
+      sourceDataId: row.sourceDataId,
+      studentId,
+      ...milestoneUpdates
+    }
+  });
+
+  if (row.statusDataId) {
+    await tx.inquiryStatusHistory.create({
+      data: {
+        inquiryId: createdInquiry.id,
+        previousStatusId: null,
+        newStatusId: row.statusDataId,
+        changedById: accountId || null,
+        teamId: null,
+        notes: 'Initial import status',
+        changedAt: new Date()
+      }
+    });
+  }
+
+  return createdInquiry;
+};
 
 const insertInquiryRows = async (rows, context) => {
   const accountId = context?.accountId || null;
@@ -363,94 +496,21 @@ const insertInquiryRows = async (rows, context) => {
   let skipped = 0;
 
   for (const row of rows) {
-    if (row._meta.classification === 'READY_NEW_STUDENT_AND_INQUIRY') {
+    const classification = row._meta?.classification;
+
+    if (classification === 'READY_NEW_STUDENT_AND_INQUIRY') {
       try {
         await prisma.$transaction(async (tx) => {
-          let srId = null;
-          // 1. Create SR conditionally
-          if (row.interestedMajorId || row.admissionYear || row.englishCertificate || row.gpa || row.programScore) {
-            const sr = await tx.specializedRegister.create({
-              data: {
-                interestedMajorId: row.interestedMajorId,
-                specificMajorId: row.specificMajorId,
-                admissionYear: row.admissionYear ? Number(row.admissionYear) : null,
-                englishCertificate: row.englishCertificate,
-                gpa: row.gpa,
-                programScore: row.programScore
-              }
-            });
-            srId = sr.id;
-          }
-
-          // 2. Create Student
-          const student = await tx.student.create({
-            data: {
-              fullName: row.fullName,
-              gender: row.gender || 'Unknown',
-              email: row.email || null,
-              mobile: row.mobile,
-              otherPhone: row.otherPhone || null,
-              birthDate: row.birthDate || null,
-              primaryAddress: row.primaryAddress || null,
-              specializedRegisterId: srId
-            }
-          });
-
-          // 3. Create Education
-          await tx.studentEducation.create({
-            data: {
-              studentId: student.id,
-              schoolId: row.schoolId,
-              newProvinceId: row.newProvinceId,
-              countryId: row.countryId,
-              provinceGroup: row.provinceGroup,
-              schoolType: row.schoolType,
-              class: row.class
-            }
-          });
-
-          // 4. Create Inquiry
-          let milestoneUpdates = {};
-          if (row.statusDataId) {
-            milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: row.statusDataId });
-          }
-          const createdInquiry = await tx.inquiry.create({
-            data: {
-              assignedToId: row.assignedToId,
-              description: row.description,
-              dataReceived: row.dataReceived,
-              groupTele: row.groupTele,
-              priority: row.priority || null,
-              statusDataId: row.statusDataId,
-              sourceDataId: row.sourceDataId,
-              studentId: student.id,
-              ...milestoneUpdates
-            }
-          });
-
-          if (row.statusDataId) {
-            await tx.inquiryStatusHistory.create({
-              data: {
-                inquiryId: createdInquiry.id,
-                previousStatusId: null,
-                newStatusId: row.statusDataId,
-                changedById: accountId || null,
-                teamId: null,
-                notes: 'Initial import status',
-                changedAt: new Date()
-              }
-            });
-          }
+          const student = await createStudentRecord(tx, row);
+          await createInquiryWithMilestones(tx, student.id, row, accountId);
         });
         newStudentsCreated++;
       } catch (err) {
-        console.error(`Row ${row._meta.rowNumber} failed:`, err);
-        skipped++; // e.g. unique constraint violation occurred before transaction started
+        console.error(`Row ${row._meta?.rowNumber} failed:`, err);
+        skipped++;
       }
-    }
-    else if (row._meta.classification === 'READY_EXISTING_STUDENT_NEW_INQUIRY') {
+    } else if (classification === 'READY_EXISTING_STUDENT_NEW_INQUIRY') {
       try {
-        // Re-check Inquiry existence just in case
         const student = await prisma.student.findUnique({
           where: { id: row.existingStudentId },
           include: { inquiry: true }
@@ -462,44 +522,14 @@ const insertInquiryRows = async (rows, context) => {
         }
 
         await prisma.$transaction(async (tx) => {
-          let milestoneUpdates = {};
-          if (row.statusDataId) {
-            milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: row.statusDataId });
-          }
-          const createdInquiry = await tx.inquiry.create({
-            data: {
-              assignedToId: row.assignedToId,
-              description: row.description,
-              dataReceived: row.dataReceived,
-              groupTele: row.groupTele,
-              statusDataId: row.statusDataId,
-              sourceDataId: row.sourceDataId,
-              studentId: row.existingStudentId,
-              ...milestoneUpdates
-            }
-          });
-
-          if (row.statusDataId) {
-            await tx.inquiryStatusHistory.create({
-              data: {
-                inquiryId: createdInquiry.id,
-                previousStatusId: null,
-                newStatusId: row.statusDataId,
-                changedById: accountId || null,
-                teamId: null,
-                notes: 'Initial import status',
-                changedAt: new Date()
-              }
-            });
-          }
+          await createInquiryWithMilestones(tx, row.existingStudentId, row, accountId);
         });
         newInquiriesForExisting++;
       } catch (err) {
-        console.error(`Row ${row._meta.rowNumber} failed:`, err);
+        console.error(`Row ${row._meta?.rowNumber} failed:`, err);
         skipped++;
       }
-    }
-    else {
+    } else {
       skipped++;
     }
   }
@@ -534,10 +564,8 @@ const confirmImportInquiry = async (importToken, accountId) => {
 
   tokenData.status = 'PROCESSING';
 
-  // Call the core business logic
   const result = await insertInquiryRows(tokenData.data, { type: 'USER', accountId });
 
-  // Cleanup token
   importTokens.delete(importToken);
 
   return result;

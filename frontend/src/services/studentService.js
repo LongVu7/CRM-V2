@@ -39,7 +39,7 @@ export const deleteStudent = async (id) => {
   return response.data
 }
 
-export const previewImport = async (files) => {
+export const previewImportStudent = async (files) => {
   const formData = new FormData()
   files.forEach((file) => {
     formData.append('files', file)
@@ -53,8 +53,8 @@ export const previewImport = async (files) => {
   return response.data
 }
 
-export const confirmImport = async (token) => {
-  const response = await api.post(`${prefix}/import/confirm`, { token })
+export const confirmImportStudent = async (importToken) => {
+  const response = await api.post(`${prefix}/import/confirm`, { importToken })
   return response.data
 }
 

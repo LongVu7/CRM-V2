@@ -582,9 +582,6 @@ async function validateSheetInquiryRows(rawData, sheetMetadata = {}) {
   return { summary: buildSummary(parsedRows), rows: parsedRows };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// §8. PERSISTENCE LAYER
-// ═══════════════════════════════════════════════════════════════════════════════
 
 /**
  * Resolves fallback newProvinceId and countryId within a transaction.
