@@ -23,8 +23,6 @@
       <InquiryAccountAssign ref="accountAssignRef" />
     </div>
 
-    <InquiryImport />
-
     <div class="global-actions">
       <Button 
         label="Create Inquiry" 
@@ -46,7 +44,6 @@ import { useInquiry } from '@/composables/useInquiry'
 import InquiryForm from '@/components/inquiry/InquiryForm.vue'
 import InquiryStudentAssign from '@/components/inquiry/InquiryStudentAssign.vue'
 import InquiryAccountAssign from '@/components/inquiry/InquiryAccountAssign.vue'
-import InquiryImport from '@/components/inquiry/InquiryImport.vue'
 
 const router = useRouter()
 const toast = useToast()

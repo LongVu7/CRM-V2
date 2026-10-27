@@ -56,6 +56,14 @@
               :loading="syncing" 
             />
             <Button 
+              v-if="$can('import', 'inquiry')" 
+              label="Import Excel" 
+              icon="pi pi-file-excel" 
+              text 
+              @click="router.push('/inquiries/import')" 
+              class="import-btn" 
+            />
+            <Button 
               v-if="$can('export', 'inquiry')" 
               label="Export" 
               icon="pi pi-download" 
@@ -553,6 +561,7 @@ const getStatusTagSeverity = (label) => {
 }
 
 .export-btn,
+.import-btn,
 .delete-btn,
 .sync-sheets-btn {
   font-size: 0.85rem;

@@ -45,6 +45,12 @@ const router = createRouter({
       meta: { permission: 'inquiry.create' }
     },
     {
+      path: '/inquiries/import',
+      name: 'inquiry-import',
+      component: () => import('../views/inquiry/InquiryImportView.vue'),
+      meta: { permission: ['inquiry.import'] }
+    },
+    {
       path: '/inquiries/:id',
       name: 'inquiry-detail',
       component: () => import('../views/inquiry/InquiryDetail.vue'),

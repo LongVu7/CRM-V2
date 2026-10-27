@@ -18,12 +18,16 @@
       </div>
     </div>
     
-    <Button label="Import Another File" icon="pi pi-refresh" class="mt-4" @click="emit('reset')" />
+    <div class="result-actions">
+      <Button label="Import Another File" icon="pi pi-refresh" severity="secondary" outlined @click="emit('reset')" />
+      <Button label="Go to Inquiries" icon="pi pi-arrow-right" iconPos="right" @click="router.push('/inquiries')" />
+    </div>
   </div>
 </template>
 
 <script setup>
 import Button from 'primevue/button'
+import { useRouter } from 'vue-router'
 
 const props = defineProps({
   resultStats: {
@@ -33,6 +37,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['reset'])
+const router = useRouter()
 </script>
 <style scoped>
 .result-container {
@@ -65,5 +70,10 @@ const emit = defineEmits(['reset'])
 .stat-row:last-child {
   margin-bottom: 0;
 }
-.mt-4 { margin-top: 1.5rem; }
+.result-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  justify-content: center;
+}
 </style>

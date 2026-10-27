@@ -197,6 +197,7 @@ const getInquiryById = async (id) => {
 
 /**
  * Validates teamId during record creation.
+ * Automatically resolves default team if omitted.
  */
 const resolveCreationTeamId = (reqUser, requestedTeamId) => {
   if (!reqUser) 
@@ -209,21 +210,25 @@ const resolveCreationTeamId = (reqUser, requestedTeamId) => {
 
   const ledTeamIds = reqUser.ledTeamIds || [];
   const memberTeamId = reqUser.memberTeamId;
+  const defaultTeamId = memberTeamId || ledTeamIds[0] || (reqUser.teamIds && reqUser.teamIds[0]);
 
-  // 1. Single-team member or single-team leader -> enforce automatic attribution
+  // 1. Single-team member or single-team leader -> enforce automatic attribution strictly to their own team
   if (ledTeamIds.length <= 1) {
-    const defaultTeamId = ledTeamIds[0] || memberTeamId || (reqUser.teamIds && reqUser.teamIds[0]);
     if (!defaultTeamId) {
-      throw handleError('User does not belong to any team to own this record', 400);
+      return null;
     }
     return parseInt(defaultTeamId, 10);
   }
 
-  // 2. Multi-team leader -> validate submitted teamId against authorized teams
-  if (!requestedTeamId) {
-    throw handleError('Multi-team leaders must specify a teamId for new records', 400);
+  // 2. Multi-team leader: if teamId is omitted, automatically take default team
+  if (requestedTeamId === undefined || requestedTeamId === null || requestedTeamId === '') {
+    if (defaultTeamId) {
+      return parseInt(defaultTeamId, 10);
+    }
+    return null;
   }
 
+  // If multi-team leader explicitly specified a teamId, validate against authorized teams
   const tid = parseInt(requestedTeamId, 10);
   const authorized = (reqUser.authorizedTeamIds || reqUser.teamIds || []).includes(tid);
   if (!authorized) {
