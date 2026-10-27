@@ -307,10 +307,11 @@ const importFromGoogleSheets = async (req, res) => {
     const results = await syncGoogleSheetsToInquiries();
     const totalStudents = results.reduce((acc, r) => acc + (r.newStudentsCreated || 0), 0);
     const totalInquiries = results.reduce((acc, r) => acc + (r.newInquiriesForExisting || 0), 0);
+    const totalUpdated = results.reduce((acc, r) => acc + (r.existingStudentsUpdated || 0), 0);
     const totalSkipped = results.reduce((acc, r) => acc + (r.skipped || 0), 0);
 
     res.status(200).json({
-      message: `Google Sheets sync completed: ${totalStudents} new student(s), ${totalInquiries} new inquiry(s) created (${totalSkipped} skipped).`,
+      message: `Google Sheets sync completed: ${totalStudents} new student(s), ${totalInquiries} new inquiry(s) created, ${totalUpdated} student(s) updated (${totalSkipped} skipped).`,
       data: results
     });
   } catch (error) {

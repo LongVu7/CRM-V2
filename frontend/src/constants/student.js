@@ -4,12 +4,14 @@ export const genderOptions = [
 ]
 
 export const classOptions = [
+  { label: 'Chưa có thông tin', value: 'NONE' },
   { label: 'Lớp 11', value: 'GRADE_11' },
   { label: 'Lớp 12', value: 'GRADE_12' },
   { label: 'Thí sinh tự do', value: 'FREELANCE' }
 ]
 
 export const schoolTypeOptions = [
+  { label: 'Chưa có thông tin', value: 'NONE' },
   { label: 'A*', value: 'A_STAR' },
   { label: 'A', value: 'A' },
   { label: 'B', value: 'B' },

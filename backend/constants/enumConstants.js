@@ -2,7 +2,8 @@
 // Defines normalization maps from external import formats to Prisma enums,
 // as well as display labels for human-readable output.
 
-const PROVINCE_MAP = {
+// Enum values: HO_CHI_MINH, CORE_PROVINCE, OTHER_PROVINCE, FOREIGN
+const PROVINCE_MAP = {  
   'TP_HCM': 'HO_CHI_MINH',
   'HO_CHI_MINH': 'HO_CHI_MINH',
   'TINH_RUOT': 'CORE_PROVINCE',
@@ -12,18 +13,22 @@ const PROVINCE_MAP = {
   'NUOC_NGOAI': 'FOREIGN',
   'FOREIGN': 'FOREIGN'
 };
-
-const CLASS_MAP = {
+// Enum values: GRADE_11, GRADE_12, FREELANCE, NONE
+const CLASS_MAP = { 
   'LOP_11': 'GRADE_11',
   'GRADE_11': 'GRADE_11',
   'LOP_12': 'GRADE_12',
   'GRADE_12': 'GRADE_12',
   'THI_SINH_TU_DO': 'FREELANCE',
-  'FREELANCE': 'FREELANCE'
+  'FREELANCE': 'FREELANCE',
+  'NONE': 'NONE',
+  'CHUA_XAC_DINH': 'NONE',
+  'CHUA_CO': 'NONE'
 };
 
-const GPA_MAP = {
-  '3_MON_LT21D': 'LOWER_21', // Note: < becomes LT
+// Enum values: LOWER_21, G11_21_TO_23, G12_SEM1_21_TO_23, G12_21_TO_23, G11_24_TO_26, G12_SEM1_24_TO_26, G12_24_TO_26, G11_HIGHER_26, G12_SEM1_HIGHER_26, G12_HIGHER_26, OTHER
+const GPA_MAP = { 
+  '3_MON_LT21D': 'LOWER_21', 
   '3_MON_<21D': 'LOWER_21',
   '3_MON_LOP_11_TU_21_23D': 'G11_21_TO_23',
   '3_MON_HK1_12_TU_21_23D': 'G12_SEM1_21_TO_23',
@@ -48,8 +53,8 @@ const GPA_MAP = {
   'G12_HIGHER_26': 'G12_HIGHER_26',
   'OTHER': 'OTHER'
 };
-
-const PROGRAM_SCORE_MAP = {
+// Enum values: TALENT_SCHOLARSHIP, OTHER_SCHOLARSHIP, ELIGIBLE_NO_SCHOLARSHIP, PENDING_REVIEW, NOT_ELIGIBLE, OTHER
+const PROGRAM_SCORE_MAP = { 
   'DAT_XET_HB_TALENT': 'TALENT_SCHOLARSHIP',
   'DAT_XET_HB_KHAC': 'OTHER_SCHOLARSHIP',
   'DAT_KHONG_CO_HB': 'ELIGIBLE_NO_SCHOLARSHIP',
@@ -78,7 +83,9 @@ const ENGLISH_CERT_MAP = {
   'OTHER': 'other',
   'KHAC': 'other'
 };
+// !--- End ---!
 
+// !--- Alias Mapping for Province Name ---!
 const PROVINCE_ALIASES = {
   // Ho Chi Minh City variations
   'tp ho chi minh': 'thanh pho ho chi minh',
@@ -117,12 +124,15 @@ const PROVINCE_ALIASES = {
   'dac lac': 'dak lak',
   'daclak': 'dak lak'
 };
+// !--- End ---!
 
-// Display labels for readable output
+// !--- Displayed Labels for UI ---//
+
 const CLASS_LABELS = {
   GRADE_11: 'Lớp 11',
   GRADE_12: 'Lớp 12',
-  FREELANCE: 'Thí sinh tự do'
+  FREELANCE: 'Thí sinh tự do',
+  NONE: 'Chưa có thông tin'
 };
 
 const PROVINCE_GROUP_LABELS = {
@@ -137,7 +147,8 @@ const SCHOOL_TYPE_LABELS = {
   A: 'A',
   B: 'B',
   C: 'C',
-  D: 'D'
+  D: 'D',
+  NONE: 'Chưa có thông tin'
 };
 
 const GPA_LABELS = {

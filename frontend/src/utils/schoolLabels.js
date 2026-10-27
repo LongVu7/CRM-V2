@@ -4,6 +4,7 @@ export const formatSchoolType = (type) => {
   if (type === 'B') return 'B'
   if (type === 'C') return 'C'
   if (type === 'D') return 'D'
+  if (type === 'NONE') return 'Chưa có thông tin'
   return type
 }
 

@@ -225,7 +225,7 @@ const validateInquiryRows = async (rawData) => {
           row._meta.errors.push(`Invalid School Type: ${row.schoolType}`);
         }
       } else {
-        row.schoolType = 'D'; // Fallback
+        row.schoolType = 'NONE'; // Fallback
       }
 
       if (row.class) {
@@ -235,7 +235,7 @@ const validateInquiryRows = async (rawData) => {
           row._meta.errors.push(`Invalid Class: ${row.class}`);
         }
       } else {
-        row.class = 'FREELANCE'; // Fallback
+        row.class = 'NONE'; // Fallback
       }
 
       if (row.priority) {
@@ -361,7 +361,7 @@ const insertInquiryRows = async (rows, context) => {
   let newStudentsCreated = 0;
   let newInquiriesForExisting = 0;
   let skipped = 0;
-  
+
   for (const row of rows) {
     if (row._meta.classification === 'READY_NEW_STUDENT_AND_INQUIRY') {
       try {

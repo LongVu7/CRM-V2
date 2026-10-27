@@ -75,6 +75,7 @@ enum StudentClass {
   GRADE_11
   GRADE_12
   FREELANCE
+  NONE
 }
 
 enum SchoolType {
@@ -83,6 +84,7 @@ enum SchoolType {
   B
   C
   D
+  NONE
 }
 
 model StudentEducation {
@@ -102,9 +104,9 @@ model StudentEducation {
 
   provinceGroup ProvinceGroup @map("province_group")
 
-  schoolType SchoolType @map("school_type")
+  schoolType SchoolType @default(NONE) @map("school_type")
 
-  class StudentClass @map("class")
+  class StudentClass @default(NONE) @map("class")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
