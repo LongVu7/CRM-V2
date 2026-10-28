@@ -60,6 +60,9 @@ const inquiryInclude = {
   assignedTo: {
     select: { id: true, fullName: true, email: true }
   },
+  createdBy: {
+    select: { id: true, fullName: true, email: true }
+  },
   sourceData: {
     select: {
       id: true, name: true, label: true, level: true,
@@ -89,13 +92,14 @@ const inquiryInclude = {
 };
 
 
-const buildInquiryData = ({ assignedToId, teamId, sourceDataId, statusDataId, dataReceived, interactionAt, createDate, eventNames, ...rest }) => ({
+const buildInquiryData = ({ assignedToId, teamId, createdById, sourceDataId, statusDataId, dataReceived, interactionAt, createDate, eventNames, ...rest }) => ({
   ...rest,
   ...(eventNames !== undefined && { eventNames: eventNames === null ? [] : eventNames }),
   ...(dataReceived !== undefined && { dataReceived: dataReceived ? new Date(dataReceived) : null }),
   ...(interactionAt !== undefined && { interactionAt: interactionAt ? new Date(interactionAt) : null }),
   ...(createDate !== undefined && { createDate: createDate ? new Date(createDate) : null }),
   ...(assignedToId ? { assignedTo: { connect: { id: parseInt(assignedToId, 10) } } } : {}),
+  ...(createdById ? { createdBy: { connect: { id: parseInt(createdById, 10) } } } : {}),
   ...(teamId ? { team: { connect: { id: parseInt(teamId, 10) } } } : {}),
   ...(sourceDataId ? { sourceData: { connect: { id: parseInt(sourceDataId, 10) } } } : {}),
   ...(statusDataId ? { statusData: { connect: { id: parseInt(statusDataId, 10) } } } : {})
@@ -115,15 +119,31 @@ const fetchInquiry = (txOrPrisma, id) =>
 
 // ─── Build Inquiry Where Clause
 const buildInquiryWhere = (filters, permissionScope = {}) => {
-  const where = { ...permissionScope };
+  const andClauses = [];
+
+  if (permissionScope && Object.keys(permissionScope).length > 0) {
+    andClauses.push(permissionScope);
+  }
+
+  const conditions = {};
 
   // Optional triage filter for unassigned leads within authorized scope
   if (filters.unassignedOnly === true || filters.unassignedOnly === 'true') {
-    where.assignedToId = null;
+    conditions.assignedToId = null;
   }
 
   if (filters.hasStudent) {
-    where.studentId = { not: null };
+    conditions.studentId = { not: null };
+  }
+
+  if (filters.assignedTo) {
+    conditions.assignedToId = parseInt(filters.assignedTo, 10);
+  }
+
+  if (filters.statusGeneral) {
+    conditions.statusData = {
+      parent: { label: filters.statusGeneral }
+    };
   }
 
   if (filters.search) {
@@ -131,35 +151,23 @@ const buildInquiryWhere = (filters, permissionScope = {}) => {
       { description: { contains: filters.search, mode: 'insensitive' } },
       { student: { fullName: { contains: filters.search, mode: 'insensitive' } } }
     ];
-    where.AND = [...(where.AND || []), { OR: searchCondition }];
-  }
-
-  // Existing specific status and assignment filters for Inquiry
-  if (filters.statusGeneral) {
-    where.AND = [...(where.AND || []), {
-      statusData: {
-        parent: { label: filters.statusGeneral }
-      }
-    }];
-  }
-  if (filters.assignedTo) {
-    where.assignedToId = parseInt(filters.assignedTo, 10);
+    andClauses.push({ OR: searchCondition });
   }
 
   // Student specific filters
   if (filters.birthYear || filters.oldProvinceId) {
-    where.student = { ...(where.student || {}) };
+    conditions.student = {};
 
     if (filters.birthYear) {
       const year = parseInt(filters.birthYear, 10);
-      where.student.birthDate = {
+      conditions.student.birthDate = {
         gte: new Date(`${year}-01-01T00:00:00.000Z`),
         lt: new Date(`${year + 1}-01-01T00:00:00.000Z`)
       };
     }
 
     if (filters.oldProvinceId) {
-      where.student.education = {
+      conditions.student.education = {
         OR: [
           { oldProvinceId: parseInt(filters.oldProvinceId, 10) },
           { school: { oldProvinceId: parseInt(filters.oldProvinceId, 10) } }
@@ -168,7 +176,13 @@ const buildInquiryWhere = (filters, permissionScope = {}) => {
     }
   }
 
-  return where;
+  if (Object.keys(conditions).length > 0) {
+    andClauses.push(conditions);
+  }
+
+  if (andClauses.length === 0) return {};
+  if (andClauses.length === 1) return andClauses[0];
+  return { AND: andClauses };
 };
 
 // ─── List all inquiries
@@ -264,12 +278,35 @@ const resolveCreationTeamId = (reqUser, requestedTeamId) => {
  *   3. Create an inquiry alone
  */
 const createInquiry = async ({ studentId, student, assignedToId, teamId, ...inquiryFields }, user) => {
-  // Auto assign staff who created inquiry 
-  const creatorAssignedToId = assignedToId || user?.accountId;
-  const effectiveTeamId = resolveCreationTeamId(user, teamId);
+  let targetAssignedToId = null;
+  if (assignedToId) {
+    targetAssignedToId = parseInt(assignedToId, 10);
+  } else {
+    // If creator does NOT have permission to assign to others (regular consultant), default to themselves
+    // If creator has assign permission (admin, marketing, leader), keep unassigned (null) for distribution
+    const canAssign = user?.roleName === 'admin' || user?.roleName === 'administrator' || user?.permissions?.has?.('inquiry.assign');
+    if (!canAssign && user?.accountId) {
+      targetAssignedToId = user.accountId;
+    }
+  }
+
+  let effectiveTeamId = resolveCreationTeamId(user, teamId);
+
+  // If effectiveTeamId was not resolved from creator, but an assignee was specified,
+  // sync team from the assigned account's team membership
+  if (!effectiveTeamId && targetAssignedToId) {
+    const assignedAccount = await prisma.account.findUnique({
+      where: { id: targetAssignedToId },
+      include: { teamMemberships: true }
+    });
+    if (assignedAccount?.teamMemberships?.[0]?.teamId) {
+      effectiveTeamId = assignedAccount.teamMemberships[0].teamId;
+    }
+  }
 
   const inquiryData = buildInquiryData({
-    assignedToId: creatorAssignedToId,
+    assignedToId: targetAssignedToId,
+    createdById: user?.accountId || user?.id || null,
     teamId: effectiveTeamId,
     ...inquiryFields
   });
@@ -450,9 +487,26 @@ const updateInquiry = async (id, updateData, user) => {
 
   // Handle assignedToId: connect or disconnect
   if (assignedToId !== undefined) {
-    data.assignedTo = assignedToId
-      ? { connect: { id: parseInt(assignedToId, 10) } }
-      : { disconnect: true };
+    if (assignedToId) {
+      const aid = parseInt(assignedToId, 10);
+      data.assignedTo = { connect: { id: aid } };
+
+      // If teamId was not explicitly provided in updateData, sync with the assigned account's team
+      if (teamId === undefined) {
+        const assignedAccount = await prisma.account.findUnique({
+          where: { id: aid },
+          include: { teamMemberships: true }
+        });
+        const newTeamId = assignedAccount?.teamMemberships?.[0]?.teamId || null;
+        if (newTeamId) {
+          data.team = { connect: { id: newTeamId } };
+        } else {
+          data.team = { disconnect: true };
+        }
+      }
+    } else {
+      data.assignedTo = { disconnect: true };
+    }
   }
 
   // Handle sourceDataId: connect or disconnect
@@ -588,21 +642,33 @@ const unassignStudentFromInquiry = async (inquiryId, studentId) => {
 // ─── Assign an account to an inquiry
 const assignAccountToInquiry = async (inquiryId, accountId) => {
   const iid = parseInt(inquiryId, 10);
-  const aid = parseInt(accountId, 10);
+  const aid = accountId ? parseInt(accountId, 10) : null;
 
-  const account = await prisma.account.findUnique({
-    where: { id: aid },
-    include: { teamMemberships: true }
-  });
-  if (!account) throw handleError('Account not found', 404);
+  const currentInquiry = await prisma.inquiry.findUnique({ where: { id: iid } });
+  if (!currentInquiry) throw handleError('Inquiry not found', 404);
 
-  const newTeamId = account.teamMemberships?.[0]?.teamId || null;
+  let newTeamId = currentInquiry.teamId;
+
+  if (aid) {
+    const account = await prisma.account.findUnique({
+      where: { id: aid },
+      include: { teamMemberships: true }
+    });
+    if (!account) throw handleError('Account not found', 404);
+
+    if (account.teamMemberships?.[0]?.teamId) {
+      newTeamId = account.teamMemberships[0].teamId;
+    } else {
+      // Account has no team membership (e.g. Admin) -> inquiry no longer belongs to any team
+      newTeamId = null;
+    }
+  }
 
   return prisma.inquiry.update({
     where: { id: iid },
     data: {
       assignedToId: aid,
-      ...(newTeamId && { teamId: newTeamId }),
+      teamId: newTeamId,
       updatedAt: new Date()
     },
     include: inquiryInclude

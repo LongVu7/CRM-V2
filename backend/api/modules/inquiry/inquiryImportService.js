@@ -461,6 +461,7 @@ const createInquiryWithMilestones = async (tx, studentId, row, accountId) => {
   const createdInquiry = await tx.inquiry.create({
     data: {
       assignedToId: row.assignedToId,
+      createdById: accountId || null,
       description: row.description,
       dataReceived: row.dataReceived,
       groupTele: row.groupTele,

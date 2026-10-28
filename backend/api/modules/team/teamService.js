@@ -437,8 +437,16 @@ const removeMember = async (teamId, accountId) => {
     throw error;
   }
 
-  await prisma.teamMember.delete({
-    where: { accountId: aid }
+  await prisma.$transaction(async (tx) => {
+    // Unassign member's inquiries in this team so they remain in the team for redistribution
+    await tx.inquiry.updateMany({
+      where: { teamId: tid, assignedToId: aid },
+      data: { assignedToId: null }
+    });
+
+    await tx.teamMember.delete({
+      where: { accountId: aid }
+    });
   });
 
   return { success: true, message: 'Member removed successfully' };

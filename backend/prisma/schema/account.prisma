@@ -16,7 +16,8 @@ model Account {
   teamMemberships  TeamMember[]
   teamsLed         Team[]             @relation("TeamLeader")
   teamsCreated     Team[]             @relation("TeamCreator")
-  inquiries        Inquiry[]
+  inquiries        Inquiry[]          @relation("InquiryAssignee")
+  inquiriesCreated Inquiry[]          @relation("InquiryCreator")
   campaignsOwned   Campaign[]         @relation("CampaignOwner")
   campaignsCreated Campaign[]         @relation("CampaignCreator")
   templatesCreated CampaignTemplate[]

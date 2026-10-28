@@ -30,7 +30,7 @@ const login = (req, res, next) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'none',
-      maxAge: 45 * 60 * 1000 // 45 minutes
+      maxAge: 60 * 60 * 1000 // 45 minutes
     });
 
     // 1. Primary role permissions

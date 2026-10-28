@@ -107,12 +107,16 @@ const authenticate = async (req, res, next) => {
     const effectivePermissions = Array.from(permissionsMap.values());
 
     // 3. Resolve team IDs & subtrees
+    // Leaders supervise the teams they lead PLUS all subtrees
     const ledTeamIds = (account.teamsLed || []).map(t => t.id);
-    const rootTeamIds = new Set();
-    if (memberTeamId) rootTeamIds.add(memberTeamId);
-    ledTeamIds.forEach(id => rootTeamIds.add(id));
+    const ledSubtreeTeamIds = await getDescendantSubtreeTeamIds(ledTeamIds);
 
-    const authorizedTeamIds = await getDescendantSubtreeTeamIds(Array.from(rootTeamIds));
+    const authorizedTeamIdsSet = new Set(ledSubtreeTeamIds);
+    // Regular members only access their immediate team, not descendant subtrees
+    if (memberTeamId) {
+      authorizedTeamIdsSet.add(memberTeamId);
+    }
+    const authorizedTeamIds = Array.from(authorizedTeamIdsSet);
 
     // 4. Construct CASL pure ability instance
     const ability = defineAbilityFor({

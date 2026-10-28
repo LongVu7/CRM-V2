@@ -53,6 +53,11 @@ function defineAbilityFor(account = {}) {
         can(action, subject, { leaderId: accountId });
       } else if (subject === 'campaign') {
         can(action, subject, { ownerId: accountId });
+      } else if (subject === 'inquiry') {
+        can(action, subject, { assignedToId: accountId });
+        if (accountId) {
+          can(action, subject, { createdById: accountId, assignedToId: null });
+        }
       } else {
         can(action, subject, { assignedToId: accountId });
       }
