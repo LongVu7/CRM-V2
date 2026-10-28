@@ -11,7 +11,9 @@ import {
   getSchoolTypeLabel,
   getGpaLabel,
   getProgramScoreLabel,
-  getEnglishCertLabel
+  getEnglishCertLabel,
+  getGenderLabel,
+  getGenderSeverity
 } from '@/utils/studentLabels'
 import { getProvinceGroupLabel } from '@/utils/regionLabels'
 
@@ -80,7 +82,11 @@ const navigateToEdit = () => {
           </div>
           <div class="field-item">
             <span class="field-label">Gender</span>
-            <Tag v-if="studentData.gender" :value="studentData.gender" :severity="studentData.gender === 'Male' ? 'info' : 'warn'" />
+            <Tag 
+              v-if="studentData.gender" 
+              :value="getGenderLabel(studentData.gender)" 
+              :severity="getGenderSeverity(studentData.gender)" 
+            />
             <span v-else class="field-value field-value--muted">—</span>
           </div>
           <div class="field-item">

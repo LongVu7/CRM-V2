@@ -1,21 +1,17 @@
-import { classOptions, schoolTypeOptions, gpaOptions, programScoreOptions, englishCertOptions } from '@/constants/student'
+import { tEnum } from '@/i18n'
 
-function buildLabelMap(options) {
-  const map = {}
-  for (const opt of options) {
-    map[opt.value] = opt.label
-  }
-  return map
+export const getClassLabel = (value) => tEnum('studentClass', value)
+export const getSchoolTypeLabel = (value) => tEnum('schoolType', value)
+export const getGpaLabel = (value) => tEnum('gpa', value)
+export const getProgramScoreLabel = (value) => tEnum('programScore', value)
+export const getEnglishCertLabel = (value) => tEnum('englishCertificate', value)
+
+export const getGenderLabel = (gender) => tEnum('gender', gender)
+
+export const getGenderSeverity = (gender) => {
+  if (!gender) return 'secondary'
+  const g = String(gender).trim().toLowerCase()
+  if (g === 'male' || g === 'nam') return 'info'
+  if (g === 'female' || g === 'nu' || g === 'nữ') return 'warn'
+  return 'secondary'
 }
-
-const classLabelMap = buildLabelMap(classOptions)
-const schoolTypeLabelMap = buildLabelMap(schoolTypeOptions)
-const gpaLabelMap = buildLabelMap(gpaOptions)
-const programScoreLabelMap = buildLabelMap(programScoreOptions)
-const englishCertLabelMap = buildLabelMap(englishCertOptions)
-
-export const getClassLabel = (value) => classLabelMap[value] || value || '—'
-export const getSchoolTypeLabel = (value) => schoolTypeLabelMap[value] || value || '—'
-export const getGpaLabel = (value) => gpaLabelMap[value] || value || '—'
-export const getProgramScoreLabel = (value) => programScoreLabelMap[value] || value || '—'
-export const getEnglishCertLabel = (value) => englishCertLabelMap[value] || value || '—'

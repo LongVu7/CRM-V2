@@ -4,6 +4,7 @@ import Timeline from 'primevue/timeline'
 import Tag from 'primevue/tag'
 import { useInquiry } from '@/composables/useInquiry'
 import { formatDateTime } from '@/utils/dateUtils'
+import { getStatusSeverity } from '@/utils/inquiryLabels'
 
 const props = defineProps({
   inquiryId: {
@@ -39,16 +40,6 @@ watch(() => props.inquiryId, () => {
 onMounted(() => {
   loadHistory()
 })
-
-const getStatusSeverity = (status) => {
-  if (!status) return 'secondary'
-  const name = (status.name || '').toLowerCase()
-  if (name.includes('nb') || name.includes('payment_completed')) return 'success'
-  if (name.includes('interacted') && !name.includes('not_interacted')) return 'info'
-  if (name.includes('not_interested') || name.includes('wrong_number')) return 'danger'
-  if (name.includes('considering') || name.includes('scheduled')) return 'warn'
-  return 'secondary'
-}
 </script>
 
 <template>

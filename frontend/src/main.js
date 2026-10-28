@@ -41,6 +41,9 @@ const app = createApp(App)
 const pinia = createPinia()
 app.use(pinia)
 
+import i18n from './i18n'
+app.use(i18n)
+
 import { abilitiesPlugin } from '@casl/vue'
 import { ability } from '@/services/ability'
 import api, { setupInterceptors } from '@/services/apiClient'

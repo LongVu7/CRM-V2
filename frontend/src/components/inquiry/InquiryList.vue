@@ -336,7 +336,7 @@ import Popover from 'primevue/popover'
 import Tag from 'primevue/tag'
 import { useConfirm } from 'primevue/useconfirm'
 import { useSchoolOptions } from '@/composables/useSchoolOptions'
-import { getStatusLevel } from '@/utils/inquiryLabels'
+import { getStatusLevel, getStatusTagSeverity } from '@/utils/inquiryLabels'
 import { formatCompactDate, formatCompactTime } from '@/utils/dateUtils'
 import { canPerform } from '@/services/ability'
 import InquiryStatusHistoryDialog from '@/components/inquiry/InquiryStatusHistoryDialog.vue'
@@ -479,25 +479,6 @@ const confirmDeleteSelected = () => {
       selectedInquiries.value = []
     }
   })
-}
-
-// Dynamic semantic color mapping for status tags
-const getStatusTagSeverity = (label) => {
-  if (!label || label === '—') return 'secondary'
-  const text = label.toLowerCase()
-  if (text.includes('nộp hồ sơ') || text.includes('nộp phí') || text.includes('nhập học') || text.includes('thành công')) {
-    return 'success'
-  }
-  if (text.includes('tương tác') || text.includes('quan tâm') || text.includes('hẹn')) {
-    return 'info'
-  }
-  if (text.includes('cân nhắc') || text.includes('tương lai') || text.includes('chưa xử lý') || text.includes('chờ')) {
-    return 'warn'
-  }
-  if (text.includes('sai') || text.includes('hủy') || text.includes('từ chối') || text.includes('không')) {
-    return 'danger'
-  }
-  return 'secondary'
 }
 </script>
 

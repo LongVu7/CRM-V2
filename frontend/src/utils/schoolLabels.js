@@ -1,12 +1,6 @@
-export const formatSchoolType = (type) => {
-  if (type === 'A_STAR') return 'A*'
-  if (type === 'A') return 'A'
-  if (type === 'B') return 'B'
-  if (type === 'C') return 'C'
-  if (type === 'D') return 'D'
-  if (type === 'NONE') return 'Chưa có thông tin'
-  return type
-}
+import { tEnum } from '@/i18n'
+
+export const formatSchoolType = (type) => tEnum('schoolType', type)
 
 export const typeSeverity = (type) => {
   if (type === 'A_STAR') return 'info'

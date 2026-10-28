@@ -1,22 +1,24 @@
-export const eventOptions = [
-  { label: 'Talkshow', value: 'TALKSHOW' },
-  { label: 'Livestream', value: 'LIVESTREAM' },
-  { label: 'Open Day', value: 'OPEN_DAY' },
-  { label: 'Coffee Talk', value: 'COFFEE_TALK' },
-  { label: 'Campus Tour', value: 'CAMPUS_TOUR' },
-  { label: 'Workshop', value: 'WORKSHOP' },
-  { label: 'Tư vấn 1:1', value: 'ONE_ON_ONE_CONSULTATION' }
-]
+import { getEnumOptions } from '@/i18n'
 
-export const compensationOptions = [
-  { label: 'Báo bù sổ', value: 'REPORTED' },
-  { label: 'Đã được bù', value: 'COMPENSATED' }
-]
+export const eventOptions = getEnumOptions('eventName', [
+  'TALKSHOW',
+  'LIVESTREAM',
+  'OPEN_DAY',
+  'COFFEE_TALK',
+  'CAMPUS_TOUR',
+  'WORKSHOP',
+  'ONE_ON_ONE_CONSULTATION'
+])
 
-export const priorityOptions = [
-  { label: 'I', value: 'I' },
-  { label: 'II', value: 'II' },
-  { label: 'III', value: 'III' },
-  { label: 'IV', value: 'IV' },
-  { label: 'V', value: 'V' }
-]
+export const compensationOptions = getEnumOptions('compensationStatus', [
+  'REPORTED',
+  'COMPENSATED'
+])
+
+export const priorityOptions = getEnumOptions('priority', [
+  'I',
+  'II',
+  'III',
+  'IV',
+  'V'
+])
