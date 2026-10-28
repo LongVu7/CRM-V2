@@ -29,10 +29,7 @@ export const tEnum = (category, value, defaultVal) => {
   return defaultVal !== undefined ? defaultVal : (value || '—')
 }
 
-/**
- * Generate option list for Dropdown/Select from enum keys.
- * Usage: getEnumOptions('studentClass', ['NONE', 'GRADE_11', 'GRADE_12', 'FREELANCE'])
- */
+
 export const getEnumOptions = (category, keys) => {
   return keys.map((key) => ({
     label: tEnum(category, key),
