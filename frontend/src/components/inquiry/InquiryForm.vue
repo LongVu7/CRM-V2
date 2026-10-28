@@ -114,9 +114,6 @@ import DatePicker from 'primevue/datepicker'
 import MultiSelect from 'primevue/multiselect'
 import { useSourceData } from '@/composables/useSourceData'
 import { useStatusData } from '@/composables/useStatusData'
-import { useAuthStore } from '@/stores/auth'
-
-const authStore = useAuthStore()
 
 const callCountOptions = Array.from({ length: 10 }, (_, i) => ({
   label: `${i + 1} lần`,
@@ -299,12 +296,6 @@ async function restoreSourceSelections(sourceDataId) {
 }
 
 onMounted(async () => {
-  // Automatically attribute default team if available and not set
-  const defaultTeamId = authStore.user?.memberTeamId || (authStore.user?.ledTeamIds && authStore.user.ledTeamIds[0]) || null
-  if (defaultTeamId && !props.modelValue.teamId) {
-    emitField('teamId', defaultTeamId)
-  }
-
   await Promise.all([fetchSources(), fetchInteractions()])
   if (props.initialSourceDataId) {
     await restoreSourceSelections(props.initialSourceDataId)

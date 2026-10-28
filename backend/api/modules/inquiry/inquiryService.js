@@ -229,48 +229,6 @@ const getInquiryById = async (id) => {
   return inquiry;
 };
 
-/**
- * Validates teamId during record creation.
- * Automatically resolves default team if omitted.
- */
-const resolveCreationTeamId = (reqUser, requestedTeamId) => {
-  if (!reqUser) 
-    return requestedTeamId ? parseInt(requestedTeamId, 10) : null;
-
-  const roleName = (reqUser.roleName || '').toLowerCase();
-  if (roleName === 'admin' || roleName === 'administrator') {
-    return requestedTeamId ? parseInt(requestedTeamId, 10) : null;
-  }
-
-  const ledTeamIds = reqUser.ledTeamIds || [];
-  const memberTeamId = reqUser.memberTeamId;
-  const defaultTeamId = memberTeamId || ledTeamIds[0] || (reqUser.teamIds && reqUser.teamIds[0]);
-
-  // 1. Single-team member or single-team leader -> enforce automatic attribution strictly to their own team
-  if (ledTeamIds.length <= 1) {
-    if (!defaultTeamId) {
-      return null;
-    }
-    return parseInt(defaultTeamId, 10);
-  }
-
-  // 2. Multi-team leader: if teamId is omitted, automatically take default team
-  if (requestedTeamId === undefined || requestedTeamId === null || requestedTeamId === '') {
-    if (defaultTeamId) {
-      return parseInt(defaultTeamId, 10);
-    }
-    return null;
-  }
-
-  // If multi-team leader explicitly specified a teamId, validate against authorized teams
-  const tid = parseInt(requestedTeamId, 10);
-  const authorized = (reqUser.authorizedTeamIds || reqUser.teamIds || []).includes(tid);
-  if (!authorized) {
-    throw handleError('You are not authorized to create records for this team', 403);
-  }
-
-  return tid;
-};
 
 /** Create inquiry cases:
  *   1. Create and link an existing student
@@ -278,29 +236,22 @@ const resolveCreationTeamId = (reqUser, requestedTeamId) => {
  *   3. Create an inquiry alone
  */
 const createInquiry = async ({ studentId, student, assignedToId, teamId, ...inquiryFields }, user) => {
-  let targetAssignedToId = null;
-  if (assignedToId) {
-    targetAssignedToId = parseInt(assignedToId, 10);
-  } else {
-    // If creator does NOT have permission to assign to others (regular consultant), default to themselves
-    // If creator has assign permission (admin, marketing, leader), keep unassigned (null) for distribution
-    const canAssign = user?.roleName === 'admin' || user?.roleName === 'administrator' || user?.permissions?.has?.('inquiry.assign');
-    if (!canAssign && user?.accountId) {
-      targetAssignedToId = user.accountId;
-    }
-  }
+  // If assignedToId is explicitly provided, parse it; otherwise keep unassigned (null)
+  const targetAssignedToId = assignedToId ? parseInt(assignedToId, 10) : null;
 
-  let effectiveTeamId = resolveCreationTeamId(user, teamId);
-
-  // If effectiveTeamId was not resolved from creator, but an assignee was specified,
-  // sync team from the assigned account's team membership
+  // Resolve teamId:
+  // - If teamId is explicitly specified in payload, use it
+  // - Otherwise, if assigned to an account, sync with the assignee's team
+  // - Otherwise (unassigned lead), teamId remains null (no auto-attribution to creator)
+  let effectiveTeamId = teamId ? parseInt(teamId, 10) : null;
   if (!effectiveTeamId && targetAssignedToId) {
     const assignedAccount = await prisma.account.findUnique({
       where: { id: targetAssignedToId },
-      include: { teamMemberships: true }
+      include: { teamMemberships: true, teamsLed: true }
     });
-    if (assignedAccount?.teamMemberships?.[0]?.teamId) {
-      effectiveTeamId = assignedAccount.teamMemberships[0].teamId;
+    const assigneeTeamId = assignedAccount?.teamMemberships?.[0]?.teamId || assignedAccount?.teamsLed?.[0]?.id || null;
+    if (assigneeTeamId) {
+      effectiveTeamId = assigneeTeamId;
     }
   }
 
@@ -495,9 +446,9 @@ const updateInquiry = async (id, updateData, user) => {
       if (teamId === undefined) {
         const assignedAccount = await prisma.account.findUnique({
           where: { id: aid },
-          include: { teamMemberships: true }
+          include: { teamMemberships: true, teamsLed: true }
         });
-        const newTeamId = assignedAccount?.teamMemberships?.[0]?.teamId || null;
+        const newTeamId = assignedAccount?.teamMemberships?.[0]?.teamId || assignedAccount?.teamsLed?.[0]?.id || null;
         if (newTeamId) {
           data.team = { connect: { id: newTeamId } };
         } else {
@@ -506,6 +457,9 @@ const updateInquiry = async (id, updateData, user) => {
       }
     } else {
       data.assignedTo = { disconnect: true };
+      if (teamId === undefined) {
+        data.team = { disconnect: true };
+      }
     }
   }
 
@@ -652,16 +606,20 @@ const assignAccountToInquiry = async (inquiryId, accountId) => {
   if (aid) {
     const account = await prisma.account.findUnique({
       where: { id: aid },
-      include: { teamMemberships: true }
+      include: { teamMemberships: true, teamsLed: true }
     });
     if (!account) throw handleError('Account not found', 404);
 
-    if (account.teamMemberships?.[0]?.teamId) {
-      newTeamId = account.teamMemberships[0].teamId;
+    const accountTeamId = account.teamMemberships?.[0]?.teamId || account.teamsLed?.[0]?.id || null;
+    if (accountTeamId) {
+      newTeamId = accountTeamId;
     } else {
-      // Account has no team membership (e.g. Admin) -> inquiry no longer belongs to any team
+      // Account has no team membership or led team (Admin, Trưởng phòng tư vấn) -> inquiry no longer belongs to any team
       newTeamId = null;
     }
+  } else {
+    // Unassigning inquiry -> reset team to null
+    newTeamId = null;
   }
 
   return prisma.inquiry.update({
@@ -849,6 +807,5 @@ module.exports = {
   searchAccounts,
   exportInquiries,
   getInquiryOptions,
-  resolveCreationTeamId,
   getInquiryStatusHistory,
 };

@@ -33,6 +33,19 @@ function defineAbilityFor(account = {}) {
     ? account.permissions
     : (Array.isArray(account.rolePermissions) ? account.rolePermissions : []);
 
+  const addedRules = new Set();
+  const canUnique = (act, sub, cond) => {
+    const key = `${act}:${sub}:${JSON.stringify(cond || {})}`;
+    if (!addedRules.has(key)) {
+      addedRules.add(key);
+      if (cond) {
+        can(act, sub, cond);
+      } else {
+        can(act, sub);
+      }
+    }
+  };
+
   for (const perm of permissions) {
     if (!perm.action || !perm.resource) continue;
 
@@ -41,25 +54,33 @@ function defineAbilityFor(account = {}) {
     const scope = (perm.scope || 'ALL').toUpperCase();
 
     if (scope === 'ALL') {
-      can(action, subject);
+      canUnique(action, subject);
     } else if (scope === 'TEAM_ONLY') {
       if (subject === 'team') {
-        can(action, subject, { id: { in: authorizedTeamIds } });
+        canUnique(action, subject, { id: { in: authorizedTeamIds } });
+      } else if (subject === 'inquiry') {
+        canUnique(action, subject, { assignedToId: accountId });
+        if (accountId) {
+          canUnique(action, subject, { createdById: accountId, assignedToId: null });
+        }
+        if (authorizedTeamIds.length > 0) {
+          canUnique(action, subject, { teamId: { in: authorizedTeamIds } });
+        }
       } else {
-        can(action, subject, { teamId: { in: authorizedTeamIds } });
+        canUnique(action, subject, { teamId: { in: authorizedTeamIds } });
       }
     } else if (scope === 'OWNER_ONLY') {
       if (subject === 'team') {
-        can(action, subject, { leaderId: accountId });
+        canUnique(action, subject, { leaderId: accountId });
       } else if (subject === 'campaign') {
-        can(action, subject, { ownerId: accountId });
+        canUnique(action, subject, { ownerId: accountId });
       } else if (subject === 'inquiry') {
-        can(action, subject, { assignedToId: accountId });
+        canUnique(action, subject, { assignedToId: accountId });
         if (accountId) {
-          can(action, subject, { createdById: accountId, assignedToId: null });
+          canUnique(action, subject, { createdById: accountId, assignedToId: null });
         }
       } else {
-        can(action, subject, { assignedToId: accountId });
+        canUnique(action, subject, { assignedToId: accountId });
       }
     }
   }

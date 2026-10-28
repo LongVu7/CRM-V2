@@ -224,7 +224,7 @@ const createTeam = async (data, creatorId) => {
     }
   }
 
-  return prisma.team.create({
+  const team = await prisma.team.create({
     data: {
       name: data.name.trim(),
       description: data.description || null,
@@ -237,6 +237,16 @@ const createTeam = async (data, creatorId) => {
       leader: { select: { id: true, fullName: true, email: true } }
     }
   });
+
+  if (data.leaderId) {
+    const leaderId = Number(data.leaderId);
+    await prisma.inquiry.updateMany({
+      where: { assignedToId: leaderId, teamId: null },
+      data: { teamId: team.id }
+    });
+  }
+
+  return team;
 };
 
 /**
@@ -291,22 +301,54 @@ const updateTeam = async (id, data) => {
     }
   }
 
-  return prisma.team.update({
-    where: { id: teamId },
-    data: {
-      ...(data.name ? { name: data.name.trim() } : {}),
-      ...(data.description !== undefined ? { description: data.description } : {}),
-      ...(data.parentId !== undefined
-        ? (data.parentId === null ? { parent: { disconnect: true } } : { parent: { connect: { id: Number(data.parentId) } } })
-        : {}),
-      ...(data.leaderId !== undefined
-        ? (data.leaderId === null ? { leader: { disconnect: true } } : { leader: { connect: { id: Number(data.leaderId) } } })
-        : {})
-    },
-    include: {
-      parent: { select: { id: true, name: true } },
-      leader: { select: { id: true, fullName: true, email: true } }
+  return prisma.$transaction(async (tx) => {
+    const updatedTeam = await tx.team.update({
+      where: { id: teamId },
+      data: {
+        ...(data.name ? { name: data.name.trim() } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.parentId !== undefined
+          ? (data.parentId === null ? { parent: { disconnect: true } } : { parent: { connect: { id: Number(data.parentId) } } })
+          : {}),
+        ...(data.leaderId !== undefined
+          ? (data.leaderId === null ? { leader: { disconnect: true } } : { leader: { connect: { id: Number(data.leaderId) } } })
+          : {})
+      },
+      include: {
+        parent: { select: { id: true, name: true } },
+        leader: { select: { id: true, fullName: true, email: true } }
+      }
+    });
+
+    if (data.leaderId !== undefined) {
+      const newLeaderId = data.leaderId ? Number(data.leaderId) : null;
+      const oldLeaderId = existing.leaderId ? Number(existing.leaderId) : null;
+
+      if (newLeaderId !== oldLeaderId) {
+        // 1. If old leader was replaced and is NOT a member of this team, unassign their inquiries in this team
+        if (oldLeaderId) {
+          const isMember = await tx.teamMember.findFirst({
+            where: { teamId, accountId: oldLeaderId }
+          });
+          if (!isMember) {
+            await tx.inquiry.updateMany({
+              where: { teamId, assignedToId: oldLeaderId },
+              data: { assignedToId: null }
+            });
+          }
+        }
+
+        // 2. For the new leader, sync inquiries assigned to them that had teamId == null to this team
+        if (newLeaderId) {
+          await tx.inquiry.updateMany({
+            where: { assignedToId: newLeaderId, teamId: null },
+            data: { teamId }
+          });
+        }
+      }
     }
+
+    return updatedTeam;
   });
 };
 
@@ -408,6 +450,12 @@ const addMember = async (teamId, data) => {
       account: { select: { id: true, fullName: true, email: true } },
       role: { select: { id: true, name: true } }
     }
+  });
+
+  // Sync member's existing inquiries that have no team to their new team
+  await prisma.inquiry.updateMany({
+    where: { assignedToId: aid, teamId: null },
+    data: { teamId: tid }
   });
 
   return {

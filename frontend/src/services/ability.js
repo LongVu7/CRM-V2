@@ -2,12 +2,18 @@ import { AbilityBuilder, createMongoAbility, subject } from '@casl/ability'
 
 export const ability = createMongoAbility([])
 
+const OWNER_FIELD_MAP = {
+  team: ['leaderId', 'leader.id'],
+  campaign: ['ownerId', 'owner.id']
+}
+
+function getOwnerFields(subject) {
+  return OWNER_FIELD_MAP[subject] || ['assignedToId', 'assignedTo.id']
+}
+
 /**
  * Builds dynamic CASL rules from authenticated user profile and permissions
  * supporting ALL, TEAM_ONLY, and OWNER_ONLY scopes over authorized team subtrees.
- *
- * @param {object} user - User profile object from /api/auth/me or login
- * @returns {Array} CASL rules array
  */
 export function buildAbilityRules(user = {}) {
   const { can, rules } = new AbilityBuilder(createMongoAbility)
@@ -38,6 +44,29 @@ export function buildAbilityRules(user = {}) {
     return rules
   }
 
+  const grantOwnerAccess = (action, sub) => {
+    for (const field of getOwnerFields(sub)) {
+      can(action, sub, { [field]: accountId })
+    }
+    if (sub === 'inquiry' && accountId) {
+      can(action, sub, { createdById: accountId, assignedToId: null })
+    }
+  }
+
+  const grantTeamAccess = (action, sub) => {
+    if (sub === 'team') {
+      can(action, sub, { id: { $in: teamIds } })
+      return
+    }
+    if (sub === 'inquiry') {
+      grantOwnerAccess(action, sub)
+    }
+    if (teamIds.length > 0) {
+      can(action, sub, { teamId: { $in: teamIds } })
+      can(action, sub, { 'team.id': { $in: teamIds } })
+    }
+  }
+
   for (const perm of permissions) {
     if (!perm.action || !perm.resource) continue
 
@@ -48,23 +77,9 @@ export function buildAbilityRules(user = {}) {
     if (scope === 'ALL') {
       can(action, resourceSubject)
     } else if (scope === 'TEAM_ONLY') {
-      if (resourceSubject === 'team') {
-        can(action, resourceSubject, { id: { $in: teamIds } })
-      } else {
-        can(action, resourceSubject, { teamId: { $in: teamIds } })
-        can(action, resourceSubject, { 'team.id': { $in: teamIds } })
-      }
+      grantTeamAccess(action, resourceSubject)
     } else if (scope === 'OWNER_ONLY') {
-      if (resourceSubject === 'team') {
-        can(action, resourceSubject, { leaderId: accountId })
-        can(action, resourceSubject, { 'leader.id': accountId })
-      } else if (resourceSubject === 'campaign') {
-        can(action, resourceSubject, { ownerId: accountId })
-        can(action, resourceSubject, { 'owner.id': accountId })
-      } else {
-        can(action, resourceSubject, { assignedToId: accountId })
-        can(action, resourceSubject, { 'assignedTo.id': accountId })
-      }
+      grantOwnerAccess(action, resourceSubject)
     }
   }
 
@@ -73,11 +88,6 @@ export function buildAbilityRules(user = {}) {
 
 /**
  * Check if the current user can perform an action on a specific record or subject type.
- *
- * @param {string} action - e.g. 'read', 'update', 'delete'
- * @param {string} subjectName - e.g. 'inquiry', 'student', 'team'
- * @param {object|null} [record] - Specific record to evaluate conditions against
- * @returns {boolean}
  */
 export function canPerform(action, subjectName, record = null) {
   if (!record) {
