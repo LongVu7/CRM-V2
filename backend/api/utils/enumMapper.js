@@ -1,17 +1,5 @@
 const enumConstants = require('../../constants/enumConstants');
-const {
-  PROVINCE_MAP,
-  CLASS_MAP,
-  GPA_MAP,
-  PROGRAM_SCORE_MAP,
-  ENGLISH_CERT_MAP,
-  PROVINCE_ALIASES,
-  CLASS_LABELS,
-  PROVINCE_GROUP_LABELS,
-  SCHOOL_TYPE_LABELS,
-  GPA_LABELS,
-  PROGRAM_SCORE_LABELS
-} = enumConstants;
+const { PROVINCE_ALIASES } = enumConstants;
 
 const removeVietnameseTones = (str) => {
   str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a");

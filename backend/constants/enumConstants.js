@@ -40,7 +40,6 @@ const GPA_MAP = {
   '3_MON_HK1_12_>26D': 'G12_SEM1_HIGHER_26',
   '3_MON_CA_NAM_12_>26D': 'G12_HIGHER_26',
   'KHAC': 'OTHER',
-  // Support direct enum values
   'LOWER_21': 'LOWER_21',
   'G11_21_TO_23': 'G11_21_TO_23',
   'G12_SEM1_21_TO_23': 'G12_SEM1_21_TO_23',
@@ -61,7 +60,6 @@ const PROGRAM_SCORE_MAP = {
   'DANG_CHO_XET_DUYET': 'PENDING_REVIEW',
   'CHUA_DU_DIEM_DAU_VAO': 'NOT_ELIGIBLE',
   'KHAC': 'OTHER',
-  // Support direct enum values
   'TALENT_SCHOLARSHIP': 'TALENT_SCHOLARSHIP',
   'OTHER_SCHOLARSHIP': 'OTHER_SCHOLARSHIP',
   'ELIGIBLE_NO_SCHOLARSHIP': 'ELIGIBLE_NO_SCHOLARSHIP',
@@ -115,6 +113,10 @@ const PROVINCE_ALIASES = {
   'ba ria vung tau': 'ba ria - vung tau',
   'brvt': 'ba ria - vung tau',
   'vung tau': 'ba ria - vung tau',
+  'ba ria - vung tau': 'ba ria - vung tau',
+  'br - vt': 'ba ria - vung tau',
+  'br-vt': 'ba ria - vung tau',
+  'br-vung tau': 'ba ria - vung tau',
   // Thua Thien Hue variations
   'thua thien hue': 'hue',
   'tt hue': 'hue',
