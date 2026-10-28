@@ -100,8 +100,39 @@ function buildTeamTree(teams = []) {
   return roots;
 }
 
+/**
+ * Resolves all account IDs of members and leaders within the given authorized team IDs.
+ */
+async function getAuthorizedAccountIds(authorizedTeamIds, tx = prisma) {
+  const normalizedIds = (Array.isArray(authorizedTeamIds) ? authorizedTeamIds : [authorizedTeamIds])
+    .map(Number)
+    .filter(id => !isNaN(id) && id > 0);
+
+  if (normalizedIds.length === 0) {
+    return [];
+  }
+
+  const [members, leaders] = await Promise.all([
+    tx.teamMember.findMany({
+      where: { teamId: { in: normalizedIds } },
+      select: { accountId: true }
+    }),
+    tx.team.findMany({
+      where: { id: { in: normalizedIds }, leaderId: { not: null } },
+      select: { leaderId: true }
+    })
+  ]);
+
+  return Array.from(new Set([
+    ...members.map(m => m.accountId),
+    ...leaders.map(l => l.leaderId)
+  ]));
+}
+
 module.exports = {
   getDescendantSubtreeTeamIds,
   validateNoCircularHierarchy,
-  buildTeamTree
+  buildTeamTree,
+  getAuthorizedAccountIds
 };
+

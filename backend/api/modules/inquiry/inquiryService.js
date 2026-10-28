@@ -54,9 +54,6 @@ const inquiryInclude = {
       }
     }
   },
-  team: {
-    select: { id: true, name: true }
-  },
   assignedTo: {
     select: { id: true, fullName: true, email: true }
   },
@@ -92,7 +89,7 @@ const inquiryInclude = {
 };
 
 
-const buildInquiryData = ({ assignedToId, teamId, createdById, sourceDataId, statusDataId, dataReceived, interactionAt, createDate, eventNames, ...rest }) => ({
+const buildInquiryData = ({ assignedToId, createdById, sourceDataId, statusDataId, dataReceived, interactionAt, createDate, eventNames, ...rest }) => ({
   ...rest,
   ...(eventNames !== undefined && { eventNames: eventNames === null ? [] : eventNames }),
   ...(dataReceived !== undefined && { dataReceived: dataReceived ? new Date(dataReceived) : null }),
@@ -100,7 +97,6 @@ const buildInquiryData = ({ assignedToId, teamId, createdById, sourceDataId, sta
   ...(createDate !== undefined && { createDate: createDate ? new Date(createDate) : null }),
   ...(assignedToId ? { assignedTo: { connect: { id: parseInt(assignedToId, 10) } } } : {}),
   ...(createdById ? { createdBy: { connect: { id: parseInt(createdById, 10) } } } : {}),
-  ...(teamId ? { team: { connect: { id: parseInt(teamId, 10) } } } : {}),
   ...(sourceDataId ? { sourceData: { connect: { id: parseInt(sourceDataId, 10) } } } : {}),
   ...(statusDataId ? { statusData: { connect: { id: parseInt(statusDataId, 10) } } } : {})
 });
@@ -235,39 +231,22 @@ const getInquiryById = async (id) => {
  *   2. create a new inquiry with new student inline
  *   3. Create an inquiry alone
  */
-const createInquiry = async ({ studentId, student, assignedToId, teamId, ...inquiryFields }, user) => {
+const createInquiry = async ({ studentId, student, assignedToId, ...inquiryFields }, user) => {
   // If assignedToId is explicitly provided, parse it; otherwise keep unassigned (null)
   const targetAssignedToId = assignedToId ? parseInt(assignedToId, 10) : null;
-
-  // Resolve teamId:
-  // - If teamId is explicitly specified in payload, use it
-  // - Otherwise, if assigned to an account, sync with the assignee's team
-  // - Otherwise (unassigned lead), teamId remains null (no auto-attribution to creator)
-  let effectiveTeamId = teamId ? parseInt(teamId, 10) : null;
-  if (!effectiveTeamId && targetAssignedToId) {
-    const assignedAccount = await prisma.account.findUnique({
-      where: { id: targetAssignedToId },
-      include: { teamMemberships: true, teamsLed: true }
-    });
-    const assigneeTeamId = assignedAccount?.teamMemberships?.[0]?.teamId || assignedAccount?.teamsLed?.[0]?.id || null;
-    if (assigneeTeamId) {
-      effectiveTeamId = assigneeTeamId;
-    }
-  }
 
   const inquiryData = buildInquiryData({
     assignedToId: targetAssignedToId,
     createdById: user?.accountId || user?.id || null,
-    teamId: effectiveTeamId,
     ...inquiryFields
   });
 
-  if (studentId) return _createWithExistingStudent(inquiryData, studentId, user, effectiveTeamId);
-  if (student?.fullName) return _createWithNewStudent(inquiryData, student, user, effectiveTeamId);
-  return _createAlone(inquiryData, user, effectiveTeamId);
+  if (studentId) return _createWithExistingStudent(inquiryData, studentId, user);
+  if (student?.fullName) return _createWithNewStudent(inquiryData, student, user);
+  return _createAlone(inquiryData, user);
 };
 
-const _createWithExistingStudent = async (inquiryData, studentId, user, effectiveTeamId) => {
+const _createWithExistingStudent = async (inquiryData, studentId, user) => {
   const sid = parseInt(studentId, 10);
 
   const existing = await prisma.student.findUnique({ where: { id: sid } });
@@ -306,7 +285,7 @@ const _createWithExistingStudent = async (inquiryData, studentId, user, effectiv
             previousStatusId: null,
             newStatusId: statusId,
             changedById: user?.accountId || null,
-            teamId: effectiveTeamId || inquiryData.team?.connect?.id || null,
+            teamId: null,
             notes: null,
             changedAt: new Date()
           }
@@ -330,7 +309,7 @@ const _createWithExistingStudent = async (inquiryData, studentId, user, effectiv
 };
 
 //Private method 
-const _createWithNewStudent = async (inquiryData, student, user, effectiveTeamId) => {
+const _createWithNewStudent = async (inquiryData, student, user) => {
   const { specializedRegister, education, ...studentData } = student;
   try {
     return await prisma.$transaction(async (tx) => {
@@ -368,7 +347,7 @@ const _createWithNewStudent = async (inquiryData, student, user, effectiveTeamId
             previousStatusId: null,
             newStatusId: statusId,
             changedById: user?.accountId || null,
-            teamId: effectiveTeamId || inquiryData.team?.connect?.id || null,
+            teamId: null,
             notes: null,
             changedAt: new Date()
           }
@@ -393,7 +372,7 @@ const _createWithNewStudent = async (inquiryData, student, user, effectiveTeamId
   }
 };
 
-const _createAlone = async (inquiryData, user, effectiveTeamId) => {
+const _createAlone = async (inquiryData, user) => {
   return await prisma.$transaction(async (tx) => {
     let milestoneUpdates = {};
     const statusId = inquiryData.statusData?.connect?.id;
@@ -408,7 +387,7 @@ const _createAlone = async (inquiryData, user, effectiveTeamId) => {
           previousStatusId: null,
           newStatusId: statusId,
           changedById: user?.accountId || null,
-          teamId: effectiveTeamId || inquiryData.team?.connect?.id || null,
+          teamId: null,
           notes: null,
           changedAt: new Date()
         }
@@ -421,7 +400,7 @@ const _createAlone = async (inquiryData, user, effectiveTeamId) => {
 
 // ─── Update inquiry
 const updateInquiry = async (id, updateData, user) => {
-  const { sourceDataId, statusDataId, assignedToId, teamId, statusNotes, ...rest } = updateData;
+  const { sourceDataId, statusDataId, assignedToId, statusNotes, ...rest } = updateData;
 
   const data = {
     ...rest,
@@ -429,38 +408,11 @@ const updateInquiry = async (id, updateData, user) => {
     ...(rest.dataReceived && { dataReceived: new Date(rest.dataReceived) })
   };
 
-  // Handle teamId: connect or disconnect
-  if (teamId !== undefined) {
-    data.team = teamId
-      ? { connect: { id: parseInt(teamId, 10) } }
-      : { disconnect: true };
-  }
-
   // Handle assignedToId: connect or disconnect
   if (assignedToId !== undefined) {
-    if (assignedToId) {
-      const aid = parseInt(assignedToId, 10);
-      data.assignedTo = { connect: { id: aid } };
-
-      // If teamId was not explicitly provided in updateData, sync with the assigned account's team
-      if (teamId === undefined) {
-        const assignedAccount = await prisma.account.findUnique({
-          where: { id: aid },
-          include: { teamMemberships: true, teamsLed: true }
-        });
-        const newTeamId = assignedAccount?.teamMemberships?.[0]?.teamId || assignedAccount?.teamsLed?.[0]?.id || null;
-        if (newTeamId) {
-          data.team = { connect: { id: newTeamId } };
-        } else {
-          data.team = { disconnect: true };
-        }
-      }
-    } else {
-      data.assignedTo = { disconnect: true };
-      if (teamId === undefined) {
-        data.team = { disconnect: true };
-      }
-    }
+    data.assignedTo = assignedToId
+      ? { connect: { id: parseInt(assignedToId, 10) } }
+      : { disconnect: true };
   }
 
   // Handle sourceDataId: connect or disconnect
@@ -492,17 +444,13 @@ const updateInquiry = async (id, updateData, user) => {
           newStatusDataId
         });
 
-        const effectiveTeamId = (teamId !== undefined && teamId !== null)
-          ? parseInt(teamId, 10)
-          : currentInquiry.teamId;
-
         await tx.inquiryStatusHistory.create({
           data: {
             inquiryId: currentInquiry.id,
             previousStatusId: currentInquiry.statusDataId,
             newStatusId: newStatusDataId,
             changedById: user?.accountId || null,
-            teamId: effectiveTeamId || null,
+            teamId: null,
             notes: statusNotes || null,
             changedAt: new Date()
           }
@@ -601,32 +549,15 @@ const assignAccountToInquiry = async (inquiryId, accountId) => {
   const currentInquiry = await prisma.inquiry.findUnique({ where: { id: iid } });
   if (!currentInquiry) throw handleError('Inquiry not found', 404);
 
-  let newTeamId = currentInquiry.teamId;
-
   if (aid) {
-    const account = await prisma.account.findUnique({
-      where: { id: aid },
-      include: { teamMemberships: true, teamsLed: true }
-    });
+    const account = await prisma.account.findUnique({ where: { id: aid } });
     if (!account) throw handleError('Account not found', 404);
-
-    const accountTeamId = account.teamMemberships?.[0]?.teamId || account.teamsLed?.[0]?.id || null;
-    if (accountTeamId) {
-      newTeamId = accountTeamId;
-    } else {
-      // Account has no team membership or led team (Admin, Trưởng phòng tư vấn) -> inquiry no longer belongs to any team
-      newTeamId = null;
-    }
-  } else {
-    // Unassigning inquiry -> reset team to null
-    newTeamId = null;
   }
 
   return prisma.inquiry.update({
     where: { id: iid },
     data: {
       assignedToId: aid,
-      teamId: newTeamId,
       updatedAt: new Date()
     },
     include: inquiryInclude

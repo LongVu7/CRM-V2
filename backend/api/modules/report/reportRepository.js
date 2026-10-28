@@ -42,8 +42,8 @@ function buildScopeCondition(scope) {
 
   const conditions = [];
 
-  if (scope.teamIds && scope.teamIds.length > 0) {
-    conditions.push(Prisma.sql`i.team_id IN (${Prisma.join(scope.teamIds)})`);
+  if (scope.authorizedAccountIds && scope.authorizedAccountIds.length > 0) {
+    conditions.push(Prisma.sql`i.assigned_to_id IN (${Prisma.join(scope.authorizedAccountIds)})`);
   }
 
   if (scope.assignedToIds && scope.assignedToIds.length > 0) {

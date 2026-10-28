@@ -3,7 +3,6 @@ model Inquiry {
   id Int @id @default(autoincrement())
 
   assignedToId Int? @map("assigned_to_id")
-  teamId       Int? @map("team_id")
   createdById  Int? @map("created_by_id")
  
   statusDataId Int?        @map("status_data_id")
@@ -37,7 +36,6 @@ model Inquiry {
 
   assignedTo Account? @relation("InquiryAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
   createdBy  Account? @relation("InquiryCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  team       Team?    @relation(fields: [teamId], references: [id], onDelete: SetNull)
 
   studentId Int?     @unique @map("student_id")
   student   Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
@@ -50,7 +48,6 @@ model Inquiry {
   @@index([firstProcessedAt])
   @@index([firstInteractedAt])
   @@index([nbAt])
-  @@index([teamId])
   @@index([createdById])
   @@map("inquiry")
 }

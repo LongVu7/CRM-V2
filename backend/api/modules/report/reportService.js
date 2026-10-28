@@ -24,13 +24,13 @@ function buildSqlReportScope(user) {
     return { mode: 'all' };
   }
 
-  const teamIds = user.teamIds || [];
   const hasTeamOnly = reportPerms.some(p => p.scope === 'TEAM_ONLY');
   const hasOwnerOnly = reportPerms.some(p => p.scope === 'OWNER_ONLY');
+  const authorizedAccountIds = user.authorizedAccountIds || [];
 
   return {
     mode: 'scoped',
-    teamIds: (hasTeamOnly && teamIds.length > 0) ? teamIds : [],
+    authorizedAccountIds: (hasTeamOnly && authorizedAccountIds.length > 0) ? authorizedAccountIds : [],
     assignedToIds: (hasOwnerOnly && user.accountId) ? [user.accountId] : []
   };
 }

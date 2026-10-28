@@ -14,7 +14,6 @@ model Team {
   leader      Account?     @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: SetNull)
   createdBy   Account?     @relation("TeamCreator", fields: [createdById], references: [id], onDelete: SetNull)
   members     TeamMember[]
-  inquiries   Inquiry[]
   campaigns   Campaign[]
   inquiryStatusHistories InquiryStatusHistory[]
 

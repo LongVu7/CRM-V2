@@ -13,7 +13,6 @@ const {
 
 
 const inquiryFields = {
-  teamId: z.number().int('teamId must be an integer').nullable().optional(),
   statusDataId: z.number().int('statusDataId must be an integer').optional(),
   description: z.string().optional(),
   dataReceived: dateString.optional(),
@@ -35,7 +34,6 @@ const inquiryFields = {
 const createInquirySchema = z.object(inquiryFields).strict();
 
 const updateInquirySchema = z.object({
-  teamId: z.number().int().nullable().optional(),
   statusDataId: z.number().int().nullable().optional(),
   description: inquiryFields.description,
   dataReceived: dateString.nullable().optional(),

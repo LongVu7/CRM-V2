@@ -17,10 +17,7 @@ function defineAbilityFor(account = {}) {
   const { can, build } = new AbilityBuilder(createPrismaAbility);
 
   const accountId = account.accountId !== undefined ? account.accountId : account.id;
-  const roleName = account.roleName || (account.role && account.role.name);
-  const authorizedTeamIds = Array.isArray(account.authorizedTeamIds)
-    ? account.authorizedTeamIds
-    : (Array.isArray(account.teamIds) ? account.teamIds : []);
+  const roleName = (account.roleName || account.role?.name || '').toLowerCase();
 
   // 1. Super-administrator bypass
   if (roleName === 'admin' || roleName === 'administrator') {
@@ -28,11 +25,18 @@ function defineAbilityFor(account = {}) {
     return build();
   }
 
-  // 2. Compile dynamic permissions purely from Role (Account Role/Contextual Team Role)
+  // 2. Normalize inputs
+  const authorizedTeamIds = Array.isArray(account.authorizedTeamIds)
+    ? account.authorizedTeamIds
+    : (Array.isArray(account.teamIds) ? account.teamIds : []);
+  const authorizedAccountIds = Array.isArray(account.authorizedAccountIds)
+    ? account.authorizedAccountIds
+    : [];
   const permissions = Array.isArray(account.permissions)
     ? account.permissions
     : (Array.isArray(account.rolePermissions) ? account.rolePermissions : []);
 
+  // Deduplicate CASL rules
   const addedRules = new Set();
   const canUnique = (act, sub, cond) => {
     const key = `${act}:${sub}:${JSON.stringify(cond || {})}`;
@@ -46,8 +50,50 @@ function defineAbilityFor(account = {}) {
     }
   };
 
+  // Grants access to user's own records (OWNER_ONLY)
+  const grantOwnerAccess = (act, sub) => {
+    if (sub === 'team') {
+      canUnique(act, sub, { leaderId: accountId });
+    } else if (sub === 'campaign') {
+      canUnique(act, sub, { ownerId: accountId });
+    } else if (sub === 'inquiry') {
+      canUnique(act, sub, { assignedToId: accountId });
+      if (accountId) {
+        canUnique(act, sub, { createdById: accountId, assignedToId: null });
+      }
+    } else {
+      canUnique(act, sub, { assignedToId: accountId });
+    }
+  };
+
+  // Grants access to team records (TEAM_ONLY: owner access + team/member records)
+  const grantTeamAccess = (act, sub) => {
+    if (sub === 'team') {
+      if (authorizedTeamIds.length > 0) {
+        canUnique(act, sub, { id: { in: authorizedTeamIds } });
+      }
+      return;
+    }
+
+    grantOwnerAccess(act, sub);
+
+    if (sub === 'inquiry') {
+      if (authorizedAccountIds.length > 0) {
+        canUnique(act, sub, { assignedToId: { in: authorizedAccountIds } });
+      }
+    } else if (sub === 'campaign') {
+      if (authorizedTeamIds.length > 0) {
+        canUnique(act, sub, { teamId: { in: authorizedTeamIds } });
+      }
+    } else if (authorizedTeamIds.length > 0) {
+      canUnique(act, sub, { teamId: { in: authorizedTeamIds } });
+    }
+  };
+
+  // 3. Compile dynamic permissions purely from Role
   for (const perm of permissions) {
-    if (!perm.action || !perm.resource) continue;
+    if (!perm?.action || !perm?.resource) 
+      continue;
 
     const action = perm.action.toLowerCase();
     const subject = normalizeSubject(perm.resource);
@@ -56,32 +102,9 @@ function defineAbilityFor(account = {}) {
     if (scope === 'ALL') {
       canUnique(action, subject);
     } else if (scope === 'TEAM_ONLY') {
-      if (subject === 'team') {
-        canUnique(action, subject, { id: { in: authorizedTeamIds } });
-      } else if (subject === 'inquiry') {
-        canUnique(action, subject, { assignedToId: accountId });
-        if (accountId) {
-          canUnique(action, subject, { createdById: accountId, assignedToId: null });
-        }
-        if (authorizedTeamIds.length > 0) {
-          canUnique(action, subject, { teamId: { in: authorizedTeamIds } });
-        }
-      } else {
-        canUnique(action, subject, { teamId: { in: authorizedTeamIds } });
-      }
+      grantTeamAccess(action, subject);
     } else if (scope === 'OWNER_ONLY') {
-      if (subject === 'team') {
-        canUnique(action, subject, { leaderId: accountId });
-      } else if (subject === 'campaign') {
-        canUnique(action, subject, { ownerId: accountId });
-      } else if (subject === 'inquiry') {
-        canUnique(action, subject, { assignedToId: accountId });
-        if (accountId) {
-          canUnique(action, subject, { createdById: accountId, assignedToId: null });
-        }
-      } else {
-        canUnique(action, subject, { assignedToId: accountId });
-      }
+      grantOwnerAccess(action, subject);
     }
   }
 
@@ -90,9 +113,6 @@ function defineAbilityFor(account = {}) {
 
 /**
  * Translates CASL ability conditions into an idiomatic Prisma `where` clause.
- * action - e.g. 'read', 'update'
- * subjectName - e.g. 'inquiry', 'student', 'team'
- * Returns {object} Prisma WHERE condition
  */
 function buildPrismaScope(ability, action, subjectName) {
   if (!ability || typeof ability.can !== 'function') {
@@ -102,7 +122,6 @@ function buildPrismaScope(ability, action, subjectName) {
   const normalizedSubject = normalizeSubject(subjectName);
   const normalizedAction = (action || '').toLowerCase();
 
-  // If user cannot perform action on subject at all, return impossible condition
   if (!ability.can(normalizedAction, normalizedSubject)) {
     return { OR: [] };
   }

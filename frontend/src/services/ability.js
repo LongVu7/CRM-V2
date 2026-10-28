@@ -31,6 +31,9 @@ export function buildAbilityRules(user = {}) {
   const teamIds = Array.isArray(user.authorizedTeamIds)
     ? user.authorizedTeamIds
     : (Array.isArray(user.teamIds) ? user.teamIds : [])
+  const authorizedAccountIds = Array.isArray(user.authorizedAccountIds)
+    ? user.authorizedAccountIds
+    : []
   const permissions = Array.isArray(user.rolePermissions) ? user.rolePermissions : []
 
   // Fallback for legacy permission string codes array
@@ -60,6 +63,11 @@ export function buildAbilityRules(user = {}) {
     }
     if (sub === 'inquiry') {
       grantOwnerAccess(action, sub)
+      if (authorizedAccountIds.length > 0) {
+        can(action, sub, { assignedToId: { $in: authorizedAccountIds } })
+        can(action, sub, { 'assignedTo.id': { $in: authorizedAccountIds } })
+      }
+      return
     }
     if (teamIds.length > 0) {
       can(action, sub, { teamId: { $in: teamIds } })
