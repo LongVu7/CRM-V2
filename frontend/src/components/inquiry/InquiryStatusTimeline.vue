@@ -3,7 +3,8 @@ import { ref, onMounted, watch } from 'vue'
 import Timeline from 'primevue/timeline'
 import Tag from 'primevue/tag'
 import { useInquiry } from '@/composables/useInquiry'
-import { formatDateTime } from '@/utils/dateUtils'
+// import { formatDateTime } from '@/utils/dateUtils'
+import { formatDate } from '@/utils/dateUtils'
 import { getStatusSeverity } from '@/utils/inquiryLabels'
 
 const props = defineProps({
@@ -96,7 +97,7 @@ onMounted(() => {
                 />
               </div>
               <span class="timeline-date text-xs text-500 font-medium">
-                {{ formatDateTime(slotProps.item.changedAt) }}
+                {{ formatDate(slotProps.item.changedAt) }}
               </span>
             </div>
 
@@ -130,6 +131,24 @@ onMounted(() => {
 <style scoped>
 .inquiry-timeline-container {
   padding: 0.5rem 0;
+}
+
+:deep(.customized-timeline .p-timeline-event-opposite) {
+  display: none !important;
+  flex: 0 !important;
+  padding: 0 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+}
+
+:deep(.customized-timeline .p-timeline-event-content) {
+  flex: 1 1 0% !important;
+  padding-left: 1rem;
+  padding-right: 0;
+}
+
+:deep(.customized-timeline .p-timeline-event-separator) {
+  flex: 0 0 auto;
 }
 
 .timeline-loading,
