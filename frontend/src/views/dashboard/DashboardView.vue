@@ -49,8 +49,8 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
-import { useDashboard } from '@/composables/useDashboard'
+import { ref } from 'vue'
+import { getDashboard } from '@/services/reportService'
 import DashboardFilters from '@/components/dashboard/DashboardFilters.vue'
 import DashboardSummary from '@/components/dashboard/DashboardSummary.vue'
 import TimelineChart from '@/components/dashboard/TimelineChart.vue'
@@ -63,14 +63,22 @@ import SourcePerformanceTable from '@/components/dashboard/SourcePerformanceTabl
 import AdvisorStatusChart from '@/components/dashboard/AdvisorStatusChart.vue'
 import AdvisorStatusTable from '@/components/dashboard/AdvisorStatusTable.vue'
 import AdvisorRatesTable from '@/components/dashboard/AdvisorRatesTable.vue'
-
 import ProgressSpinner from 'primevue/progressspinner'
 
-// Initial fetch with default filters handled by DashboardFilters
-const { data, loading, error, fetchDashboard } = useDashboard()
+const data = ref(null)
+const loading = ref(false)
+const error = ref(null)
 
-const handleFilterChange = (filters) => {
-  fetchDashboard(filters)
+const handleFilterChange = async (filters = {}) => {
+  loading.value = true
+  error.value = null
+  try {
+    data.value = await getDashboard(filters)
+  } catch (err) {
+    error.value = err.response?.data?.error || err.message
+  } finally {
+    loading.value = false
+  }
 }
 
 </script>

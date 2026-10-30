@@ -56,7 +56,7 @@ export function setupInterceptors(apiInstance, authStore, router, ability) {
             })
           }
           await refreshPromise
-        } catch (refreshError) {
+        } catch {
           // Fall through to reject original error
         }
       }

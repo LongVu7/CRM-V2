@@ -65,13 +65,22 @@ import InquiryList from '@/components/inquiry/InquiryList.vue'
 import InquiryShowDialog from '@/components/inquiry/InquiryShowDialog.vue'
 
 import { useInquiry } from '@/composables/useInquiry'
+import { useTableQuery } from '@/composables/useTableQuery'
 import { exportInquiries, syncGoogleSheets } from '@/services/inquiryService'
 
 const router = useRouter()
 const { inquiries, pagination, loading, fetchInquiries, deleteInquiry, deleteInquiries } = useInquiry()
 const toast = useToast()
 
-const currentParams = ref({ page: 1, limit: 20, search: '', sortField: null, sortOrder: null })
+const { currentParams, loadData, onPageChange, onSort, onSearch, onFilter } = useTableQuery(
+  async (params) => {
+    try {
+      await fetchInquiries(params)
+    } catch {
+      toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load inquiries', life: 5000 })
+    }
+  }
+)
 
 // Dialog states
 const showDialogVisible = ref(false)
@@ -83,41 +92,7 @@ const onEdit = (inquiryId) => {
   router.push(`/inquiries/${inquiryId}`)
 }
 
-onMounted(async () => {
-  await loadData()
-})
-
-const loadData = async () => {
-  try {
-    await fetchInquiries(currentParams.value)
-  } catch {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load inquiries', life: 5000 })
-  }
-}
-
-const onPageChange = async ({ page, limit }) => {
-  currentParams.value.page = page
-  currentParams.value.limit = limit
-  await loadData()
-}
-
-const onSort = async ({ sortField, sortOrder }) => {
-  currentParams.value.sortField = sortField
-  currentParams.value.sortOrder = sortOrder
-  currentParams.value.page = 1
-  await loadData()
-}
-
-const onSearch = async (searchQuery) => {
-  currentParams.value.search = searchQuery
-  currentParams.value.page = 1
-  await loadData()
-}
-
-const onFilter = async (filters) => {
-  currentParams.value = { ...currentParams.value, ...filters, page: 1 }
-  await loadData()
-}
+onMounted(() => loadData())
 
 const onDelete = async (id) => {
   try {

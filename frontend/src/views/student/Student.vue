@@ -24,16 +24,23 @@ import StudentList from '@/components/student/StudentList.vue'
 import StudentShowDialog from '@/components/student/StudentShowDialog.vue'
 import StudentImportDialog from '@/components/student/StudentImportDialog.vue'
 import { useStudent } from '@/composables/useStudent'
+import { useTableQuery } from '@/composables/useTableQuery'
 import { exportStudents } from '@/services/studentService'
 import { useToast } from 'primevue/usetoast'
 
 const { students, pagination, loading, fetchStudents, deleteStudent } = useStudent()
 const toast = useToast()
 
-const currentParams = ref({
-  page: 1, limit: 20, search: '', sortField: null, sortOrder: null,
-  oldProvinceId: null, birthYear: null
-})
+const { currentParams, loadData, onPageChange, onSort, onSearch, onFilter } = useTableQuery(
+  async (params) => {
+    try {
+      await fetchStudents(params)
+    } catch (e) {
+      toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load students', life: 5000 })
+    }
+  },
+  { oldProvinceId: null, birthYear: null }
+)
 
 // Show dialog state
 const showDialogVisible = ref(false)
@@ -41,41 +48,7 @@ const showDialogStudentId = ref(null)
 const showImportDialog = ref(false)
 const exporting = ref(false)
 
-onMounted(async () => {
-  await loadData()
-})
-
-const loadData = async () => {
-  try {
-    await fetchStudents(currentParams.value)
-  } catch (e) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load students', life: 5000 })
-  }
-}
-
-const onPageChange = async ({ page, limit }) => {
-  currentParams.value.page = page
-  currentParams.value.limit = limit
-  await loadData()
-}
-
-const onSearch = async (searchQuery) => {
-  currentParams.value.search = searchQuery
-  currentParams.value.page = 1
-  await loadData()
-}
-
-const onSort = async ({ sortField, sortOrder }) => {
-  currentParams.value.sortField = sortField
-  currentParams.value.sortOrder = sortOrder
-  currentParams.value.page = 1
-  await loadData()
-}
-
-const onFilter = async (filters) => {
-  currentParams.value = { ...currentParams.value, ...filters, page: 1 }
-  await loadData()
-}
+onMounted(() => loadData())
 
 const onDelete = async (id) => {
   try {

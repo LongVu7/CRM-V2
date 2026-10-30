@@ -1,21 +1,27 @@
 import { ref, shallowRef } from 'vue'
 import { getStudentOptions } from '@/services/studentService'
 
-export function useMajorOptions() {
+export function useStudentOptions() {
+  const newProvinces = ref([])
+  const countries = ref([])
   const interestedMajors = ref([])
   const specificMajors = ref([])
-  const loadingInterested = shallowRef(false)
+  const loadingOptions = shallowRef(false)
   const loadingSpecific = shallowRef(false)
 
-  const fetchInterestedMajors = async () => {
-    loadingInterested.value = true
+  const fetchStudentOptions = async () => {
+    loadingOptions.value = true
     try {
       const data = await getStudentOptions()
-      interestedMajors.value = data.majors || []
+      newProvinces.value = data?.newProvinces || []
+      countries.value = data?.countries || []
+      interestedMajors.value = data?.majors || []
     } catch {
+      newProvinces.value = []
+      countries.value = []
       interestedMajors.value = []
     } finally {
-      loadingInterested.value = false
+      loadingOptions.value = false
     }
   }
 
@@ -27,8 +33,7 @@ export function useMajorOptions() {
     loadingSpecific.value = true
     try {
       if (!interestedMajors.value.length) {
-        const data = await getStudentOptions()
-        interestedMajors.value = data.majors || []
+        await fetchStudentOptions()
       }
       const parent = interestedMajors.value.find((m) => m.id === Number(parentId))
       specificMajors.value = parent?.children || []
@@ -40,11 +45,13 @@ export function useMajorOptions() {
   }
 
   return {
+    newProvinces,
+    countries,
     interestedMajors,
     specificMajors,
-    loadingInterested,
+    loadingOptions,
     loadingSpecific,
-    fetchInterestedMajors,
+    fetchStudentOptions,
     fetchSpecificMajors
   }
 }

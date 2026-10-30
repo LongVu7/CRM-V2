@@ -10,28 +10,17 @@
       </div>
     </div>
 
-    <AccountList />
+    <AccountList @count="accountCount = $event" />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { ref } from 'vue'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import AccountList from '@/components/account/AccountList.vue'
-import { useAccount } from '@/composables/useAccount'
 
-const { accounts, fetchAccounts } = useAccount()
-
-onMounted(async () => {
-  try {
-    await fetchAccounts()
-  } catch (e) {
-    // handled inside component or toast
-  }
-})
-
-const accountCount = computed(() => accounts.value.length)
+const accountCount = ref(0)
 </script>
 
 <style scoped>

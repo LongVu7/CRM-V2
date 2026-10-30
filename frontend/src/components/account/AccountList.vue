@@ -17,6 +17,7 @@ import { formatDateTime } from '@/utils/dateUtils'
 const router = useRouter()
 const toast = useToast()
 const confirm = useConfirm()
+const emit = defineEmits(['count'])
 const { accounts, loading, fetchAccounts, deleteAccount } = useAccount()
 
 const filters = ref({
@@ -30,6 +31,7 @@ onMounted(() => {
 const loadData = async () => {
   try {
     await fetchAccounts()
+    emit('count', accounts.value.length)
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load accounts', life: 5000 })
   }

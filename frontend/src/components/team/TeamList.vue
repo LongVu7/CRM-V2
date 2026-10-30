@@ -171,6 +171,7 @@ const toast = useToast()
 const confirm = useConfirm()
 const authStore = useAuthStore()
 const { can } = useAbility()
+const emit = defineEmits(['count'])
 
 const isAdmin = computed(() => {
   const role = (authStore.user?.roleName || '').toLowerCase()
@@ -193,6 +194,7 @@ onMounted(() => {
 const loadData = async () => {
   try {
     await fetchTeams()
+    emit('count', teams.value.length)
   } catch (err) {
     toast.add({ severity: 'error', summary: 'Error', detail: err.response?.data?.error || err.message || 'Failed to fetch teams', life: 5000 })
   }

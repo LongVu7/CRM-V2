@@ -10,16 +10,15 @@
       </div>
     </div>
 
-    <TeamList />
+    <TeamList @count="teamCount = $event" />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import TeamList from '@/components/team/TeamList.vue'
-import { useTeam } from '@/composables/useTeam'
 import { useAuthStore } from '@/stores/auth'
 import { useAbility } from '@casl/vue'
 
@@ -31,17 +30,7 @@ const isAdmin = computed(() => {
   return role === 'admin' || role === 'administrator' || can('manage', 'all')
 })
 
-const { teams, fetchTeams } = useTeam()
-
-onMounted(async () => {
-  try {
-    await fetchTeams()
-  } catch {
-    // handled inside component or toast
-  }
-})
-
-const teamCount = computed(() => teams.value.length)
+const teamCount = ref(0)
 </script>
 
 <style scoped>

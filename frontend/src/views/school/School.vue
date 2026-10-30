@@ -28,45 +28,29 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import SchoolList from '@/components/school/SchoolList.vue'
 import { useSchool } from '@/composables/useSchool'
+import { useTableQuery } from '@/composables/useTableQuery'
 import { useToast } from 'primevue/usetoast'
 
 const { schools, pagination, loading, fetchSchools, deleteSchool } = useSchool()
 const toast = useToast()
 
-const currentParams = ref({ page: 1, limit: 20, search: '', oldProvinceId: null })
+const { currentParams, loadData, onPageChange, onSearch, onFilter } = useTableQuery(
+  async (params) => {
+    try {
+      const cleanParams = { ...params }
+      if (!cleanParams.oldProvinceId) delete cleanParams.oldProvinceId
+      if (!cleanParams.search) delete cleanParams.search
+      await fetchSchools(cleanParams)
+    } catch (e) {
+      toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load schools', life: 5000 })
+    }
+  },
+  { oldProvinceId: null }
+)
 
-onMounted(async () => {
-  await loadData()
-})
+onMounted(() => loadData())
 
-const loadData = async () => {
-  try {
-    const params = { ...currentParams.value }
-    if (!params.oldProvinceId) delete params.oldProvinceId
-    if (!params.search) delete params.search
-    await fetchSchools(params)
-  } catch (e) {
-    toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load schools', life: 5000 })
-  }
-}
-
-const onPageChange = async ({ page, limit }) => {
-  currentParams.value.page = page
-  currentParams.value.limit = limit
-  await loadData()
-}
-
-const onSearch = async (searchQuery) => {
-  currentParams.value.search = searchQuery
-  currentParams.value.page = 1
-  await loadData()
-}
-
-const onOldProvinceFilter = async (oldProvinceId) => {
-  currentParams.value.oldProvinceId = oldProvinceId
-  currentParams.value.page = 1
-  await loadData()
-}
+const onOldProvinceFilter = (oldProvinceId) => onFilter({ oldProvinceId })
 
 const onDelete = async (id) => {
   try {

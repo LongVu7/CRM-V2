@@ -49,7 +49,7 @@ export const useAuthStore = defineStore('auth', {
         const data = await apiGetMe()
         this.user = data.user
         this.updateAbility(data.user)
-      } catch (error) {
+      } catch {
         this.user = null
         this.updateAbility(null)
       } finally {

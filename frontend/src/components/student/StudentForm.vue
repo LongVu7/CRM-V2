@@ -7,9 +7,7 @@ import DatePicker from 'primevue/datepicker'
 import Button from 'primevue/button'
 
 import { useSchoolOptions } from '@/composables/useSchoolOptions'
-import { useNewProvinceOptions } from '@/composables/useNewProvinceOptions'
-import { useCountryOptions } from '@/composables/useCountryOptions'
-import { useMajorOptions } from '@/composables/useMajorOptions'
+import { useStudentOptions } from '@/composables/useStudentOptions'
 
 import {
   genderOptions,
@@ -36,9 +34,16 @@ const emit = defineEmits(['submit'])
 
 // Composables
 const { oldProvinces, schools, loadingOldProvinces, loadingSchools, fetchOldProvinces, fetchSchools } = useSchoolOptions()
-const { newProvinces, loadingNewProvinces, fetchNewProvinces } = useNewProvinceOptions()
-const { countries, loadingCountries, fetchCountries } = useCountryOptions()
-const { interestedMajors, specificMajors, loadingInterested, loadingSpecific, fetchInterestedMajors, fetchSpecificMajors } = useMajorOptions()
+const {
+  newProvinces,
+  countries,
+  interestedMajors,
+  specificMajors,
+  loadingOptions,
+  loadingSpecific,
+  fetchStudentOptions,
+  fetchSpecificMajors
+} = useStudentOptions()
 
 // Component State
 const form = ref({
@@ -85,8 +90,7 @@ watch(
 // Lifecycle
 onMounted(async () => {
   fetchOldProvinces()
-  fetchNewProvinces()
-  fetchCountries()
+  await fetchStudentOptions()
   
   // If editing student with existing old province or school
   const existingOldProvinceId = props.student.education?.oldProvinceId || props.student.education?.oldProvince?.id || props.student.education?.school?.oldProvince?.id
@@ -96,7 +100,6 @@ onMounted(async () => {
   }
 
   // Fetch interested majors
-  await fetchInterestedMajors()
   if (form.value.specializedRegister?.interestedMajorId) {
     fetchSpecificMajors(form.value.specializedRegister.interestedMajorId)
   }
@@ -280,12 +283,12 @@ defineExpose({
     <div class="form-grid">
       <div class="form-field">
         <label for="sf-newProvince">New Province <span class="required">*</span></label>
-        <Select id="sf-newProvince" v-model="form.education.newProvinceId" :options="newProvinces" optionLabel="name" optionValue="id" placeholder="Select new province" :loading="loadingNewProvinces" :invalid="!!errors.newProvince" filter showClear fluid />
+        <Select id="sf-newProvince" v-model="form.education.newProvinceId" :options="newProvinces" optionLabel="name" optionValue="id" placeholder="Select new province" :loading="loadingOptions" :invalid="!!errors.newProvince" filter showClear fluid />
         <small v-if="errors.newProvince" class="form-error">{{ errors.newProvince }}</small>
       </div>
       <div class="form-field">
         <label for="sf-country">School Country <span class="required">*</span></label>
-        <Select id="sf-country" v-model="form.education.countryId" :options="countries" optionLabel="name" optionValue="id" placeholder="Select country" :loading="loadingCountries" :invalid="!!errors.country" filter showClear fluid />
+        <Select id="sf-country" v-model="form.education.countryId" :options="countries" optionLabel="name" optionValue="id" placeholder="Select country" :loading="loadingOptions" :invalid="!!errors.country" filter showClear fluid />
         <small v-if="errors.country" class="form-error">{{ errors.country }}</small>
       </div>
     </div>
@@ -330,7 +333,7 @@ defineExpose({
         <label for="sf-interestedMajor">Interested Major <span class="required">*</span></label>
         <Select id="sf-interestedMajor" v-model="form.specializedRegister.interestedMajorId"
           :options="interestedMajors" optionLabel="label" optionValue="id"
-          placeholder="Select major" :loading="loadingInterested"
+          placeholder="Select major" :loading="loadingOptions"
           :invalid="!!errors.interestedMajor" filter showClear fluid @change="onInterestedMajorChange" />
         <small v-if="errors.interestedMajor" class="form-error">{{ errors.interestedMajor }}</small>
       </div>
