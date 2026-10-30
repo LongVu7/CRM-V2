@@ -1,12 +1,5 @@
 const reportService = require('./reportService');
 
-// const handleError = (res, error) => {
-//   const status = error.status || 500;
-//   res.status(status).json({
-//     error: error.message,
-//     ...(status === 500 && { details: error.message })
-//   });
-// };
 const handleError = (res, error) => {
   const status = error.status || 500;
 

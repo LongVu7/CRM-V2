@@ -1,8 +1,8 @@
 <template>
   <div class="chart-container bg-white dark:bg-gray-800 border rounded shadow-sm p-4 col-span-1 md:col-span-2">
     <h3 class="text-lg font-semibold mb-4">Thống kê tỷ lệ xử lý data</h3>
-    <DataTable :value="ratesByAdvisor" dataKey="advisorId" responsiveLayout="scroll" :paginator="true" :rows="10">
-      <Column field="advisorName" header="Tư vấn" class="font-semibold"></Column>
+    <DataTable :value="rateList" dataKey="accountId" responsiveLayout="scroll" :paginator="true" :rows="10">
+      <Column field="accountName" header="Tài khoản" class="font-semibold"></Column>
       <Column field="processed">
         <template #header>
           <span v-tooltip.top="'Tổng data - Tổng data xử lý'">Tổng data</span>
@@ -55,13 +55,20 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 
-defineProps({
+const props = defineProps({
+  ratesByAccount: {
+    type: Array,
+    default: () => []
+  },
   ratesByAdvisor: {
     type: Array,
     default: () => []
   }
 })
+
+const rateList = computed(() => (props.ratesByAccount?.length ? props.ratesByAccount : props.ratesByAdvisor) || [])
 </script>

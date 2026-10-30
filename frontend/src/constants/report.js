@@ -6,7 +6,7 @@ export const majorInterestOptions = [
   { label: 'Quan tâm khác ngành', value: 'different_major_interest' }
 ]
 
-export const ADVISOR_STATUS_CONFIG = [
+export const ACCOUNT_STATUS_CONFIG = [
   { key: 'paymentCompletedNb', alias: 'NB', label: 'Đã đóng phí (NB)', color: '#10b981' },
   { key: 'applicationSubmitted', alias: 'HS', label: 'Đã nộp hồ sơ', color: '#3b82f6' },
   { key: 'considering', alias: 'CN', label: 'Cân nhắc', color: '#f59e0b' },
@@ -15,8 +15,9 @@ export const ADVISOR_STATUS_CONFIG = [
   { key: 'noAnswer', alias: 'KBM', label: 'Không bắt máy', color: '#ef4444' },
   { key: 'unreachable', alias: 'KLLĐ', label: 'Không liên lạc được', color: '#f43f5e' },
   { key: 'notInterested', alias: 'KQT', label: 'Không quan tâm', color: '#9ca3af' },
-  { key: 'wrongNumber', alias: 'SS', label: 'Sai số', color: '#d1d5db' }
+  { key: 'wrongNumber', alias: 'SS', label: 'Sai số', color: '#e7f709ff' }
 ]
+export const ADVISOR_STATUS_CONFIG = ACCOUNT_STATUS_CONFIG
 
 export const PERFORMANCE_METRIC_COLUMNS = [
   { field: 'totalProcessed', header: 'Tổng data xử lý' },
@@ -31,8 +32,8 @@ export const PERFORMANCE_METRIC_COLUMNS = [
   { field: 'unprocessed', header: 'Chưa xử lý' }
 ]
 
-export const ADVISOR_RATE_COLUMNS = [
-  { field: 'advisorName', header: 'Tư vấn', class: 'font-semibold' },
+export const ACCOUNT_RATE_COLUMNS = [
+  { field: 'accountName', header: 'Tài khoản', class: 'font-semibold' },
   { field: 'processed', header: 'Tổng data xử lý' },
   { field: 'interacted', header: 'Tương tác được' },
   { field: 'interactionRate', header: '% Tương tác được', isRate: true },
@@ -41,3 +42,4 @@ export const ADVISOR_RATE_COLUMNS = [
   { field: 'notInterestedRate', header: '% Không quan tâm', isRate: true },
   { field: 'wrongNumberRate', header: '% Sai số', isRate: true }
 ]
+export const ADVISOR_RATE_COLUMNS = ACCOUNT_RATE_COLUMNS

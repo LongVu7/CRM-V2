@@ -11,22 +11,28 @@
 <script setup>
 import { computed } from 'vue'
 import Chart from 'primevue/chart'
-import { ADVISOR_STATUS_CONFIG } from '@/constants/report'
+import { ACCOUNT_STATUS_CONFIG } from '@/constants/report'
 
 const props = defineProps({
+  statusByAccount: {
+    type: Array,
+    default: () => []
+  },
   statusByAdvisor: {
     type: Array,
     default: () => []
   }
 })
 
+const accountList = computed(() => (props.statusByAccount?.length ? props.statusByAccount : props.statusByAdvisor) || [])
+
 const chartData = computed(() => {
-  const labels = props.statusByAdvisor.map(a => a.advisorName || 'Unknown')
-  const mapData = (field) => props.statusByAdvisor.map(a => a[field] || 0)
+  const labels = accountList.value.map(a => a.accountName || a.advisorName || 'Unknown')
+  const mapData = (field) => accountList.value.map(a => a[field] || 0)
 
   return {
     labels,
-    datasets: ADVISOR_STATUS_CONFIG.map(status => ({
+    datasets: ACCOUNT_STATUS_CONFIG.map(status => ({
       label: status.alias,
       fullLabel: status.label,
       data: mapData(status.key),

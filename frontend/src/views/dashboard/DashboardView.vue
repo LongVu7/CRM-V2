@@ -30,9 +30,9 @@
         <!-- Thống kê tình trạng theo ngành -->
         <MajorChart :byMajor="data.byMajor" />
         <!-- <RegionChart :byRegion="data.byRegion" /> -->
-        <AdvisorStatusChart :statusByAdvisor="data.statusByAdvisor" />
+        <AccountStatusChart :statusByAccount="data.statusByAccount || data.statusByAdvisor" />
         <!-- Thống kê tình trạng xử lý data (Chart and Table) -->
-        <AdvisorStatusTable :statusByAdvisor="data.statusByAdvisor" />
+        <AccountStatusTable :statusByAccount="data.statusByAccount || data.statusByAdvisor" />
         <!-- Thống kê tình trạng theo Tỉnh/ TP -->
         <MajorPerformanceTable :majorPerformance="data.majorPerformance" />
         <!-- Thống kê tình trạng theo Nguồn -->
@@ -40,7 +40,7 @@
         <SourcePerformanceTable :sourcePerformance="data.sourcePerformance" />
         
         <RegionPerformanceTable :regionPerformance="data.regionPerformance" />
-        <AdvisorRatesTable :ratesByAdvisor="data.ratesByAdvisor" />
+        <AccountRatesTable :ratesByAccount="data.ratesByAccount || data.ratesByAdvisor" />
       </div>
 
 
@@ -60,9 +60,9 @@ import RegionChart from '@/components/dashboard/RegionChart.vue'
 import RegionPerformanceTable from '@/components/dashboard/RegionPerformanceTable.vue'
 import SourceStatusTable from '@/components/dashboard/SourceStatusTable.vue'
 import SourcePerformanceTable from '@/components/dashboard/SourcePerformanceTable.vue'
-import AdvisorStatusChart from '@/components/dashboard/AdvisorStatusChart.vue'
-import AdvisorStatusTable from '@/components/dashboard/AdvisorStatusTable.vue'
-import AdvisorRatesTable from '@/components/dashboard/AdvisorRatesTable.vue'
+import AccountStatusChart from '@/components/dashboard/AccountStatusChart.vue'
+import AccountStatusTable from '@/components/dashboard/AccountStatusTable.vue'
+import AccountRatesTable from '@/components/dashboard/AccountRatesTable.vue'
 import ProgressSpinner from 'primevue/progressspinner'
 
 const data = ref(null)

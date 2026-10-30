@@ -2,7 +2,11 @@
   <div class="chart-container bg-white dark:bg-gray-800 border rounded shadow-sm p-4 col-span-1 md:col-span-2">
     <h3 class="text-lg font-semibold mb-4">Thống kê tình trạng theo Tỉnh/TP</h3>
     <DataTable :value="regionPerformance" dataKey="regionGroup" responsiveLayout="scroll">
-      <Column field="regionLabel" header="Tỉnh" class="font-semibold"></Column>
+      <Column field="regionGroup" header="Tỉnh" class="font-semibold">
+        <template #body="{ data }">
+          {{ tEnum('provinceGroup', data.regionGroup) }}
+        </template>
+      </Column>
       <Column field="totalProcessed">
         <template #header>
           <span v-tooltip.top="'Tổng data - Tổng data xử lý'">Tổng data</span>
@@ -94,7 +98,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import ColumnGroup from 'primevue/columngroup'
 import Row from 'primevue/row'
-import { PERFORMANCE_METRIC_COLUMNS } from '@/constants/report'
+import { tEnum } from '@/i18n'
 import { calcPerformanceTotals } from '@/utils/reportUtils'
 
 const props = defineProps({
@@ -103,11 +107,6 @@ const props = defineProps({
     default: () => []
   }
 })
-
-const COLUMNS = [
-  { field: 'regionLabel', header: 'Tỉnh', class: 'font-semibold' },
-  ...PERFORMANCE_METRIC_COLUMNS
-]
 
 const totals = computed(() => calcPerformanceTotals(props.regionPerformance))
 </script>

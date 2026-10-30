@@ -10,6 +10,7 @@
 <script setup>
 import { computed } from 'vue'
 import Chart from 'primevue/chart'
+import { tEnum } from '@/i18n'
 
 const props = defineProps({
   byMajor: {
@@ -20,7 +21,7 @@ const props = defineProps({
 
 const chartData = computed(() => {
   return {
-    labels: props.byMajor.map(m => m.majorLabel),
+    labels: props.byMajor.map(m => tEnum('majorInterest', m.majorKey)),
     datasets: [
       {
         data: props.byMajor.map(m => m.processed),

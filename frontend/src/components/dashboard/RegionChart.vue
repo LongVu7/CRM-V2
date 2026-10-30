@@ -8,6 +8,7 @@
 <script setup>
 import { computed } from 'vue'
 import Chart from 'primevue/chart'
+import { tEnum } from '@/i18n'
 
 const props = defineProps({
   byRegion: {
@@ -18,7 +19,7 @@ const props = defineProps({
 
 const chartData = computed(() => {
   return {
-    labels: props.byRegion.map(r => r.regionLabel),
+    labels: props.byRegion.map(r => tEnum('provinceGroup', r.regionGroup)),
     datasets: [
       {
         label: 'Processed',

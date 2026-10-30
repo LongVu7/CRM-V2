@@ -132,7 +132,7 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import ColumnGroup from 'primevue/columngroup'
 import Row from 'primevue/row'
-import { ADVISOR_STATUS_CONFIG } from '@/constants/report'
+import { ACCOUNT_STATUS_CONFIG } from '@/constants/report'
 
 const props = defineProps({
   bySource: {
@@ -143,7 +143,7 @@ const props = defineProps({
 
 const expandedRows = ref([])
 
-const STATUS_FIELDS = ['totalProcessed', ...ADVISOR_STATUS_CONFIG.map(s => s.key)]
+const STATUS_FIELDS = ['totalProcessed', ...ACCOUNT_STATUS_CONFIG.map(s => s.key)]
 
 const totals = computed(() => {
   const seed = Object.fromEntries(STATUS_FIELDS.map(f => [f, 0]))

@@ -10,30 +10,6 @@
         </div>
       </div>
 
-      <!-- Sources -->
-      <div class="filter-group">
-        <label class="block text-sm font-medium mb-1">Source</label>
-        <MultiSelect v-model="filters.sourceIds" :options="sources" optionLabel="label" optionValue="id" placeholder="All Sources" class="w-full" :loading="loadingSources" display="chip" />
-      </div>
-
-      <!-- Source Details -->
-      <div class="filter-group">
-        <label class="block text-sm font-medium mb-1">Source Detail</label>
-        <MultiSelect v-model="filters.sourceDetailIds" :options="sourceDetails" optionLabel="label" optionValue="id" placeholder="All Details" class="w-full" :disabled="!filters.sourceIds?.length" display="chip" />
-      </div>
-
-      <!-- Major Interest -->
-      <div class="filter-group">
-        <label class="block text-sm font-medium mb-1">Major Interest</label>
-        <MultiSelect v-model="filters.majorInterestTypes" :options="majorOptions" optionLabel="label" optionValue="value" placeholder="All Majors" class="w-full" display="chip" />
-      </div>
-
-      <!-- Region -->
-      <div class="filter-group">
-        <label class="block text-sm font-medium mb-1">Region</label>
-        <MultiSelect v-model="filters.regionGroups" :options="regionOptions" optionLabel="label" optionValue="value" placeholder="All Regions" class="w-full" display="chip" />
-      </div>
-
       <!-- Old Province -->
       <div class="filter-group">
         <label class="block text-sm font-medium mb-1">Old Province</label>
@@ -49,28 +25,19 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import DatePicker from 'primevue/datepicker'
 import MultiSelect from 'primevue/multiselect'
 import Button from 'primevue/button'
 
-import { useSourceData } from '@/composables/useSourceData'
 import { useSchoolOptions } from '@/composables/useSchoolOptions'
-import { provinceGroupOptions } from '@/constants/region'
-import { majorInterestOptions } from '@/constants/report'
 import { formatDateYMD } from '@/utils/dateUtils'
 
-const props = defineProps({
+defineProps({
   loading: Boolean
 })
 
 const emit = defineEmits(['filter-change'])
-
-const { 
-  sources, 
-  fetchSources,
-  getSourceChildren
-} = useSourceData()
 
 const {
   oldProvinces,
@@ -78,19 +45,9 @@ const {
   loadingOldProvinces
 } = useSchoolOptions()
 
-const loadingSources = ref(false)
-const sourceDetails = ref([])
-
-const majorOptions = majorInterestOptions
-const regionOptions = provinceGroupOptions
-
 const filters = ref({
   from: null,
   to: null,
-  sourceIds: null,
-  sourceDetailIds: null,
-  majorInterestTypes: null,
-  regionGroups: null,
   oldProvinceIds: null
 })
 
@@ -103,48 +60,16 @@ const emitFilters = () => {
   emit('filter-change', formatted)
 }
 
-watch(() => filters.value.sourceIds, async (newVal) => {
-  if (!newVal || newVal.length === 0) {
-    sourceDetails.value = []
-    filters.value.sourceDetailIds = null
-    return
-  }
-  
-  // Fetch details for all selected root sources
-  const details = []
-  for (const sourceId of newVal) {
-    const children = getSourceChildren(sourceId)
-    details.push(...children)
-  }
-  sourceDetails.value = details
-  
-  // Remove selected details that no longer belong to selected sources
-  if (filters.value.sourceDetailIds) {
-    const validIds = new Set(details.map(d => d.id))
-    filters.value.sourceDetailIds = filters.value.sourceDetailIds.filter(id => validIds.has(id))
-  }
-})
-
 onMounted(async () => {
-  loadingSources.value = true
-  try {
-    await Promise.all([
-      fetchSources(),
-      fetchOldProvinces()
-    ])
-  } catch (error) {
-    console.error('Failed to load filter options:', error)
-  } finally {
-    loadingSources.value = false
-  }
-  
+  fetchOldProvinces().catch(err => console.error('Failed to load provinces:', err))
+
   // Default to 1st of current month to today
   const today = new Date()
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
-  
+
   filters.value.from = firstDay
   filters.value.to = today
-  
+
   emitFilters()
 })
 </script>

@@ -14,15 +14,6 @@ const csvToIntArray = z.preprocess(
   z.array(z.number().int().positive()).optional()
 );
 
-const csvToStringArray = (allowedValues) => z.preprocess(
-  (val) => {
-    if (val === undefined || val === '') return undefined;
-    if (typeof val === 'string') return val.split(',').map(s => s.trim());
-    return val;
-  },
-  z.array(z.enum(allowedValues)).optional()
-);
-
 const realDate = z.string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be YYYY-MM-DD')
   .refine((val) => {
@@ -34,10 +25,6 @@ const realDate = z.string()
 const dashboardQuerySchema = z.object({
   from: realDate,
   to: realDate,
-  sourceIds: csvToIntArray,
-  sourceDetailIds: csvToIntArray,
-  majorInterestTypes: csvToStringArray(['right_major_interest', 'related_major_interest', 'different_major_interest']),
-  regionGroups: csvToStringArray(['HO_CHI_MINH', 'CORE_PROVINCE', 'OTHER_PROVINCE', 'FOREIGN']),
   oldProvinceIds: csvToIntArray,
 }).refine((data) => data.from <= data.to, {
   message: '"from" date must be on or before "to" date',

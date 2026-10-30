@@ -12,22 +12,9 @@ const STATUS_BUCKETS = {
   wrong_number: { field: 'wrongNumber', level: 'interaction' }
 };
 
-//Major groups
-const MAJOR_ROOT_KEYS = ['right_major_interest', 'related_major_interest', 'different_major_interest'];
-
-//Region labels
-const REGION_LABELS = {
-  HO_CHI_MINH: 'TP HCM',
-  CORE_PROVINCE: 'Tỉnh ruột',
-  OTHER_PROVINCE: 'Tỉnh ngoài',
-  FOREIGN: 'Nước ngoài',
-};
-
 module.exports = {
   PROCESSED_INTERACTIONS,
   INTERACTED_INTERACTIONS,
   NB_GENERAL,
-  STATUS_BUCKETS,
-  MAJOR_ROOT_KEYS,
-  REGION_LABELS
+  STATUS_BUCKETS
 };
