@@ -122,7 +122,7 @@ export function useCampaigns() {
     try {
       return await api.addActivityRecipients(campaignId, activityId, inquiryIds)
     } catch (err) {
-      error.value = err.response?.data?.error || 'Failed to add recipients'
+      error.value = err.response?.data?.details || err.response?.data?.error || 'Failed to add recipients'
       throw err
     } finally {
       loading.value = false

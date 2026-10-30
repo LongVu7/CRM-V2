@@ -102,8 +102,17 @@ const addRecipients = async (req, res) => {
 
 const sendActivity = async (req, res) => {
   try {
-    const result = await campaignService.sendEmailActivity(req.params.activityId);
-    res.json(result);
+    const activityId = Number(req.params.activityId);
+    res.status(202).json({
+      message: 'Email batch accepted for processing',
+      activityId
+    });
+
+    setImmediate(() => {
+      campaignService.sendEmailActivity(activityId).catch(err => {
+        console.error(`Background email batch failed for activity ${activityId}:`, err);
+      });
+    });
   } catch (error) {
     res.status(500).json({ error: error.message || 'Error sending activity' });
   }

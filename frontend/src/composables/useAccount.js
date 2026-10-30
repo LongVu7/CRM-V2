@@ -16,8 +16,8 @@ export function useAccount() {
       const data = await api.getAllAccounts()
       accounts.value = (data || []).map(acc => ({
         ...acc,
-        teamId: acc.teamId ?? acc.groupId ?? null,
-        team: acc.team || acc.group || null
+        teamId: acc.teamId ?? acc.teamMemberships?.[0]?.team?.id ?? acc.groupId ?? null,
+        team: acc.team || acc.teamMemberships?.[0]?.team || acc.group || null
       }))
     } catch (err) {
       error.value = err.response?.data?.details || err.message
@@ -34,8 +34,8 @@ export function useAccount() {
       const data = await api.getAccountById(id)
       account.value = data ? {
         ...data,
-        teamId: data.teamId ?? data.groupId ?? null,
-        team: data.team || data.group || null
+        teamId: data.teamId ?? data.teamMemberships?.[0]?.team?.id ?? data.groupId ?? null,
+        team: data.team || data.teamMemberships?.[0]?.team || data.group || null
       } : null
       return account.value
     } catch (err) {

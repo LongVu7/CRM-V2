@@ -3,7 +3,7 @@
         :visible="visible" 
         @update:visible="$emit('update:visible', $event)" 
         modal 
-        header="Select Recipients from Inquiries" 
+        header="Select Recipients" 
         :style="{ width: '70vw' }"
     >
         <DataTable 
@@ -64,15 +64,16 @@ const fetching = ref(false);
 const fetchInquiriesData = async () => {
     fetching.value = true;
     try {
-        const response = await getAllInquiries({ limit: 100, hasStudent: true }); // fetch more for selection
-        inquiries.value = response.data || response.inquiries || response; 
+        const response = await getAllInquiries({ limit: 100, hasStudent: true });
+        const raw = response.data || response.inquiries || response || [];
+        const initialInquiryIds = new Set((props.initialRecipients || []).map(r => r.inquiryId));
 
-        if (props.initialRecipients && props.initialRecipients.length) {
-            const initialInquiryIds = props.initialRecipients.map(r => r.inquiryId);
-            selectedInquiries.value = inquiries.value.filter(inq => initialInquiryIds.includes(inq.id));
-        } else {
-            selectedInquiries.value = [];
-        }
+        // Filter inquiries with valid email and sort already selected recipients to the top
+        const validInquiries = raw.filter(inq => inq.student?.email?.trim());
+        validInquiries.sort((a, b) => (initialInquiryIds.has(b.id) ? 1 : 0) - (initialInquiryIds.has(a.id) ? 1 : 0));
+
+        inquiries.value = validInquiries;
+        selectedInquiries.value = validInquiries.filter(inq => initialInquiryIds.has(inq.id));
     } catch (error) {
         toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load inquiries', life: 3000 });
     } finally {
@@ -81,7 +82,10 @@ const fetchInquiriesData = async () => {
 };
 
 const handleAdd = () => {
-    const inquiryIds = selectedInquiries.value.map(inq => inq.id);
+    const inquiryIds = (selectedInquiries.value || [])
+        .map(inq => (typeof inq === 'object' && inq !== null ? inq.id : inq))
+        .filter(id => id !== null && id !== undefined && !isNaN(Number(id)))
+        .map(Number);
     emit('add', inquiryIds);
 };
 

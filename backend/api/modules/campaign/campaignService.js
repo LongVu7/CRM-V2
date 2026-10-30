@@ -138,7 +138,7 @@ const deleteActivity = async (activityId) => {
 
 // ─── Activity Recipients ───
 
-const addRecipients = async (activityId, inquiryIds) => {
+const addRecipients = async (activityId, inquiryIds = []) => {
   const activity = await prisma.campaignActivity.findUnique({
     where: { id: Number(activityId) }
   });
@@ -172,18 +172,24 @@ const addRecipients = async (activityId, inquiryIds) => {
       include: { student: true }
     });
 
-    const recipientsData = inquiries.map(inq => ({
-      activityId: Number(activityId),
-      inquiryId: inq.id,
-      email: inq.student?.email || null,
-      mobile: inq.student?.mobile || null,
-      fullName: inq.student?.fullName || null,
-      status: 'pending'
-    }));
+    const validInquiries = activity.type === 'EMAIL'
+      ? inquiries.filter(inq => inq.student?.email?.trim())
+      : inquiries;
 
-    await prisma.campaignRecipient.createMany({
-      data: recipientsData
-    });
+    if (validInquiries.length > 0) {
+      const recipientsData = validInquiries.map(inq => ({
+        activityId: Number(activityId),
+        inquiryId: inq.id,
+        email: inq.student?.email || null,
+        mobile: inq.student?.mobile || null,
+        fullName: inq.student?.fullName || null,
+        status: 'pending'
+      }));
+
+      await prisma.campaignRecipient.createMany({
+        data: recipientsData
+      });
+    }
   }
   
   return { success: true };
@@ -192,59 +198,72 @@ const addRecipients = async (activityId, inquiryIds) => {
 // ─── Send Email Activity ───
 
 const sendEmailActivity = async (activityId) => {
-  const activity = await prisma.campaignActivity.findUnique({
-    where: { id: Number(activityId) },
-    include: { recipients: true }
-  });
+  try {
+    const activity = await prisma.campaignActivity.findUnique({
+      where: { id: Number(activityId) },
+      include: { recipients: true }
+    });
 
-  if (!activity) throw new Error('Activity not found');
-  if (activity.type !== 'EMAIL') throw new Error('Only EMAIL activities can be sent');
-  if (!activity.content) throw new Error('Activity has no content to send');
+    if (!activity) throw new Error('Activity not found');
+    if (activity.type !== 'EMAIL') throw new Error('Only EMAIL activities can be sent');
+    if (!activity.content) throw new Error('Activity has no content to send');
 
-  const emailRecipients = activity.recipients.filter(r => r.email);
-  if (emailRecipients.length === 0) throw new Error('No recipients with email addresses');
+    const emailRecipients = activity.recipients.filter(r => r.email);
+    if (emailRecipients.length === 0) throw new Error('No recipients with email addresses');
 
-  let sentCount = 0;
-  let failedCount = 0;
+    await prisma.campaignActivity.update({
+      where: { id: Number(activityId) },
+      data: { status: 'sending', updatedAt: new Date() }
+    });
 
-  for (const recipient of emailRecipients) {
-    try {
-      const dataObj = {
-        fullName: recipient.fullName || '',
-        email: recipient.email || '',
-        mobile: recipient.mobile || ''
-      };
-      
-      const html = templateRenderer.renderContent(activity.content, dataObj);
+    let sentCount = 0;
+    let failedCount = 0;
 
-      await sendMail({
-        to: recipient.email,
-        subject: activity.subject || activity.name,
-        html
-      });
+    for (const recipient of emailRecipients) {
+      try {
+        const dataObj = {
+          fullName: recipient.fullName || '',
+          email: recipient.email || '',
+          mobile: recipient.mobile || ''
+        };
+        
+        const html = templateRenderer.renderContent(activity.content, dataObj);
 
-      await prisma.campaignRecipient.update({
-        where: { id: recipient.id },
-        data: { status: 'sent' }
-      });
-      sentCount++;
-    } catch (err) {
-      await prisma.campaignRecipient.update({
-        where: { id: recipient.id },
-        data: { status: 'failed' }
-      });
-      failedCount++;
+        await sendMail({
+          to: recipient.email,
+          subject: activity.subject || activity.name,
+          html
+        });
+
+        await prisma.campaignRecipient.update({
+          where: { id: recipient.id },
+          data: { status: 'sent' }
+        });
+        sentCount++;
+      } catch (err) {
+        await prisma.campaignRecipient.update({
+          where: { id: recipient.id },
+          data: { status: 'failed' }
+        });
+        failedCount++;
+      }
     }
+
+    // Update activity status
+    const newStatus = failedCount === emailRecipients.length ? 'failed' : 'sent';
+    await prisma.campaignActivity.update({
+      where: { id: Number(activityId) },
+      data: { status: newStatus, updatedAt: new Date() }
+    });
+
+    return { sentCount, failedCount, total: emailRecipients.length };
+  } catch (error) {
+    await prisma.campaignActivity.update({
+      where: { id: Number(activityId) },
+      data: { status: 'failed', updatedAt: new Date() }
+    }).catch(() => {});
+    throw error;
   }
-
-  // Update activity status
-  const newStatus = failedCount === emailRecipients.length ? 'failed' : 'sent';
-  await prisma.campaignActivity.update({
-    where: { id: Number(activityId) },
-    data: { status: newStatus, updatedAt: new Date() }
-  });
-
-  return { sentCount, failedCount, total: emailRecipients.length };
 };
 
 module.exports = {

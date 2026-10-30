@@ -10,9 +10,6 @@ model Account {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
 
   role             Role?              @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  group            UserGroup?         @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  leadingGroups    UserGroup[]        @relation("GroupLeader")
-  groupsCreated    UserGroup[]        @relation("GroupCreator")
   teamMemberships  TeamMember[]
   teamsLed         Team[]             @relation("TeamLeader")
   teamsCreated     Team[]             @relation("TeamCreator")

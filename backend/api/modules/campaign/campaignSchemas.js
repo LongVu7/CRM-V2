@@ -36,7 +36,7 @@ const activitySchema = z.object({
 const updateActivitySchema = activitySchema.partial();
 
 const activityRecipientSchema = z.object({
-  inquiryIds: z.array(z.number().int()).min(1, 'At least one recipient must be selected')
+  inquiryIds: z.array(z.coerce.number().int()).default([])
 });
 
 const campaignTemplateSchema = z.object({

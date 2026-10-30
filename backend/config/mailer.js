@@ -1,4 +1,5 @@
 const { google } = require('googleapis');
+const MailComposer = require('nodemailer/lib/mail-composer');
 
 const getGmailService = () => {
   const oauth2Client = new google.auth.OAuth2(
@@ -14,24 +15,17 @@ const getGmailService = () => {
   return google.gmail({ version: 'v1', auth: oauth2Client });
 };
 
-const buildRawEmail = ({ from, to, subject, html }) => {
-  const messageParts = [
-    `From: ${from}`,
-    `To: ${to}`,
-    `Subject: ${subject}`,
-    'MIME-Version: 1.0',
-    'Content-Type: text/html; charset="UTF-8"',
-    '',
-    html
-  ];
-  const message = messageParts.join('\r\n');
+const stripCRLF = (val) => (val ? String(val).replace(/[\r\n]+/g, ' ').trim() : '');
 
-  // Base64url encode
-  return Buffer.from(message)
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
+const buildRawEmail = async ({ from, to, subject, html }) => {
+  const mail = new MailComposer({
+    from: stripCRLF(from),
+    to: stripCRLF(to),
+    subject: stripCRLF(subject),
+    html
+  });
+  const message = await mail.compile().build();
+  return Buffer.from(message).toString('base64url');
 };
 
 const sendMail = async ({ to, subject, html }) => {
@@ -39,7 +33,7 @@ const sendMail = async ({ to, subject, html }) => {
     const gmail = getGmailService();
     const from = process.env.SMTP_FROM || process.env.SMTP_USER;
 
-    const raw = buildRawEmail({ from, to, subject, html });
+    const raw = await buildRawEmail({ from, to, subject, html });
 
     const result = await gmail.users.messages.send({
       userId: 'me',
@@ -54,5 +48,5 @@ const sendMail = async ({ to, subject, html }) => {
   }
 };
 
-module.exports = { sendMail };
+module.exports = { sendMail, buildRawEmail };
 

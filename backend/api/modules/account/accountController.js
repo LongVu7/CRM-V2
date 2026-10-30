@@ -15,8 +15,12 @@ const getAllAccounts = async (req, res) => {
         role: {
           select: { id: true, name: true }
         },
-        group: {
-          select: { id: true, name: true }
+        teamMemberships: {
+          select: {
+            team: {
+              select: { id: true, name: true }
+            }
+          }
         }
       }
     });
@@ -51,10 +55,14 @@ const getAccountById = async (req, res) => {
         role: {
           select: { id: true, name: true }
         },
-        group: {
-          select: { id: true, name: true }
+        teamMemberships: {
+          select: {
+            team: {
+              select: { id: true, name: true }
+            }
+          }
         },
-        leadingGroups: {
+        teamsLed: {
           select: { id: true, name: true }
         },
         inquiries: {
@@ -133,8 +141,7 @@ const createAccount = async (req, res) => {
         email: true,
         isActive: true,
         createdAt: true,
-        role: { select: { id: true, name: true } },
-        group: { select: { id: true, name: true } }
+        role: { select: { id: true, name: true } }
       }
     });
 
@@ -180,8 +187,7 @@ const updateAccount = async (req, res) => {
         email: true,
         isActive: true,
         createdAt: true,
-        role: { select: { id: true, name: true } },
-        group: { select: { id: true, name: true } }
+        role: { select: { id: true, name: true } }
       }
     });
 
