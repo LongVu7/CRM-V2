@@ -9,7 +9,7 @@ const {
   normalizeProvinceName,
   removeVietnameseTones
 } = require('../../utils/enumMapper');
-const { resolveHierarchy, normalizeHierarchyText } = require('../../utils/hierarchyUtils');
+const { resolveHierarchy, normalizeHierarchyText } = require('../../utils/taxonomyHierarchy');
 
 // !!-- PROVINCE GROUP CONFIGURATION -- !
 // HO_CHI_MINH    → TP HCM khu vực (TP.HCM, Bình Dương, Vũng Tàu)

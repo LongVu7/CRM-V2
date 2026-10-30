@@ -2,9 +2,17 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../../../middleware/auth');
 const authorize = require('../../../middleware/authorize');
-const { validateBody, validateParams } = require('../../../middleware/validate');
+const { validateBody, validateParams, validateQuery } = require('../../../middleware/validate');
 const { idParamSchema } = require('../../../schemas/commonSchemas');
-const { createInquirySchema, updateInquirySchema, assignStudentSchema, assignAccountSchema } = require('./inquirySchemas');
+const {
+  createInquirySchema,
+  updateInquirySchema,
+  assignStudentSchema,
+  assignAccountSchema,
+  poolQuerySchema,
+  recipientsQuerySchema,
+  distributionRequestSchema
+} = require('./inquirySchemas');
 const upload = require('../../../middleware/upload');
 const inquiryController = require('./inquiryController');
 
@@ -32,6 +40,22 @@ router.route('/import/sheet-sync')
 
 router.route('/import-sheets')
     .post(authenticate, authorize('import', 'inquiry'), inquiryController.importFromGoogleSheets);
+
+// ─── Distribution routes
+router.route('/distribution/pool')
+    .get(authenticate, authorize('distribute', 'inquiry'), validateQuery(poolQuerySchema), inquiryController.getUnassignedPool);
+
+router.route('/distribution/scopes')
+    .get(authenticate, authorize('distribute', 'inquiry'), inquiryController.getDistributionScopes);
+
+router.route('/distribution/recipients')
+    .get(authenticate, authorize('distribute', 'inquiry'), validateQuery(recipientsQuerySchema), inquiryController.getScopeRecipients);
+
+router.route('/distribution/preview')
+    .post(authenticate, authorize('distribute', 'inquiry'), validateBody(distributionRequestSchema), inquiryController.previewDistribution);
+
+router.route('/distribution')
+    .post(authenticate, authorize('distribute', 'inquiry'), validateBody(distributionRequestSchema), inquiryController.distributeLeads);
 
 // ─── CRUD routes
 router.route('/')

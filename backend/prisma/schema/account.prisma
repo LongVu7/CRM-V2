@@ -23,6 +23,9 @@ model Account {
   templatesCreated CampaignTemplate[]
   errorReports     ErrorReport[]
   inquiryStatusHistories InquiryStatusHistory[]
+  assignmentLogsReceived InquiryAssignmentLog[] @relation("AssignmentRecipient")
+  assignmentLogsCreated  InquiryAssignmentLog[] @relation("AssignmentCreator")
+  assignmentLogsReleased InquiryAssignmentLog[] @relation("AssignmentPrevious")
 
   @@map("account")
 }

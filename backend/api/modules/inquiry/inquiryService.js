@@ -1,6 +1,6 @@
 const prisma = require('../../../config/db');
 const { applyStatusTransition } = require('../../utils/statusTransition');
-const { buildHierarchyTree } = require('../../utils/hierarchyUtils');
+const { buildHierarchyTree } = require('../../utils/taxonomyHierarchy');
 const { buildPaginationMeta } = require('../../utils/pagination');
 
 // ─── Error factory
@@ -123,7 +123,7 @@ const buildInquiryWhere = (filters, permissionScope = {}) => {
 
   const conditions = {};
 
-  // Optional triage filter for unassigned leads within authorized scope
+  // Optional filter for unassigned inquiry within authorized scope
   if (filters.unassignedOnly === true || filters.unassignedOnly === 'true') {
     conditions.assignedToId = null;
   }

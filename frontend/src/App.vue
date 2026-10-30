@@ -81,6 +81,7 @@ const navigationItems = [
   { label: 'Home',       icon: 'pi pi-home',           to: '/',           permission: null },
   { label: 'Students',   icon: 'pi pi-graduation-cap', to: '/students',   permission: 'student.read' },
   { label: 'Inquiries',  icon: 'pi pi-ticket',         to: '/inquiries',  permission: 'inquiry.read' },
+  { label: 'Inquiry Distribution', icon: 'pi pi-share-alt', to: '/inquiries/distribution', permission: 'inquiry.distribute' },
   { label: 'Schools',    icon: 'pi pi-building',        to: '/schools',    permission: 'school.read' },
   { label: 'Campaigns',  icon: 'pi pi-send',            to: '/campaigns',  permission: 'campaign.read' },
   { label: 'Templates',  icon: 'pi pi-file-edit',       to: '/campaign-templates', permission: 'campaign_template.read' },

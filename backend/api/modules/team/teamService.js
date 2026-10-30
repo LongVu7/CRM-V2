@@ -385,7 +385,7 @@ const addMember = async (teamId, data) => {
   }
 
   // User can be a member of single teams
-  // Upsert by accountId transfers user if already in another team
+  // Upsert by accountId to transfers user if already in another team
   const member = await prisma.teamMember.upsert({
     where: { accountId: aid },
     update: {

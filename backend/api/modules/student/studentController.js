@@ -2,7 +2,7 @@ const fs = require('fs');
 const studentService = require('./studentService');
 const { parseExcelFiles } = require('../../utils/excelParser');
 const { parsePagination } = require('../../utils/pagination');
-const { generateExcelBuffer } = require('../../utils/exportUtils');
+const { generateExcelBuffer } = require('../../utils/excelExport');
 
 // Helper: translate service errors to HTTP responses
 const handleError = (res, error) => {

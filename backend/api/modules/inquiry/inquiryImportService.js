@@ -20,8 +20,8 @@ const {
   ENGLISH_CERT_MAP
 } = require('../../utils/enumMapper');
 const { applyStatusTransition } = require('../../utils/statusTransition');
-const { resolveHierarchy } = require('../../utils/hierarchyUtils');
-const importTokens = require('../../utils/importTokenManager');
+const { resolveHierarchy } = require('../../utils/taxonomyHierarchy');
+const importTokens = require('../../utils/importTokenStore');
 
 // ─── Column Configuration ──────────────────────────────────────────
 // requiredStruct: Must be present in the uploaded spreadsheet header row

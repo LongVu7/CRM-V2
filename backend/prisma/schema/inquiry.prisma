@@ -42,6 +42,7 @@ model Inquiry {
 
   campaignRecipients CampaignRecipient[]
   statusHistories    InquiryStatusHistory[]
+  assignmentLogs     InquiryAssignmentLog[]
 
   @@index([createdAt])
   @@index([sourceDataId])
@@ -49,6 +50,7 @@ model Inquiry {
   @@index([firstInteractedAt])
   @@index([nbAt])
   @@index([createdById])
+  @@index([assignedToId, createdAt])
   @@map("inquiry")
 }
 
@@ -95,4 +97,48 @@ enum EventName {
 enum CompensationStatus {
   REPORTED
   COMPENSATED
+}
+
+model InquiryAssignmentLog {
+  id                 Int                    @id @default(autoincrement())
+
+  inquiryId          Int                    @map("inquiry_id")
+  inquiry            Inquiry                @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+
+  previousAssigneeId Int?                   @map("previous_assignee_id")
+  previousAssignee   Account?               @relation("AssignmentPrevious", fields: [previousAssigneeId], references: [id], onDelete: SetNull)
+
+  newAssigneeId      Int?                   @map("new_assignee_id")
+  newAssignee        Account?               @relation("AssignmentRecipient", fields: [newAssigneeId], references: [id], onDelete: SetNull)
+
+  assignedById       Int?                   @map("assigned_by_id")
+  assignedBy         Account?               @relation("AssignmentCreator", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  batchId            String                 @map("batch_id") @db.Uuid
+  method             AssignmentMethod       @default(ROUND_ROBIN)
+  scopeType          DistributionScopeType? @map("scope_type")
+
+  scopeTeamId        Int?                   @map("scope_team_id")
+  scopeTeam          Team?                  @relation(fields: [scopeTeamId], references: [id], onDelete: SetNull)
+
+  orderRank          Int?                   @map("order_rank")
+  assignedAt         DateTime               @default(now()) @map("assigned_at") @db.Timestamptz()
+
+  @@index([inquiryId])
+  @@index([batchId])
+  @@index([newAssigneeId, assignedAt])
+  @@index([assignedById, assignedAt])
+  @@map("inquiry_assignment_log")
+}
+
+enum AssignmentMethod {
+  ROUND_ROBIN
+  MANUAL
+}
+
+enum DistributionScopeType {
+  ALL
+  TEAM
+  NO_TEAM
+  SELF
 }

@@ -99,5 +99,22 @@ export default {
     OPEN: 'Mới tạo',
     IN_PROGRESS: 'Đang xử lý',
     RESOLVED: 'Đã giải quyết'
+  },
+  slaTier: {
+    NORMAL: 'Bình thường (< 1 ngày)',
+    ATTENTION: 'Cần chú ý (1 - 2 ngày)',
+    WARNING: 'Cảnh báo (2 - 3 ngày)',
+    OVERDUE: 'Quá hạn (> 3 ngày)'
+  },
+  distributionScope: {
+    ALL: 'Tất cả nhân viên',
+    TEAM: 'Nhóm',
+    NO_TEAM: 'Nhân viên độc lập',
+    SELF: 'Chính tôi'
+  },
+  skipReason: {
+    ALREADY_ASSIGNED: 'Đã được phân bổ',
+    NOT_FOUND: 'Không tìm thấy',
+    LOCKED: 'Đang bị khóa bởi thao tác khác'
   }
 }

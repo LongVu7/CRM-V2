@@ -99,5 +99,22 @@ export default {
     OPEN: 'Open',
     IN_PROGRESS: 'In Progress',
     RESOLVED: 'Resolved'
+  },
+  slaTier: {
+    NORMAL: 'Normal (< 1 day)',
+    ATTENTION: 'Attention (1 - 2 days)',
+    WARNING: 'Warning (2 - 3 days)',
+    OVERDUE: 'Overdue (> 3 days)'
+  },
+  distributionScope: {
+    ALL: 'All Staff',
+    TEAM: 'Team',
+    NO_TEAM: 'Independent Staff',
+    SELF: 'Myself'
+  },
+  skipReason: {
+    ALREADY_ASSIGNED: 'Already Assigned',
+    NOT_FOUND: 'Not Found',
+    LOCKED: 'Locked by another operation'
   }
 }

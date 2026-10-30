@@ -1,5 +1,6 @@
 <template>
   <div class="inquiry-list-view">
+    <!-- Top Breadcrumb & Title Row -->
     <div class="page-header">
       <div class="header-left">
         <div class="breadcrumb-bar">
@@ -12,8 +13,21 @@
           <Tag :value="`${pagination?.totalCount || 0} inquiries`" severity="info" rounded class="count-tag" />
         </div>
       </div>
+
+      <!-- Header Actions: Quick link to Dedicated Lead Distribution View -->
+      <div class="header-actions">
+        <Button
+          v-if="$can('distribute', 'inquiry')"
+          label="Distribute Leads (Unassigned Pool)"
+          icon="pi pi-share-alt"
+          severity="warn"
+          class="distribution-nav-btn"
+          @click="$router.push('/inquiries/distribution')"
+        />
+      </div>
     </div>
 
+    <!-- Main Inquiry Table View -->
     <InquiryList 
       :inquiries="inquiries"
       :loading="loading"
@@ -32,6 +46,7 @@
       @sort="onSort"
     />
 
+    <!-- Inquiry Details Dialog -->
     <InquiryShowDialog
       v-model:visible="showDialogVisible"
       :inquiryId="showDialogInquiryId"
@@ -43,11 +58,14 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import Tag from 'primevue/tag'
+import Button from 'primevue/button'
+import { useToast } from 'primevue/usetoast'
+
 import InquiryList from '@/components/inquiry/InquiryList.vue'
 import InquiryShowDialog from '@/components/inquiry/InquiryShowDialog.vue'
+
 import { useInquiry } from '@/composables/useInquiry'
 import { exportInquiries, syncGoogleSheets } from '@/services/inquiryService'
-import { useToast } from 'primevue/usetoast'
 
 const router = useRouter()
 const { inquiries, pagination, loading, fetchInquiries, deleteInquiry, deleteInquiries } = useInquiry()
@@ -55,7 +73,7 @@ const toast = useToast()
 
 const currentParams = ref({ page: 1, limit: 20, search: '', sortField: null, sortOrder: null })
 
-// Show dialog state
+// Dialog states
 const showDialogVisible = ref(false)
 const showDialogInquiryId = ref(null)
 const exporting = ref(false)
@@ -72,7 +90,7 @@ onMounted(async () => {
 const loadData = async () => {
   try {
     await fetchInquiries(currentParams.value)
-  } catch (e) {
+  } catch {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load inquiries', life: 5000 })
   }
 }
@@ -106,7 +124,7 @@ const onDelete = async (id) => {
     await deleteInquiry(id)
     toast.add({ severity: 'success', summary: 'Deleted', detail: 'Inquiry deleted successfully', life: 3000 })
     await loadData()
-  } catch (e) {
+  } catch {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete inquiry', life: 5000 })
   }
 }
@@ -121,7 +139,7 @@ const onDeleteSelected = async (selectedIds) => {
       life: 3000 
     })
     await loadData()
-  } catch (e) {
+  } catch {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete selected inquiries', life: 5000 })
   }
 }
@@ -145,7 +163,7 @@ const onExport = async () => {
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
     toast.add({ severity: 'success', summary: 'Success', detail: 'Export downloaded successfully', life: 3000 })
-  } catch (error) {
+  } catch {
     toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to export inquiries', life: 5000 })
   } finally {
     exporting.value = false
@@ -186,6 +204,11 @@ const onSyncSheets = async () => {
 
 .page-header {
   margin-bottom: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .header-left {
@@ -237,5 +260,31 @@ const onSyncSheets = async () => {
   font-weight: 600;
   font-size: 0.8rem;
   padding: 0.2rem 0.6rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.distribution-nav-btn {
+  font-weight: 700;
+}
+
+@media (max-width: 768px) {
+  .inquiry-list-view {
+    padding: 1rem;
+  }
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .header-actions {
+    width: 100%;
+  }
+  .distribution-nav-btn {
+    width: 100%;
+  }
 }
 </style>

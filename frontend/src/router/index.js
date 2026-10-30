@@ -56,6 +56,12 @@ const router = createRouter({
       component: () => import('../views/inquiry/InquiryDetail.vue'),
       meta: { permission: 'inquiry.read' }
     },
+    {
+      path: '/inquiries/distribution',
+      name: 'inquiry-distribution',
+      component: () => import('../views/inquiry/InquiryDistributionView.vue'),
+      meta: { permission: 'inquiry.distribute' }
+    },
     // ─── Admin Namespace ───
     {
       path: '/admin/accounts',

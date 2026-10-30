@@ -16,6 +16,7 @@ model Team {
   members     TeamMember[]
   campaigns   Campaign[]
   inquiryStatusHistories InquiryStatusHistory[]
+  assignmentLogs InquiryAssignmentLog[]
 
   @@index([parentId])
   @@index([leaderId])

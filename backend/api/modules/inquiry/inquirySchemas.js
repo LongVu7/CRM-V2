@@ -140,12 +140,74 @@ const sheetInquirySyncSchema = z.object({
   )
 }).loose();
 
+const { SLA_TIERS } = require('../../utils/slaTier');
+
+const poolQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  search: z.string().max(100).optional(),
+  sourceId: z.coerce.number().int().positive().optional(),
+  slaTier: z.enum([
+    SLA_TIERS.NORMAL,
+    SLA_TIERS.ATTENTION,
+    SLA_TIERS.WARNING,
+    SLA_TIERS.OVERDUE
+  ]).optional(),
+  sortField: z.enum(['createdAt', 'student.fullName']).default('createdAt'),
+  sortOrder: z.coerce.number().refine(val => val === 1 || val === -1, {
+    message: 'sortOrder must be 1 or -1'
+  }).default(-1)
+});
+
+const recipientsQuerySchema = z.object({
+  scope: z.enum(['ALL', 'TEAM', 'NO_TEAM', 'SELF']),
+  teamId: z.coerce.number().int().positive().optional()
+}).refine(data => {
+  if (data.scope === 'TEAM') {
+    return typeof data.teamId === 'number' && data.teamId > 0;
+  }
+  return true;
+}, {
+  message: 'teamId is required when scope is TEAM',
+  path: ['teamId']
+});
+
+const distributionRequestSchema = z.object({
+  inquiryIds: z.array(z.number().int().positive()).min(1).max(500),
+  staffIds: z.array(z.number().int().positive()).min(1).max(100),
+  scope: z.object({
+    type: z.enum(['ALL', 'TEAM', 'NO_TEAM', 'SELF']),
+    teamId: z.number().int().positive().optional()
+  }).refine(s => {
+    if (s.type === 'TEAM') {
+      return typeof s.teamId === 'number' && s.teamId > 0;
+    }
+    return true;
+  }, {
+    message: 'teamId is required when scope.type is TEAM',
+    path: ['teamId']
+  }),
+  method: z.literal('ROUND_ROBIN').default('ROUND_ROBIN')
+}).transform(data => {
+  const uniqueInquiryIds = [...new Set(data.inquiryIds)];
+  const uniqueStaffIds = [...new Set(data.staffIds)];
+
+  return {
+    ...data,
+    inquiryIds: uniqueInquiryIds,
+    staffIds: uniqueStaffIds
+  };
+});
+
 module.exports = {
   createInquirySchema,
   updateInquirySchema,
   assignStudentSchema,
   assignAccountSchema,
   sheetInquirySyncSchema,
-  sanitizeSheetMobile
+  sanitizeSheetMobile,
+  poolQuerySchema,
+  recipientsQuerySchema,
+  distributionRequestSchema
 };
 

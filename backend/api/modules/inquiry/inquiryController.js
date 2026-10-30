@@ -1,15 +1,22 @@
 const inquiryService = require('./inquiryService');
-const { generateExcelBuffer } = require('../../utils/exportUtils');
+const { generateExcelBuffer } = require('../../utils/excelExport');
 const { syncGoogleSheetsToInquiries } = require('./inquiryGoogleSheetService');
 const fs = require('fs');
 const inquiryImportService = require('./inquiryImportService');
+const inquiryDistributionService = require('./inquiryDistributionService');
 const { parseExcelFiles } = require('../../utils/excelParser');
 const { parsePagination } = require('../../utils/pagination');
 
 // Error handling
 const handleError = (res, error) => {
-  const status = error.status || 500;
-  res.status(status).json({ error: error.message, ...(status === 500 && { details: error.message }) });
+  const status = error.statusCode || error.status || 500;
+  res.status(status).json({
+    error: error.message,
+    ...(error.reason && { reason: error.reason }),
+    message: error.message,
+    ...(error.details && { details: error.details }),
+    ...(status === 500 && { details: error.message })
+  });
 };
 
 
@@ -331,6 +338,52 @@ const getInquiryOptions = async (req, res) => {
   }
 };
 
+// ─── Distribution handlers
+const getUnassignedPool = async (req, res) => {
+  try {
+    const result = await inquiryDistributionService.getUnassignedPool(req.query);
+    res.status(200).json(result);
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+const getDistributionScopes = async (req, res) => {
+  try {
+    const result = await inquiryDistributionService.getDistributionScopes(req.user);
+    res.status(200).json(result);
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+const getScopeRecipients = async (req, res) => {
+  try {
+    const result = await inquiryDistributionService.getScopeRecipients(req.query, req.user);
+    res.status(200).json(result);
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+const previewDistribution = async (req, res) => {
+  try {
+    const result = await inquiryDistributionService.previewDistribution(req.body, req.user);
+    res.status(200).json(result);
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+const distributeLeads = async (req, res) => {
+  try {
+    const result = await inquiryDistributionService.distributeLeads(req.body, req.user);
+    res.status(201).json(result);
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
 module.exports = {
   getAllInquiries,
   exportInquiries,
@@ -348,5 +401,10 @@ module.exports = {
   confirmImportInquiry,
   importFromGoogleSheets,
   getInquiryOptions,
-  getInquiryStatusHistory
+  getInquiryStatusHistory,
+  getUnassignedPool,
+  getDistributionScopes,
+  getScopeRecipients,
+  previewDistribution,
+  distributeLeads
 };
