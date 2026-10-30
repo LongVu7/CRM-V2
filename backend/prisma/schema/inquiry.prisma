@@ -114,7 +114,6 @@ model InquiryAssignmentLog {
 
   batchId            String                 @map("batch_id") @db.Uuid
   method             AssignmentMethod       @default(ROUND_ROBIN)
-  scopeType          DistributionScopeType? @map("scope_type")
 
   scopeTeamId        Int?                   @map("scope_team_id")
   scopeTeam          Team?                  @relation(fields: [scopeTeamId], references: [id], onDelete: SetNull)
@@ -132,11 +131,4 @@ model InquiryAssignmentLog {
 enum AssignmentMethod {
   ROUND_ROBIN
   MANUAL
-}
-
-enum DistributionScopeType {
-  ALL
-  TEAM
-  NO_TEAM
-  SELF
 }

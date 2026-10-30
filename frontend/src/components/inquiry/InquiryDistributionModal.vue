@@ -475,6 +475,7 @@ const submitDistribution = async () => {
     const payload = {
       inquiryIds: props.selectedInquiries.map((i) => i.id),
       staffIds: selectedStaffIds.value,
+      teamId: selectedOpt.teamId || null,
       scope: scopePayload,
       method: 'ROUND_ROBIN',
     }

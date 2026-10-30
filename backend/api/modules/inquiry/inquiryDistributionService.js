@@ -453,68 +453,26 @@ const getScopeRecipients = async (query, user) => {
 /**
  * Validates that all recipient staffIds exist, are active, and authorized.
  */
-const validateRecipients = async (staffIds, scope, user) => {
-  const { effectiveScope, authorizedTeamIds } = resolveDistributionScope(user);
-
-  // Validate scope permission
-  if (effectiveScope === 'OWNER_ONLY' && scope.type !== 'SELF') {
-    throw createServiceError(
-      'Your permissions restrict distribution to yourself only',
-      403,
-      'SCOPE_NOT_ALLOWED'
-    );
-  }
-
-  if (effectiveScope === 'TEAM_ONLY') {
-    if (scope.type === 'ALL' || scope.type === 'NO_TEAM') {
-      throw createServiceError(
-        'Team managers may only distribute to their authorized teams',
-        403,
-        'SCOPE_NOT_ALLOWED'
-      );
-    }
-    if (scope.type === 'TEAM' && !authorizedTeamIds.includes(scope.teamId)) {
-      throw createServiceError(
-        'You are not authorized to distribute to this team',
-        403,
-        'SCOPE_NOT_ALLOWED'
-      );
-    }
-  }
+const validateRecipients = async (staffIds, user) => {
+  const { effectiveScope, authorizedAccountIds } = resolveDistributionScope(user);
+  const userId = user?.id || user?.accountId;
 
   const staff = await prisma.account.findMany({
-    where: { id: { in: staffIds } },
+    where: { id: { in: staffIds }, isActive: true },
     select: {
       id: true,
       fullName: true,
-      email: true,
-      isActive: true,
-      teamMemberships: { select: { teamId: true } }
+      email: true
     }
   });
 
   const staffMap = new Map(staff.map(s => [s.id, s]));
-  const invalidStaffIds = [];
-
-  for (const sid of staffIds) {
-    const member = staffMap.get(sid);
-    if (!member || !member.isActive) {
-      invalidStaffIds.push(sid);
-      continue;
-    }
-
-    if (scope.type === 'TEAM') {
-      const isMember = member.teamMemberships.some(m => m.teamId === scope.teamId);
-      if (!isMember) {
-        invalidStaffIds.push(sid);
-      }
-    } else if (scope.type === 'SELF') {
-      const userId = user?.id || user?.accountId;
-      if (member.id !== userId) {
-        invalidStaffIds.push(sid);
-      }
-    }
-  }
+  const invalidStaffIds = staffIds.filter(sid => {
+    if (!staffMap.has(sid)) return true;
+    if (effectiveScope === 'OWNER_ONLY' && sid !== userId) return true;
+    if (effectiveScope === 'TEAM_ONLY' && !authorizedAccountIds.includes(sid)) return true;
+    return false;
+  });
 
   if (invalidStaffIds.length > 0) {
     throw createServiceError(
@@ -533,9 +491,9 @@ const validateRecipients = async (staffIds, scope, user) => {
  * Preview dry-run Round-Robin lead distribution.
  */
 const previewDistribution = async (payload, user) => {
-  const { inquiryIds = [], staffIds = [], scope } = payload;
+  const { inquiryIds = [], staffIds = [] } = payload;
 
-  const staffList = await validateRecipients(staffIds, scope, user);
+  const staffList = await validateRecipients(staffIds, user);
 
   // Check which inquiries are actually unassigned, sorted matching execution order
   const existingInquiries = await prisma.inquiry.findMany({
@@ -576,11 +534,11 @@ const previewDistribution = async (payload, user) => {
  * Execute atomic lead distribution in a single database transaction.
  */
 const distributeLeads = async (payload, user) => {
-  const { inquiryIds = [], staffIds = [], scope, method = 'ROUND_ROBIN' } = payload;
+  const { inquiryIds = [], staffIds = [], teamId, method = 'ROUND_ROBIN' } = payload;
   const userId = user?.id || user?.accountId || null;
 
   // 1. Validate recipients upfront
-  const staffList = await validateRecipients(staffIds, scope, user);
+  const staffList = await validateRecipients(staffIds, user);
 
   // 2. Transaction with row locks (FOR UPDATE SKIP LOCKED)
   const result = await prisma.$transaction(async (tx) => {
@@ -658,8 +616,7 @@ const distributeLeads = async (payload, user) => {
       assignedById: userId,
       batchId,
       method,
-      scopeType: scope.type,
-      scopeTeamId: scope.type === 'TEAM' ? scope.teamId : null,
+      scopeTeamId: teamId || null,
       orderRank: item.orderRank,
       assignedAt: now
     }));
@@ -688,8 +645,6 @@ const distributeLeads = async (payload, user) => {
 
 module.exports = {
   createServiceError,
-  resolveDistributionScope,
-  formatSourceHierarchy,
   getUnassignedPool,
   getDistributionScopes,
   getScopeRecipients,

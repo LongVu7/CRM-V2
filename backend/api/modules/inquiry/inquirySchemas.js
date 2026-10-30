@@ -158,33 +158,18 @@ const poolQuerySchema = z.object({
 });
 
 const recipientsQuerySchema = z.object({
-  scope: z.enum(['ALL', 'TEAM', 'NO_TEAM', 'SELF']),
+  scope: z.enum(['ALL', 'TEAM', 'NO_TEAM', 'SELF']).optional(),
   teamId: z.coerce.number().int().positive().optional()
-}).refine(data => {
-  if (data.scope === 'TEAM') {
-    return typeof data.teamId === 'number' && data.teamId > 0;
-  }
-  return true;
-}, {
-  message: 'teamId is required when scope is TEAM',
-  path: ['teamId']
 });
 
 const distributionRequestSchema = z.object({
   inquiryIds: z.array(z.number().int().positive()).min(1).max(500),
   staffIds: z.array(z.number().int().positive()).min(1).max(100),
+  teamId: z.number().int().positive().nullable().optional(),
   scope: z.object({
-    type: z.enum(['ALL', 'TEAM', 'NO_TEAM', 'SELF']),
-    teamId: z.number().int().positive().optional()
-  }).refine(s => {
-    if (s.type === 'TEAM') {
-      return typeof s.teamId === 'number' && s.teamId > 0;
-    }
-    return true;
-  }, {
-    message: 'teamId is required when scope.type is TEAM',
-    path: ['teamId']
-  }),
+    type: z.string().optional(),
+    teamId: z.number().int().positive().nullable().optional()
+  }).optional(),
   method: z.literal('ROUND_ROBIN').default('ROUND_ROBIN')
 }).transform(data => {
   const uniqueInquiryIds = [...new Set(data.inquiryIds)];
@@ -193,7 +178,8 @@ const distributionRequestSchema = z.object({
   return {
     ...data,
     inquiryIds: uniqueInquiryIds,
-    staffIds: uniqueStaffIds
+    staffIds: uniqueStaffIds,
+    teamId: data.teamId ?? data.scope?.teamId ?? null
   };
 });
 
