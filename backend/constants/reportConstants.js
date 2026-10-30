@@ -1,4 +1,4 @@
-const { PROCESSED_INTERACTIONS, INTERACTED_INTERACTIONS, NB_GENERAL } = require('../../../constants/statusConstants');
+const { PROCESSED_INTERACTIONS, INTERACTED_INTERACTIONS, NB_GENERAL } = require('./statusConstants');
 
 const STATUS_BUCKETS = {
   payment_completed_nb: { field: 'paymentCompletedNb', level: 'general' },

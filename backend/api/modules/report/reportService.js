@@ -1,6 +1,6 @@
 const reportRepository = require('./reportRepository');
 const { getIctDateBoundaries, getMonthsArray, BUSINESS_TZ } = require('../../utils/reportDateUtils');
-const { STATUS_BUCKETS } = require('./reportConstants');
+const { STATUS_BUCKETS } = require('../../../constants/reportConstants');
 
 /**
  * Builds an SQL-compatible scope object for reportRepository raw queries
