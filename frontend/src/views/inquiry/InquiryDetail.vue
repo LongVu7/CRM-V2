@@ -203,7 +203,7 @@ const submitGlobal = async () => {
 const executeUpdate = async (studentData, notes = null) => {
   // Build inquiry payload — include null for nullable fields so backend can clear them
   const payload = {}
-  const nullableFields = ['statusDataId', 'sourceDataId', 'dataReceived', 'groupTele']
+  const nullableFields = ['statusDataId', 'sourceDataId', 'dataReceived']
   for (const [key, value] of Object.entries(inquiryForm.value)) {
     if (value !== '' && value !== null && value !== undefined && key !== 'statusNotes') {
       payload[key] = value

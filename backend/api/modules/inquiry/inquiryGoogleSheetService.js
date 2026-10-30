@@ -7,7 +7,8 @@ const {
   PROVINCE_MAP,
   CLASS_MAP,
   normalizeProvinceName,
-  removeVietnameseTones
+  removeVietnameseTones,
+  PROVINCE_GROUP_RULES
 } = require('../../utils/enumMapper');
 const { resolveHierarchy, normalizeHierarchyText } = require('../../utils/taxonomyHierarchy');
 
@@ -16,25 +17,6 @@ const { resolveHierarchy, normalizeHierarchyText } = require('../../utils/taxono
 // CORE_PROVINCE  → Tỉnh ruột (Đồng Nai, Lâm Đồng, Khánh Hòa, ...)
 // OTHER_PROVINCE → Tỉnh ngoài (any recognized domestic province not in Tier 1/2)
 // FOREIGN        → Nước ngoài (unrecognized from oldProvince)
-
-const PROVINCE_GROUP_RULES = {
-  // ── Tier 1: HO_CHI_MINH ──
-  'thanh pho ho chi minh': 'HO_CHI_MINH',
-  'binh duong':            'HO_CHI_MINH',
-  'ba ria - vung tau':     'HO_CHI_MINH',
-
-  // ── Tier 2: CORE_PROVINCE ──
-  'dong nai':    'CORE_PROVINCE',
-  'lam dong':    'CORE_PROVINCE',
-  'khanh hoa':   'CORE_PROVINCE',
-  'tien giang':  'CORE_PROVINCE',
-  'long an':     'CORE_PROVINCE',
-  'tay ninh':    'CORE_PROVINCE',
-  'dak lak':     'CORE_PROVINCE',
-  'ben tre':     'CORE_PROVINCE',
-  'binh thuan':  'CORE_PROVINCE',
-  'binh phuoc':  'CORE_PROVINCE'
-};
 
 /**
  * Derives the Province Group for a given province text input.
@@ -143,8 +125,14 @@ async function fetchSheetRows(sheetId, authClient) {
 
   const headers = values[0];
   const rows = [];
+
   for (let i = 1; i < values.length; i++) {
     const rowArray = values[i];
+    // Skip empty rows
+    if (!rowArray || rowArray.every(val => !val || String(val).trim() === '')) {
+      continue;
+    }
+
     const rowObj = {};
     headers.forEach((header, index) => {
       const val = rowArray[index] !== undefined ? String(rowArray[index]).trim() : '';
@@ -190,12 +178,14 @@ function remapHeaders(rows, headerMap, injectedFields = {}) {
  * All queries run in parallel for performance.
  */
 async function fetchReferenceData() {
-  const [oldProvinces, schools, newProvinces, countries, majorData, statusData, sourceData] =
+  const [oldProvinces, schools, fallbackCountry, majorData, statusData, sourceData] =
     await Promise.all([
       prisma.oldProvince.findMany(),
       prisma.school.findMany(),
-      prisma.newProvince.findMany(),
-      prisma.country.findMany(),
+      prisma.country.findFirst({
+        where: { name: { contains: 'Viet', mode: 'insensitive' } },
+        select: { id: true }
+      }).then(c => c || prisma.country.findFirst({ select: { id: true } })),
       prisma.majorData.findMany({ where: { isActive: true } }),
       prisma.statusData.findMany({
         where: { isActive: true },
@@ -210,7 +200,7 @@ async function fetchReferenceData() {
     majorData,
     sourceData,
     defaultInitialStatus: statusData.find(s => !s.parentId),
-    fallbackCountryId: countries.length > 0 ? countries[0].id : null
+    fallbackCountryId: fallbackCountry?.id || null
   };
 }
 
@@ -229,18 +219,18 @@ function extractRawFields(row, sheetMetadata) {
   const trimVal = (v) => (typeof v === 'string' ? v.trim() : v);
 
   return {
-    fullName:        pick('fullName', 'Full Name', 'Name', 'Họ và tên'),
-    mobile:          pick('mobile', 'Mobile', 'Phone', 'Số điện thoại'),
-    email:           pick('email', 'Email'),
-    school:          trimVal(pick('school', 'School', 'Trường THPT')),
-    primaryAddress:  trimVal(pick('Primary Address', 'primaryAddress')),
-    location:        trimVal(pick('Old Province', 'oldProvince', 'Address Province', 'Tỉnh/thành', 'location')),
-    course:          trimVal(pick('course', 'Course', 'Specific Major', 'specificMajor', 'Interested Major', 'interestedMajor')),
-    sourceDetail:    trimVal(pick('sourceDetail', 'Source Detail', 'UTM-medium', 'UTM-campaign')),
-    approachMethod:  trimVal(pick('approachMethod', 'Approach Method', 'UTM-name')),
-    class:           trimVal(pick('class', 'Class', 'Lớp')),
-    source:          trimVal(pick('source', 'Source') || sheetMetadata.source || 'Online'),
-    schoolType:      row.schoolType || ''
+    fullName: pick('fullName', 'Full Name', 'Name', 'Họ và tên'),
+    mobile: pick('mobile', 'Mobile', 'Phone', 'Số điện thoại'),
+    email: pick('email', 'Email'),
+    school: trimVal(pick('school', 'School', 'Trường THPT')),
+    primaryAddress: trimVal(pick('Primary Address', 'primaryAddress')),
+    location: trimVal(pick('Old Province', 'oldProvince', 'Address Province', 'Tỉnh/thành', 'location')),
+    course: trimVal(pick('course', 'Course', 'Specific Major', 'specificMajor', 'Interested Major', 'interestedMajor')),
+    sourceDetail: trimVal(pick('sourceDetail', 'Source Detail', 'UTM-medium', 'UTM-campaign')),
+    approachMethod: trimVal(pick('approachMethod', 'Approach Method', 'UTM-name')),
+    class: trimVal(pick('class', 'Class', 'Lớp')),
+    source: trimVal(pick('source', 'Source') || sheetMetadata.source || 'Online'),
+    schoolType: row.schoolType || ''
   };
 }
 
@@ -471,12 +461,12 @@ const EMPTY_SUMMARY = {
 };
 
 const CLASSIFICATION_KEYS = [
-  ['readyNew',        'READY_NEW_STUDENT_AND_INQUIRY'],
-  ['readyExisting',   'READY_EXISTING_STUDENT_NEW_INQUIRY'],
+  ['readyNew', 'READY_NEW_STUDENT_AND_INQUIRY'],
+  ['readyExisting', 'READY_EXISTING_STUDENT_NEW_INQUIRY'],
   ['existingInquiry', 'EXISTING_INQUIRY'],
   ['duplicateInFile', 'DUPLICATE_IN_FILE'],
-  ['mappingIssue',    'MAPPING_ISSUE'],
-  ['invalid',         'INVALID']
+  ['mappingIssue', 'MAPPING_ISSUE'],
+  ['invalid', 'INVALID']
 ];
 
 /**
@@ -584,220 +574,93 @@ async function validateSheetInquiryRows(rawData, sheetMetadata = {}) {
 
 
 /**
- * Resolves fallback newProvinceId and countryId within a transaction.
- */
-async function resolveDefaultGeoIds(tx, row) {
-  let npId = row.newProvinceId || null;
-  let cId = row.countryId;
-  if (!cId) {
-    const defaultC = await tx.country.findFirst();
-    cId = defaultC?.id;
-  }
-  return { npId, cId };
-}
-
-/**
  * Builds the StudentEducation data payload used for both create and reference.
  */
-function buildEducationData(studentId, row, npId, cId) {
-  return {
-    studentId,
+function buildEducationData(studentId, row) {
+  const data = {
     schoolId: row.schoolId || null,
     oldProvinceId: row.oldProvinceId || null,
-    newProvinceId: npId || null,
-    countryId: cId,
+    newProvinceId: row.newProvinceId || null,
+    countryId: row.countryId,
     provinceGroup: row.provinceGroup || 'OTHER_PROVINCE',
     schoolType: row.resolvedSchoolType || 'NONE',
     class: row.resolvedClass || 'NONE'
   };
-}
-
-/**
- * Creates a SpecializedRegister record if major data is provided.
- * Returns the created record's ID, or null.
- */
-async function createSpecializedRegisterIfNeeded(tx, row) {
-  if (!row.interestedMajorId || !row.specificMajorId) return null;
-
-  const sr = await tx.specializedRegister.create({
-    data: {
-      interestedMajorId: row.interestedMajorId,
-      specificMajorId: row.specificMajorId,
-      admissionYear: null,
-      englishCertificate: null,
-      gpa: 'OTHER',
-      programScore: 'OTHER'
-    }
-  });
-  return sr.id;
+  if (studentId) data.studentId = studentId;
+  return data;
 }
 
 /**
  * Builds the Inquiry data payload.
+ * Adds inquiry notes informing users if the input school/old province was not found in the DB.
  */
 function buildInquiryData(row, studentId) {
-  return {
+  const notes = [];
+  if (row.school && !row.schoolId)
+    notes.push(`Missing School: ${row.school}`);
+  if (row.location && !row.oldProvinceId)
+    notes.push(`Missing Old Province: ${row.location}`);
+  const data = {
     assignedToId: null,
-    description: null,
+    description: notes.length > 0 ? notes.join(' | ') : null,
     dataReceived: new Date(),
-    groupTele: null,
     priority: null,
     statusDataId: row.statusDataId || null,
-    sourceDataId: row.sourceDataId || null,
-    studentId
+    sourceDataId: row.sourceDataId || null
   };
+  if (studentId) data.studentId = studentId;
+  return data;
 }
-
-/**
- * Upserts student information from Google Sheets.
- * Updates existing Student, StudentEducation, and SpecializedRegister.
- * Does not overwrite populated fields with empty/null/NONE values.
- *
- * @returns {boolean} true if any data was updated
- */
-async function upsertStudentData(tx, studentId, row) {
-  const student = await tx.student.findUnique({
-    where: { id: studentId },
-    include: { education: true, specializedRegister: true }
-  });
-
-  if (!student) return false;
-
-  let wasUpdated = false;
-
-  // 1. Student core fields (only overwrite if incoming value is non-empty)
-  const studentUpdates = {};
-  if (row.fullName && row.fullName !== student.fullName) {
-    studentUpdates.fullName = row.fullName;
-  }
-  if (row.email && row.email !== student.email) {
-    studentUpdates.email = row.email;
-  }
-  if (row.primaryAddress && row.primaryAddress !== student.primaryAddress) {
-    studentUpdates.primaryAddress = row.primaryAddress;
-  }
-
-  // 2. SpecializedRegister (Majors)
-  if (row.interestedMajorId && row.specificMajorId) {
-    if (student.specializedRegisterId) {
-      const currentSr = student.specializedRegister;
-      if (
-        !currentSr ||
-        currentSr.interestedMajorId !== row.interestedMajorId ||
-        currentSr.specificMajorId !== row.specificMajorId
-      ) {
-        await tx.specializedRegister.update({
-          where: { id: student.specializedRegisterId },
-          data: {
-            interestedMajorId: row.interestedMajorId,
-            specificMajorId: row.specificMajorId
-          }
-        });
-        wasUpdated = true;
-      }
-    } else {
-      const srId = await createSpecializedRegisterIfNeeded(tx, row);
-      if (srId) studentUpdates.specializedRegisterId = srId;
-    }
-  }
-
-  if (Object.keys(studentUpdates).length > 0) {
-    await tx.student.update({
-      where: { id: student.id },
-      data: studentUpdates
-    });
-    wasUpdated = true;
-  }
-
-  // 3. StudentEducation
-  if (student.education) {
-    const eduUpdates = {};
-
-    if (row.schoolId && row.schoolId !== student.education.schoolId) {
-      eduUpdates.schoolId = row.schoolId;
-    }
-
-    if (row.oldProvinceId && row.oldProvinceId !== student.education.oldProvinceId) {
-      eduUpdates.oldProvinceId = row.oldProvinceId;
-    }
-
-    if (row.resolvedClass && row.resolvedClass !== 'NONE' && row.resolvedClass !== student.education.class) {
-      eduUpdates.class = row.resolvedClass;
-    }
-
-    if (row.resolvedSchoolType && row.resolvedSchoolType !== 'NONE' && row.resolvedSchoolType !== student.education.schoolType) {
-      eduUpdates.schoolType = row.resolvedSchoolType;
-    }
-
-    if (row.provinceGroup && row.provinceGroup !== 'FOREIGN' && row.provinceGroup !== student.education.provinceGroup) {
-      eduUpdates.provinceGroup = row.provinceGroup;
-    }
-
-    if (Object.keys(eduUpdates).length > 0) {
-      await tx.studentEducation.update({
-        where: { id: student.education.id },
-        data: eduUpdates
-      });
-      wasUpdated = true;
-    }
-  } else {
-    const { npId, cId } = await resolveDefaultGeoIds(tx, row);
-
-    await tx.studentEducation.create({
-      data: buildEducationData(student.id, row, npId, cId)
-    });
-    wasUpdated = true;
-  }
-
-  return wasUpdated;
-}
-
 // ─── Row-level transaction handlers ───────────────────────────────────────────
 
 /**
  * Creates a new Student + StudentEducation + Inquiry (and optional SpecializedRegister).
  */
 async function handleNewStudentAndInquiry(tx, row) {
-  const srId = await createSpecializedRegisterIfNeeded(tx, row);
-
-  const student = await tx.student.create({
-    data: {
-      fullName: row.fullName,
-      gender: 'Unknown',
-      email: row.email || null,
-      mobile: row.mobile,
-      otherPhone: null,
-      birthDate: null,
-      primaryAddress: row.primaryAddress || null,
-      specializedRegisterId: srId
+  const studentData = {
+    fullName: row.fullName,
+    gender: 'Unknown',
+    email: row.email || null,
+    mobile: row.mobile,
+    otherPhone: null,
+    birthDate: null,
+    primaryAddress: row.primaryAddress || null,
+    education: {
+      create: buildEducationData(null, row)
+    },
+    inquiry: {
+      create: buildInquiryData(row, null)
     }
-  });
+  };
 
-  const { npId, cId } = await resolveDefaultGeoIds(tx, row);
+  if (row.interestedMajorId && row.specificMajorId) {
+    studentData.specializedRegister = {
+      create: {
+        interestedMajorId: row.interestedMajorId,
+        specificMajorId: row.specificMajorId,
+        admissionYear: null,
+        englishCertificate: null,
+        gpa: 'OTHER',
+        programScore: 'OTHER'
+      }
+    };
+  }
 
-  await tx.studentEducation.create({
-    data: buildEducationData(student.id, row, npId, cId)
-  });
-
-  await tx.inquiry.create({
-    data: buildInquiryData(row, student.id)
-  });
+  await tx.student.create({ data: studentData });
 }
 
 /**
- * Creates a new Inquiry for an existing student and upserts their data.
+ * Creates a new Inquiry for an existing student (Insert-Only).
  */
 async function handleExistingStudentNewInquiry(tx, row) {
   await tx.inquiry.create({
     data: buildInquiryData(row, row.existingStudentId)
   });
-
-  await upsertStudentData(tx, row.existingStudentId, row);
 }
 
 /**
  * Persists validated Google Sheets rows using atomic per-row transactions.
- * Each row is processed independently — failures are logged and skipped.
+ * Pure Insert-Only: existing inquiries and existing students are not mutated.
  */
 async function insertSheetInquiryRows(rows, context = { type: 'SYSTEM', name: 'Google Sheets Background Sync' }) {
   const counters = {
@@ -823,7 +686,6 @@ async function insertSheetInquiryRows(rows, context = { type: 'SYSTEM', name: 'G
     const config = HANDLERS[row._meta.classification];
 
     if (config) {
-      // Classifications with dedicated transaction handlers
       try {
         await prisma.$transaction(async (tx) => {
           await config.handler(tx, row);
@@ -837,29 +699,8 @@ async function insertSheetInquiryRows(rows, context = { type: 'SYSTEM', name: 'G
         });
         counters.skipped++;
       }
-    } else if (row._meta.classification === 'EXISTING_INQUIRY') {
-      // Inquiry already exists: only upsert student data (Insert-Only for Inquiry)
-      try {
-        let wasUpdated = false;
-        await prisma.$transaction(async (tx) => {
-          wasUpdated = await upsertStudentData(tx, row.existingStudentId, row);
-        });
-
-        if (wasUpdated) {
-          counters.existingStudentsUpdated++;
-        } else {
-          counters.skipped++;
-        }
-      } catch (err) {
-        logSync('ERROR', `Upsert transaction failed for existing student sheet row ${row._meta.rowNumber}`, {
-          rowNumber: row._meta.rowNumber,
-          mobile: row.mobile,
-          error: err.message || err
-        });
-        counters.skipped++;
-      }
     } else {
-      // INVALID, DUPLICATE_IN_FILE, MAPPING_ISSUE, etc.
+      // EXISTING_INQUIRY, INVALID, DUPLICATE_IN_FILE, MAPPING_ISSUE, etc.
       counters.skipped++;
     }
   }
@@ -964,51 +805,63 @@ async function processSingleSheet(sheet) {
   };
 }
 
+let isSyncInProgress = false;
+
 /**
  * Main entry point: syncs all configured Google Sheets to CRM Inquiries.
  * Processes each sheet independently — one sheet's failure doesn't block others.
  */
 async function syncGoogleSheetsToInquiries() {
-  const results = [];
-
-  for (const sheetConfig of SHEETS_REGISTRY) {
-    const sheetId = process.env[sheetConfig.envVar];
-
-    if (!sheetId) {
-      logSync('ERROR', 'Missing environment variable for sheet ID', {
-        sheet: sheetConfig.name,
-        error: `Missing env var: ${sheetConfig.envVar}`
-      });
-      results.push({
-        sheet: sheetConfig.name,
-        status: 'SKIPPED',
-        error: 'Missing environment variable for sheet ID'
-      });
-      continue;
-    }
-
-    try {
-      const result = await processSingleSheet({
-        id: sheetId,
-        name: sheetConfig.name,
-        headerMap: sheetConfig.headerMap,
-        source: sheetConfig.source
-      });
-      results.push(result);
-    } catch (error) {
-      logSync('ERROR', 'Error during sheet sync', {
-        sheet: sheetConfig.name,
-        error: error.message || error
-      });
-      results.push({
-        sheet: sheetConfig.name,
-        status: 'ERROR',
-        error: error.message || error
-      });
-    }
+  if (isSyncInProgress) {
+    logSync('WARN', 'Google Sheets sync already in progress, skipping trigger');
+    return [{ status: 'SKIPPED', message: 'Sync already in progress' }];
   }
 
-  return results;
+  isSyncInProgress = true;
+  try {
+    const results = [];
+
+    for (const sheetConfig of SHEETS_REGISTRY) {
+      const sheetId = process.env[sheetConfig.envVar];
+
+      if (!sheetId) {
+        logSync('INFO', 'Sheet ID not configured, skipping', {
+          sheet: sheetConfig.name,
+          envVar: sheetConfig.envVar
+        });
+        results.push({
+          sheet: sheetConfig.name,
+          status: 'SKIPPED',
+          error: `Missing environment variable: ${sheetConfig.envVar}`
+        });
+        continue;
+      }
+
+      try {
+        const result = await processSingleSheet({
+          id: sheetId,
+          name: sheetConfig.name,
+          headerMap: sheetConfig.headerMap,
+          source: sheetConfig.source
+        });
+        results.push(result);
+      } catch (error) {
+        logSync('ERROR', 'Error during sheet sync', {
+          sheet: sheetConfig.name,
+          error: error.message || error
+        });
+        results.push({
+          sheet: sheetConfig.name,
+          status: 'ERROR',
+          error: error.message || error
+        });
+      }
+    }
+
+    return results;
+  } finally {
+    isSyncInProgress = false;
+  }
 }
 
 module.exports = {
@@ -1018,7 +871,6 @@ module.exports = {
   remapHeaders,
   validateSheetInquiryRows,
   insertSheetInquiryRows,
-  upsertStudentData,
   syncGoogleSheetsToInquiries,
   resolveProvinceGroup
 };

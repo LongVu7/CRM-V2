@@ -128,6 +128,26 @@ const PROVINCE_ALIASES = {
 };
 // !--- End ---!
 
+// Province group rules for inquiry sync 
+const PROVINCE_GROUP_RULES = {
+  // ── Tier 1: HO_CHI_MINH ──
+  'thanh pho ho chi minh': 'HO_CHI_MINH',
+  'binh duong':            'HO_CHI_MINH',
+  'ba ria - vung tau':     'HO_CHI_MINH',
+
+  // ── Tier 2: CORE_PROVINCE ──
+  'dong nai':    'CORE_PROVINCE',
+  'lam dong':    'CORE_PROVINCE',
+  'khanh hoa':   'CORE_PROVINCE',
+  'tien giang':  'CORE_PROVINCE',
+  'long an':     'CORE_PROVINCE',
+  'tay ninh':    'CORE_PROVINCE',
+  'dak lak':     'CORE_PROVINCE',
+  'ben tre':     'CORE_PROVINCE',
+  'binh thuan':  'CORE_PROVINCE',
+  'binh phuoc':  'CORE_PROVINCE'
+};
+
 // !--- Displayed Labels for UI ---//
 
 const CLASS_LABELS = {
@@ -183,6 +203,7 @@ module.exports = {
   PROGRAM_SCORE_MAP,
   ENGLISH_CERT_MAP,
   PROVINCE_ALIASES,
+  PROVINCE_GROUP_RULES,
   CLASS_LABELS,
   PROVINCE_GROUP_LABELS,
   SCHOOL_TYPE_LABELS,

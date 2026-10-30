@@ -15,8 +15,6 @@ model Inquiry {
   sourceDataId Int?        @map("source_data_id")
   sourceData   SourceData? @relation(fields: [sourceDataId], references: [id])
 
-  groupTele String? @map("group_tele") @db.VarChar(50)
-
   interactionAt      DateTime?           @map("interaction_at") @db.Timestamptz()
   callCount          Int?                @map("call_count")
   eventNames         EventName[]         @default([]) @map("event_names")

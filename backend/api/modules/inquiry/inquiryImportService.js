@@ -464,7 +464,6 @@ const createInquiryWithMilestones = async (tx, studentId, row, accountId) => {
       createdById: accountId || null,
       description: row.description,
       dataReceived: row.dataReceived,
-      groupTele: row.groupTele,
       priority: row.priority || null,
       statusDataId: row.statusDataId,
       sourceDataId: row.sourceDataId,

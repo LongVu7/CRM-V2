@@ -123,7 +123,7 @@ const buildInquiryWhere = (filters, permissionScope = {}) => {
 
   const conditions = {};
 
-  // Optional filter for unassigned inquiry within authorized scope
+  // Optional filter for assigned inquiry within authorized scope
   if (filters.unassignedOnly === true || filters.unassignedOnly === 'true') {
     conditions.assignedToId = null;
   }
@@ -682,7 +682,6 @@ const exportInquiries = async (filters, permissionScope = {}) => {
     // Inquiry basic details
     'Description': i.description || '',
     'Data Received': i.dataReceived ? i.dataReceived.toISOString().split('T')[0] : '',
-    'Group Tele': i.groupTele || '',
     'Interaction At': i.interactionAt ? i.interactionAt.toISOString().split('T')[0] : '',
     'Call Count': i.callCount || 0,
     'Event Names': i.eventNames?.length > 0 ? i.eventNames.join(', ') : '',
