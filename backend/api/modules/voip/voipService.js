@@ -36,13 +36,13 @@ const checkCallReadiness = async (leadId, user, ability) => {
   });
 
   if (!lead) {
-    return { canCall: false, reason: 'INQUIRY_NOT_FOUND', message: 'Lead not found' };
+    return { canCall: false, reason: 'LEAD_NOT_FOUND', message: 'Lead not found' };
   }
 
   // 1. Authorization check:
   // User can call if they are the direct assignee OR they have read permissions on lead
   const isAssignee = lead.assignedToId === user.id;
-  const hasLeadAccess = ability ? (ability.can('read', subject('lead', lead)) || ability.can('read', subject('inquiry', lead))) : true;
+  const hasLeadAccess = ability ? (ability.can('read', subject('lead', lead))) : true;
 
   if (!isAssignee && !hasLeadAccess) {
     return {
@@ -77,7 +77,7 @@ const checkCallReadiness = async (leadId, user, ability) => {
 
   return {
     canCall: true,
-    leadId: lead.id, inquiryId: lead.id,
+    leadId: lead.id, 
     isAssignee,
     student: {
       id: lead.student.id,
@@ -104,7 +104,7 @@ const createCallRecord = async (payload, handledById) => {
       calleeId: payload.calleeId,
       destinationNumber: payload.destinationNumber || null,
       handledById: Number(handledById),
-      leadId: (payload.leadId || payload.inquiryId) ? Number(payload.leadId || payload.inquiryId) : null,
+      leadId: payload.leadId ? Number(payload.leadId) : null,
       studentId: payload.studentId ? Number(payload.studentId) : null
     },
     include: {
@@ -214,6 +214,6 @@ module.exports = {
   createCallRecord,
   updateCallRecord,
   getLeadCallHistory,
-  getInquiryCallHistory: getLeadCallHistory,
+  getLeadCallHistory,
   getAllCalls
 };

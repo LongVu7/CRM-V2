@@ -1,7 +1,7 @@
 <template>
-  <div class="inquiry-detail-view">
+  <div class="lead-detail-view">
     <div class="page-header">
-      <h1>Edit Inquiry #{{ $route.params.id }}</h1>
+      <h1>Edit Lead #{{ $route.params.id }}</h1>
       <div class="header-actions flex gap-2 align-items-center">
         <!-- Voice Call Button / SplitButton -->
         <template v-if="callReadiness.canCall">
@@ -37,34 +37,34 @@
           outlined
           @click="statusHistoryDialogVisible = true"
         />
-        <Button label="Back to List" severity="secondary" icon="pi pi-arrow-left" @click="$router.push('/inquiries')" />
+        <Button label="Back to List" severity="secondary" icon="pi pi-arrow-left" @click="$router.push('/leads')" />
       </div>
     </div>
 
     <div v-if="loading" class="loading-state">
       <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
-      <p>Loading inquiry...</p>
+      <p>Loading lead...</p>
     </div>
 
     <div v-else-if="notFound" class="empty-state">
       <i class="pi pi-exclamation-triangle"></i>
-      <h3>Inquiry Not Found</h3>
-      <Button label="Back to List" icon="pi pi-arrow-left" @click="$router.push('/inquiries')" />
+      <h3>Lead Not Found</h3>
+      <Button label="Back to List" icon="pi pi-arrow-left" @click="$router.push('/leads')" />
     </div>
 
     <div v-else class="cards-container">
       <div class="section-card">
         <div class="card-header">
-          <h2><i class="pi pi-info-circle"></i> Inquiry Details</h2>
+          <h2><i class="pi pi-info-circle"></i> Lead Details</h2>
         </div>
-        <InquiryForm
-          v-model="inquiryForm"
+        <LeadForm
+          v-model="leadForm"
           :initialSourceDataId="initialSourceDataId"
           :initialStatusDataId="initialStatusDataId"
         />
       </div>
 
-      <InquiryStudentAssign ref="studentAssignRef" :initialStudent="linkedStudent"
+      <LeadStudentAssign ref="studentAssignRef" :initialStudent="linkedStudent"
         @remove-student="handleRemoveStudent" />
 
         <div class="section-card">
@@ -78,31 +78,31 @@
               @click="statusHistoryDialogVisible = true"
             /> -->
           </div>
-          <InquiryStatusTimeline :inquiryId="$route.params.id" />
+          <LeadStatusTimeline :leadId="$route.params.id" />
         </div>
-      <InquiryAccountAssign ref="accountAssignRef" :initialAccount="selectedStaff" />
+      <LeadAccountAssign ref="accountAssignRef" :initialAccount="selectedStaff" />
 
 
 
 
       <div class="global-actions">
-        <Button label="Update Inquiry" icon="pi pi-check" size="large" @click="submitGlobal" :loading="isSubmitting" />
+        <Button label="Update Lead" icon="pi pi-check" size="large" @click="submitGlobal" :loading="isSubmitting" />
       </div>
     </div>
 
     <!-- Voice Call Dialog -->
-    <InquiryCallDialog
+    <LeadCallDialog
       v-model:visible="callDialogVisible"
-      :inquiryId="$route.params.id"
+      :leadId="$route.params.id"
       :student="callReadiness.student || linkedStudent"
       :targetPhone="selectedTargetPhone"
       @call-completed="handleCallCompleted"
     />
 
     <!-- Status History Dialog -->
-    <InquiryStatusHistoryDialog
+    <LeadStatusHistoryDialog
       v-model:visible="statusHistoryDialogVisible"
-      :inquiryId="$route.params.id"
+      :leadId="$route.params.id"
     />
 
     <!-- Status Change Notes Modal Dialog -->
@@ -116,7 +116,7 @@
       <div class="status-notes-modal-body">
         <p class="modal-hint">
           <i class="pi pi-info-circle text-primary"></i>
-          The inquiry's status has been modified. Would you like to add remarks or notes for this status transition?
+          The lead's status has been modified. Would you like to add remarks or notes for this status transition?
         </p>
         <div class="form-field mt-3">
           <label for="statusNotesTextarea" class="block font-medium text-sm mb-1">Remarks / Notes (Optional)</label>
@@ -152,21 +152,21 @@ import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
 import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
-import { useInquiry } from '@/composables/useInquiry'
+import { useLead } from '@/composables/useLead'
 import { useStudent } from '@/composables/useStudent'
 import { checkCallReadiness } from '@/services/voipService'
 import { useStringee } from '@/composables/useStringee'
-import InquiryForm from '@/components/inquiry/InquiryForm.vue'
-import InquiryStudentAssign from '@/components/inquiry/InquiryStudentAssign.vue'
-import InquiryAccountAssign from '@/components/inquiry/InquiryAccountAssign.vue'
-import InquiryStatusTimeline from '@/components/inquiry/InquiryStatusTimeline.vue'
-import InquiryStatusHistoryDialog from '@/components/inquiry/InquiryStatusHistoryDialog.vue'
-import InquiryCallDialog from '@/components/inquiry/InquiryCallDialog.vue'
+import LeadForm from '@/components/lead/LeadForm.vue'
+import LeadStudentAssign from '@/components/lead/LeadStudentAssign.vue'
+import LeadAccountAssign from '@/components/lead/LeadAccountAssign.vue'
+import LeadStatusTimeline from '@/components/lead/LeadStatusTimeline.vue'
+import LeadStatusHistoryDialog from '@/components/lead/LeadStatusHistoryDialog.vue'
+import LeadCallDialog from '@/components/lead/LeadCallDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
-const { fetchInquiryById, updateInquiry, assignStudent, unassignStudent } = useInquiry()
+const { fetchLeadById, updateLead, assignStudent, unassignStudent } = useLead()
 const { createStudent } = useStudent()
 const { makeCall, callState } = useStringee()
 
@@ -175,7 +175,7 @@ const statusHistoryDialogVisible = ref(false)
 const studentAssignRef = ref(null)
 const accountAssignRef = ref(null)
 
-const inquiryForm = ref({})
+const leadForm = ref({})
 const linkedStudent = ref(null)
 const selectedStaff = ref(null)
 
@@ -235,7 +235,7 @@ const initiateCall = async (phone, normalizedTarget) => {
   callDialogVisible.value = true
   try {
     await makeCall({
-      inquiryId: route.params.id,
+      leadId: route.params.id,
       studentId: callReadiness.value?.student?.id,
       calleeId: normalizedTarget,
       destinationNumber: phone
@@ -289,8 +289,8 @@ const handleSaveNotesAndUpdate = async () => {
 onMounted(async () => {
   window.addEventListener('beforeunload', handleBeforeUnload)
   try {
-    const data = await fetchInquiryById(route.params.id)
-    inquiryForm.value = {
+    const data = await fetchLeadById(route.params.id)
+    leadForm.value = {
       statusDataId: data.statusDataId || null,
       description: data.description || '',
       dataReceived: data.dataReceived ? new Date(data.dataReceived) : null,
@@ -305,7 +305,7 @@ onMounted(async () => {
     // Load VoIP call readiness
     loadCallReadiness()
   } catch (err) {
-    console.error('Failed to load inquiry detail:', err)
+    console.error('Failed to load lead detail:', err)
     notFound.value = true
   } finally {
     loading.value = false
@@ -325,7 +325,7 @@ const submitGlobal = async () => {
   }
 
   // Check if user changed the status fields
-  const currentStatusId = inquiryForm.value.statusDataId || null
+  const currentStatusId = leadForm.value.statusDataId || null
   const prevStatusId = initialStatusDataId.value || null
   const statusChanged = currentStatusId !== prevStatusId
 
@@ -341,10 +341,10 @@ const submitGlobal = async () => {
 }
 
 const executeUpdate = async (studentData, notes = null) => {
-  // Build inquiry payload — include null for nullable fields so backend can clear them
+  // Build lead payload — include null for nullable fields so backend can clear them
   const payload = {}
   const nullableFields = ['statusDataId', 'sourceDataId', 'dataReceived']
-  for (const [key, value] of Object.entries(inquiryForm.value)) {
+  for (const [key, value] of Object.entries(leadForm.value)) {
     if (value !== '' && value !== null && value !== undefined && key !== 'statusNotes') {
       payload[key] = value
     } else if (nullableFields.includes(key)) {
@@ -363,23 +363,23 @@ const executeUpdate = async (studentData, notes = null) => {
 
   isSubmitting.value = true
   try {
-    const inquiryId = route.params.id
+    const leadId = route.params.id
 
-    // 1. Update inquiry fields
-    await updateInquiry(inquiryId, payload)
+    // 1. Update lead fields
+    await updateLead(leadId, payload)
 
     // 2. Handle student assignment
     if (studentData?.isCreating && studentData?.studentPayload) {
-      // Create new student, then assign to inquiry
+      // Create new student, then assign to lead
       const created = await createStudent(studentData.studentPayload)
-      await assignStudent(inquiryId, created.student.id)
+      await assignStudent(leadId, created.student.id)
     } else if (!studentData?.isCreating && studentData?.studentId) {
-      // Assign existing student to inquiry
-      await assignStudent(inquiryId, studentData.studentId)
+      // Assign existing student to lead
+      await assignStudent(leadId, studentData.studentId)
     }
 
-    toast.add({ severity: 'success', summary: 'Updated', detail: 'Inquiry updated successfully', life: 3000 })
-    router.push('/inquiries')
+    toast.add({ severity: 'success', summary: 'Updated', detail: 'Lead updated successfully', life: 3000 })
+    router.push('/leads')
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Error', detail: error.response?.data?.error || error.response?.data?.details || error.message, life: 5000 })
   } finally {
@@ -400,7 +400,7 @@ const handleRemoveStudent = async (studentId) => {
 </script>
 
 <style scoped>
-.inquiry-detail-view {
+.lead-detail-view {
   padding: 1.5rem 2rem;
   max-width: 1000px;
   margin: 0 auto;

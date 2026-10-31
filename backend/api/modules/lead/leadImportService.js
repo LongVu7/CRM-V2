@@ -282,7 +282,7 @@ const classifyRow = (row, isNew, student) => {
     const hasUnresolved = row._meta.errors.some(e => e.includes('UNRESOLVED_MAPPING') || e.includes('INVALID_RELATION'));
     row._meta.classification = hasUnresolved ? 'MAPPING_ISSUE' : 'INVALID';
   } else {
-    row._meta.classification = isNew ? 'READY_NEW_STUDENT_AND_INQUIRY' : 'READY_EXISTING_STUDENT_NEW_INQUIRY';
+    row._meta.classification = isNew ? 'READY_NEW_STUDENT_AND_LEAD' : 'READY_EXISTING_STUDENT_NEW_LEAD';
     if (!isNew && student) {
       row.existingStudentId = student.id;
     }
@@ -291,9 +291,9 @@ const classifyRow = (row, isNew, student) => {
 
 const buildSummary = (rows) => ({
   total: rows.length,
-  readyNew: rows.filter(r => r._meta.classification === 'READY_NEW_STUDENT_AND_INQUIRY').length,
-  readyExisting: rows.filter(r => r._meta.classification === 'READY_EXISTING_STUDENT_NEW_INQUIRY').length,
-  existingInquiry: rows.filter(r => r._meta.classification === 'EXISTING_INQUIRY').length,
+  readyNew: rows.filter(r => r._meta.classification === 'READY_NEW_STUDENT_AND_LEAD').length,
+  readyExisting: rows.filter(r => r._meta.classification === 'READY_EXISTING_STUDENT_NEW_LEAD').length,
+  existingLead: rows.filter(r => r._meta.classification === 'EXISTING_LEAD').length,
   duplicateInFile: rows.filter(r => r._meta.classification === 'DUPLICATE_IN_FILE').length,
   mappingIssue: rows.filter(r => r._meta.classification === 'MAPPING_ISSUE').length,
   invalid: rows.filter(r => r._meta.classification === 'INVALID').length,
@@ -367,7 +367,7 @@ const validateLeadRows = async (rawData) => {
     const isNew = !student;
 
     if (!isNew && student.lead) {
-      row._meta.classification = 'EXISTING_INQUIRY';
+      row._meta.classification = 'EXISTING_LEAD';
       continue;
     }
 
@@ -455,10 +455,10 @@ const createStudentRecord = async (tx, row) => {
 const createLeadWithMilestones = async (tx, studentId, row, accountId) => {
   let milestoneUpdates = {};
   if (row.statusDataId) {
-    milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: row.statusDataId });
+    milestoneUpdates = await applyStatusTransition({ tx, lead: {}, newStatusDataId: row.statusDataId });
   }
 
-  const createdInquiry = await tx.lead.create({
+  const createdLead = await tx.lead.create({
     data: {
       assignedToId: row.assignedToId,
       createdById: accountId || null,
@@ -475,7 +475,7 @@ const createLeadWithMilestones = async (tx, studentId, row, accountId) => {
   if (row.statusDataId) {
     await tx.leadStatusHistory.create({
       data: {
-        leadId: createdInquiry.id,
+        leadId: createdLead.id,
         previousStatusId: null,
         newStatusId: row.statusDataId,
         changedById: accountId || null,
@@ -486,19 +486,19 @@ const createLeadWithMilestones = async (tx, studentId, row, accountId) => {
     });
   }
 
-  return createdInquiry;
+  return createdLead;
 };
 
 const insertLeadRows = async (rows, context) => {
   const accountId = context?.accountId || null;
   let newStudentsCreated = 0;
-  let newInquiriesForExisting = 0;
+  let newLeadsForExisting = 0;
   let skipped = 0;
 
   for (const row of rows) {
     const classification = row._meta?.classification;
 
-    if (classification === 'READY_NEW_STUDENT_AND_INQUIRY') {
+    if (classification === 'READY_NEW_STUDENT_AND_LEAD') {
       try {
         await prisma.$transaction(async (tx) => {
           const student = await createStudentRecord(tx, row);
@@ -509,7 +509,7 @@ const insertLeadRows = async (rows, context) => {
         console.error(`Row ${row._meta?.rowNumber} failed:`, err);
         skipped++;
       }
-    } else if (classification === 'READY_EXISTING_STUDENT_NEW_INQUIRY') {
+    } else if (classification === 'READY_EXISTING_STUDENT_NEW_LEAD') {
       try {
         const student = await prisma.student.findUnique({
           where: { id: row.existingStudentId },
@@ -524,7 +524,7 @@ const insertLeadRows = async (rows, context) => {
         await prisma.$transaction(async (tx) => {
           await createLeadWithMilestones(tx, row.existingStudentId, row, accountId);
         });
-        newInquiriesForExisting++;
+        newLeadsForExisting++;
       } catch (err) {
         console.error(`Row ${row._meta?.rowNumber} failed:`, err);
         skipped++;
@@ -536,7 +536,7 @@ const insertLeadRows = async (rows, context) => {
 
   return {
     newStudentsCreated,
-    newInquiriesForExisting,
+    newLeadsForExisting,
     skipped
   };
 };
@@ -578,8 +578,8 @@ module.exports = {
   insertLeadRows,
 
   // Compatibility aliases
-  previewImportInquiry: previewImportLead,
-  confirmImportInquiry: confirmImportLead,
-  validateInquiryRows: validateLeadRows,
-  insertInquiryRows: insertLeadRows
+  previewImportLead,
+  confirmImportLead,
+  validateLeadRows,
+  insertLeadRows
 };

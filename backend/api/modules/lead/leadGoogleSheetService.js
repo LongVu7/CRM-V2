@@ -1,7 +1,7 @@
 const { google } = require('googleapis');
 const auth = require('../../../config/googleAuth');
 const prisma = require('../../../config/db');
-const { sheetInquirySyncSchema, sanitizeSheetMobile } = require('./leadSchemas');
+const { sheetLeadSyncSchema, sanitizeSheetMobile } = require('./leadSchemas');
 const {
   normalizeEnum,
   PROVINCE_MAP,
@@ -241,7 +241,7 @@ function extractRawFields(row, sheetMetadata) {
  * Populates `_meta.errors` and sets classification to INVALID on failure.
  */
 function parseAndValidateRow(r, raw) {
-  const syncParse = sheetInquirySyncSchema.safeParse({
+  const syncParse = sheetLeadSyncSchema.safeParse({
     fullName: raw.fullName,
     mobile: raw.mobile,
     email: raw.email || undefined,
@@ -283,12 +283,12 @@ function checkDuplicateMobile(r, mobileMap) {
 }
 
 /**
- * Classifies row based on whether the student/inquiry already exists in DB.
+ * Classifies row based on whether the student/lead already exists in DB.
  *
  * Results:
- *   READY_NEW_STUDENT_AND_INQUIRY       → student does not exist
- *   READY_EXISTING_STUDENT_NEW_INQUIRY  → student exists, no inquiry yet
- *   EXISTING_INQUIRY                    → student + inquiry both exist
+ *   READY_NEW_STUDENT_AND_LEAD       → student does not exist
+ *   READY_EXISTING_STUDENT_NEW_LEAD  → student exists, no lead yet
+ *   EXISTING_LEAD                    → student + lead both exist
  */
 function classifyByExistingStudent(row, existingStudents) {
   const student = existingStudents.find(s => s.mobile === row.mobile);
@@ -297,10 +297,10 @@ function classifyByExistingStudent(row, existingStudents) {
     row.existingStudentId = student.id;
     row.existingStudent = student;
     row._meta.classification = student.lead
-      ? 'EXISTING_INQUIRY'
-      : 'READY_EXISTING_STUDENT_NEW_INQUIRY';
+      ? 'EXISTING_LEAD'
+      : 'READY_EXISTING_STUDENT_NEW_LEAD';
   } else {
-    row._meta.classification = 'READY_NEW_STUDENT_AND_INQUIRY';
+    row._meta.classification = 'READY_NEW_STUDENT_AND_LEAD';
   }
 }
 
@@ -457,13 +457,13 @@ function resolveSchoolTypeEnum(row) {
 
 const EMPTY_SUMMARY = {
   total: 0, readyNew: 0, readyExisting: 0,
-  existingInquiry: 0, duplicateInFile: 0, mappingIssue: 0, invalid: 0
+  existingLead: 0, duplicateInFile: 0, mappingIssue: 0, invalid: 0
 };
 
 const CLASSIFICATION_KEYS = [
-  ['readyNew', 'READY_NEW_STUDENT_AND_INQUIRY'],
-  ['readyExisting', 'READY_EXISTING_STUDENT_NEW_INQUIRY'],
-  ['existingInquiry', 'EXISTING_INQUIRY'],
+  ['readyNew', 'READY_NEW_STUDENT_AND_LEAD'],
+  ['readyExisting', 'READY_EXISTING_STUDENT_NEW_LEAD'],
+  ['existingLead', 'EXISTING_LEAD'],
   ['duplicateInFile', 'DUPLICATE_IN_FILE'],
   ['mappingIssue', 'MAPPING_ISSUE'],
   ['invalid', 'INVALID']
@@ -481,12 +481,12 @@ function buildSummary(parsedRows) {
 }
 
 /**
- * Validates and enriches inquiry rows for Google Sheets synchronization.
+ * Validates and enriches lead rows for Google Sheets synchronization.
  *
  * Pipeline:
  *   1. Extract & validate raw fields (Zod schema)
  *   2. Detect intra-batch duplicate mobiles
- *   3. Classify by existing student/inquiry in DB
+ *   3. Classify by existing student/lead in DB
  *   4. Resolve geography (province → school)
  *   5. Resolve academics (major, class, school type)
  *   6. Resolve source hierarchy & default status
@@ -544,7 +544,7 @@ async function validateSheetLeadRows(rawData, sheetMetadata = {}) {
   for (const row of parsedRows) {
     if (row._meta.classification) continue; // Already INVALID or DUPLICATE_IN_FILE
 
-    // 3a. Classify by existing student/inquiry
+    // 3a. Classify by existing student/lead
     classifyByExistingStudent(row, existingStudents);
 
     // 3b. Geography: Province Group + Old Province + School
@@ -591,8 +591,8 @@ function buildEducationData(studentId, row) {
 }
 
 /**
- * Builds the Inquiry data payload.
- * Adds inquiry notes informing users if the input school/old province was not found in the DB.
+ * Builds the Lead data payload.
+ * Adds lead notes informing users if the input school/old province was not found in the DB.
  */
 function buildLeadData(row, studentId) {
   const notes = [];
@@ -614,7 +614,7 @@ function buildLeadData(row, studentId) {
 // ─── Row-level transaction handlers ───────────────────────────────────────────
 
 /**
- * Creates a new Student + StudentEducation + Inquiry (and optional SpecializedRegister).
+ * Creates a new Student + StudentEducation + lead (and optional SpecializedRegister).
  */
 async function handleNewStudentAndLead(tx, row) {
   const studentData = {
@@ -650,7 +650,7 @@ async function handleNewStudentAndLead(tx, row) {
 }
 
 /**
- * Creates a new Inquiry for an existing student (Insert-Only).
+ * Creates a new lead for an existing student (Insert-Only).
  */
 async function handleExistingStudentNewLead(tx, row) {
   await tx.lead.create({
@@ -660,25 +660,25 @@ async function handleExistingStudentNewLead(tx, row) {
 
 /**
  * Persists validated Google Sheets rows using atomic per-row transactions.
- * Pure Insert-Only: existing inquiries and existing students are not mutated.
+ * Pure Insert-Only: existing leads and existing students are not mutated.
  */
 async function insertSheetLeadRows(rows, context = { type: 'SYSTEM', name: 'Google Sheets Background Sync' }) {
   const counters = {
     newStudentsCreated: 0,
-    newInquiriesForExisting: 0,
+    newLeadsForExisting: 0,
     existingStudentsUpdated: 0,
     skipped: 0
   };
 
   /** Maps classification → { handler, counterKey } */
   const HANDLERS = {
-    'READY_NEW_STUDENT_AND_INQUIRY': {
+    'READY_NEW_STUDENT_AND_LEAD': {
       handler: handleNewStudentAndLead,
       counterKey: 'newStudentsCreated'
     },
-    'READY_EXISTING_STUDENT_NEW_INQUIRY': {
+    'READY_EXISTING_STUDENT_NEW_LEAD': {
       handler: handleExistingStudentNewLead,
-      counterKey: 'newInquiriesForExisting'
+      counterKey: 'newLeadsForExisting'
     }
   };
 
@@ -700,7 +700,7 @@ async function insertSheetLeadRows(rows, context = { type: 'SYSTEM', name: 'Goog
         counters.skipped++;
       }
     } else {
-      // EXISTING_INQUIRY, INVALID, DUPLICATE_IN_FILE, MAPPING_ISSUE, etc.
+      // EXISTING_LEAD, INVALID, DUPLICATE_IN_FILE, MAPPING_ISSUE, etc.
       counters.skipped++;
     }
   }
@@ -778,7 +778,7 @@ async function processSingleSheet(sheet) {
     totalRows: summary.total,
     readyNew: summary.readyNew,
     readyExisting: summary.readyExisting,
-    existingInquiry: summary.existingInquiry,
+    existingLead: summary.existingLead,
     duplicateInFile: summary.duplicateInFile,
     mappingIssue: summary.mappingIssue,
     invalid: summary.invalid
@@ -808,7 +808,7 @@ async function processSingleSheet(sheet) {
 let isSyncInProgress = false;
 
 /**
- * Main entry point: syncs all configured Google Sheets to CRM Inquiries.
+ * Main entry point: syncs all configured Google Sheets to CRM Leads.
  * Processes each sheet independently — one sheet's failure doesn't block others.
  */
 async function syncGoogleSheetsToLeads() {
@@ -872,8 +872,8 @@ module.exports = {
   buildLeadData,
 
   // Compatibility aliases
-  syncGoogleSheetsToInquiries: syncGoogleSheetsToLeads,
-  validateSheetInquiryRows: validateSheetLeadRows,
-  insertSheetInquiryRows: insertSheetLeadRows,
-  buildInquiryData: buildLeadData
+  syncGoogleSheetsToLeads,
+  validateSheetLeadRows,
+  insertSheetLeadRows,
+  buildLeadData
 };

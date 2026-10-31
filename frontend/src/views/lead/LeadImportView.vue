@@ -1,28 +1,28 @@
 <template>
-  <div class="inquiry-import-view">
+  <div class="lead-import-view">
     <div class="page-header">
       <div class="header-left">
         <div class="breadcrumb-bar">
-          <RouterLink to="/inquiries" class="breadcrumb-link">
-            <i class="pi pi-ticket"></i> Inquiries
+          <RouterLink to="/leads" class="breadcrumb-link">
+            <i class="pi pi-ticket"></i> Leads
           </RouterLink>
           <i class="pi pi-angle-right breadcrumb-separator"></i>
           <span class="breadcrumb-active">Import Data</span>
         </div>
         <div class="title-row">
-          <h1><i class="pi pi-file-excel"></i> Import Inquiries from Excel</h1>
+          <h1><i class="pi pi-file-excel"></i> Import Leads from Excel</h1>
         </div>
       </div>
       <Button 
         label="Back to List" 
         severity="secondary" 
         icon="pi pi-arrow-left" 
-        @click="router.push('/inquiries')" 
+        @click="router.push('/leads')" 
       />
     </div>
 
     <div class="content-container">
-      <InquiryImport @imported="onImported" />
+      <LeadImport @imported="onImported" />
     </div>
   </div>
 </template>
@@ -30,7 +30,7 @@
 <script setup>
 import { useRouter, RouterLink } from 'vue-router'
 import Button from 'primevue/button'
-import InquiryImport from '@/components/inquiry/InquiryImport.vue'
+import LeadImport from '@/components/lead/LeadImport.vue'
 
 const router = useRouter()
 
@@ -40,7 +40,7 @@ const onImported = () => {
 </script>
 
 <style scoped>
-.inquiry-import-view {
+.lead-import-view {
   padding: 1.5rem 2rem;
   max-width: 1200px;
   margin: 0 auto;

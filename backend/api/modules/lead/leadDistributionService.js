@@ -34,7 +34,7 @@ const resolveDistributionScope = (user) => {
 
   const permissions = Array.isArray(user?.rolePermissions) ? user.rolePermissions : [];
   const distributePerms = permissions.filter(p =>
-    (p?.resource?.toLowerCase() === 'lead' || p?.resource?.toLowerCase() === 'inquiry') &&
+    (p?.resource?.toLowerCase() === 'lead') &&
     p?.action?.toLowerCase() === 'distribute'
   );
 
@@ -155,7 +155,7 @@ const getUnassignedPool = async (query) => {
   }
 
   // Parallel queries: paginated data, total count, and single-pass SLA tier summary
-  const [inquiries, totalCount, summaryRaw] =
+  const [leads, totalCount, summaryRaw] =
     await prisma.$transaction([
       prisma.lead.findMany({
         where,
@@ -214,20 +214,20 @@ const getUnassignedPool = async (query) => {
 
   const summaryRow = summaryRaw[0] || {};
 
-  const data = inquiries.map(inq => {
-    const elapsedMinutes = calculateElapsedMinutes(inq.createdAt, now);
+  const data = leads.map(lead => {
+    const elapsedMinutes = calculateElapsedMinutes(lead.createdAt, now);
     const tier = classifySlaTier(elapsedMinutes);
-    const sourceInfo = formatSourceHierarchy(inq.sourceData);
+    const sourceInfo = formatSourceHierarchy(lead.sourceData);
 
     return {
-      id: inq.id,
-      student: inq.student || null,
-      description: inq.description,
+      id: lead.id,
+      student: lead.student || null,
+      description: lead.description,
       sourceId: sourceInfo.sourceId,
       source: sourceInfo.source,
       sourceDetail: sourceInfo.sourceDetail,
       approachMethod: sourceInfo.approachMethod,
-      createdAt: inq.createdAt.toISOString(),
+      createdAt: lead.createdAt.toISOString(),
       elapsedMinutes,
       slaTier: tier
     };
@@ -292,11 +292,11 @@ const getDistributionScopes = async (user) => {
       : Promise.resolve(0),
     effectiveScope === 'ALL'
       ? prisma.account.count({
-          where: {
-            isActive: true,
-            teamMemberships: { none: {} }
-          }
-        })
+        where: {
+          isActive: true,
+          teamMemberships: { none: {} }
+        }
+      })
       : Promise.resolve(0)
   ]);
 
@@ -411,20 +411,20 @@ const getScopeRecipients = async (query, user) => {
 
   const accountIds = accounts.map(a => a.id);
 
-  // Compute active workload: count inquiries currently assigned (excluding terminal/closed statuses)
+  // Compute active workload: count leads currently assigned (excluding terminal/closed statuses)
   const workloadGroups = accountIds.length > 0
     ? await prisma.lead.groupBy({
-        by: ['assignedToId'],
-        where: {
-          assignedToId: { in: accountIds },
-          NOT: {
-            statusData: {
-              name: { in: ['payment_completed_nb', 'cancelled'] }
-            }
+      by: ['assignedToId'],
+      where: {
+        assignedToId: { in: accountIds },
+        NOT: {
+          statusData: {
+            name: { in: ['payment_completed_nb', 'cancelled'] }
           }
-        },
-        _count: { id: true }
-      })
+        }
+      },
+      _count: { id: true }
+    })
     : [];
 
   const workloadMap = new Map();
@@ -443,7 +443,7 @@ const getScopeRecipients = async (query, user) => {
       roleName: acc.role?.name || null,
       teamId: membership?.teamId || null,
       teamName: membership?.team?.name || null,
-      activeInquiriesCount: workloadMap.get(acc.id) || 0
+      activeLeadsCount: workloadMap.get(acc.id) || 0
     };
   });
 
@@ -491,37 +491,38 @@ const validateRecipients = async (staffIds, user) => {
  * Preview dry-run Round-Robin lead distribution.
  */
 const previewDistribution = async (payload, user) => {
-  const leadIds = payload.leadIds || payload.inquiryIds || []; const { staffIds = [] } = payload; const inquiryIds = leadIds;
+  const leadIds = payload.leadIds || [];
+  const { staffIds = [] } = payload;
 
   const staffList = await validateRecipients(staffIds, user);
 
-  // Check which inquiries are actually unassigned, sorted matching execution order
-  const existingInquiries = await prisma.lead.findMany({
-    where: { id: { in: inquiryIds } },
+  // Check which leads are actually unassigned, sorted matching execution order
+  const existingLeads = await prisma.lead.findMany({
+    where: { id: { in: leadIds } },
     select: { id: true, createdAt: true, assignedToId: true },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }]
   });
 
-  const existingMap = new Map(existingInquiries.map(i => [i.id, i]));
+  const existingMap = new Map(existingLeads.map(i => [i.id, i]));
   const skipped = [];
 
-  for (const id of inquiryIds) {
-    const inq = existingMap.get(id);
-    if (!inq) {
-      skipped.push({ leadId: id, inquiryId: id, reason: 'NOT_FOUND' });
-    } else if (inq.assignedToId !== null) {
-      skipped.push({ leadId: id, inquiryId: id, reason: 'ALREADY_ASSIGNED' });
+  for (const id of leadIds) {
+    const lead = existingMap.get(id);
+    if (!lead) {
+      skipped.push({ leadId: id, reason: 'NOT_FOUND' });
+    } else if (lead.assignedToId !== null) {
+      skipped.push({ leadId: id, reason: 'ALREADY_ASSIGNED' });
     }
   }
 
-  const distributableIds = existingInquiries
+  const distributableIds = existingLeads
     .filter(i => i.assignedToId === null)
     .map(i => i.id);
 
   const summary = summarizeAllocations(distributableIds, staffList);
 
   return {
-    totalRequested: inquiryIds.length,
+    totalRequested: leadIds.length,
     distributable: distributableIds.length,
     recipientCount: staffIds.length,
     averagePerStaff: summary.averagePerStaff,
@@ -534,7 +535,8 @@ const previewDistribution = async (payload, user) => {
  * Execute atomic lead distribution in a single database transaction.
  */
 const distributeLeads = async (payload, user) => {
-  const leadIds = payload.leadIds || payload.inquiryIds || []; const inquiryIds = leadIds; const { staffIds = [], teamId, method = 'ROUND_ROBIN' } = payload;
+  const leadIds = payload.leadIds || [];
+  const { staffIds = [], teamId, method = 'ROUND_ROBIN' } = payload;
   const userId = user?.id || user?.accountId || null;
 
   // 1. Validate recipients upfront
@@ -546,7 +548,7 @@ const distributeLeads = async (payload, user) => {
     const lockedRows = await tx.$queryRaw`
       SELECT id, created_at, assigned_to_id
       FROM lead
-      WHERE id = ANY(${inquiryIds}::int[])
+      WHERE id = ANY(${leadIds}::int[])
         AND assigned_to_id IS NULL
       ORDER BY created_at ASC, id ASC
       FOR UPDATE SKIP LOCKED
@@ -557,22 +559,22 @@ const distributeLeads = async (payload, user) => {
 
     // Identify skipped leads
     const skipped = [];
-    if (lockedIds.length < inquiryIds.length) {
+    if (lockedIds.length < leadIds.length) {
       const allRows = await tx.lead.findMany({
-        where: { id: { in: inquiryIds } },
+        where: { id: { in: leadIds } },
         select: { id: true, assignedToId: true }
       });
       const allRowsMap = new Map(allRows.map(r => [r.id, r]));
 
-      for (const id of inquiryIds) {
+      for (const id of leadIds) {
         if (!lockedMap.has(id)) {
           const row = allRowsMap.get(id);
           if (!row) {
-            skipped.push({ leadId: id, inquiryId: id, reason: 'NOT_FOUND' });
+            skipped.push({ leadId: id, reason: 'NOT_FOUND' });
           } else if (row.assignedToId !== null) {
-            skipped.push({ leadId: id, inquiryId: id, reason: 'ALREADY_ASSIGNED' });
+            skipped.push({ leadId: id, reason: 'ALREADY_ASSIGNED' });
           } else {
-            skipped.push({ leadId: id, inquiryId: id, reason: 'LOCKED' });
+            skipped.push({ leadId: id, reason: 'LOCKED' });
           }
         }
       }
@@ -580,9 +582,9 @@ const distributeLeads = async (payload, user) => {
 
     if (lockedIds.length === 0) {
       throw createServiceError(
-        'All requested inquiries were already assigned or locked by another operation',
+        'All requested leads were already assigned or locked by another operation',
         409,
-        'ALL_INQUIRIES_CONFLICTED',
+        'ALL_LEADS_CONFLICTED',
         { skipped }
       );
     }
@@ -592,15 +594,15 @@ const distributeLeads = async (payload, user) => {
     const batchId = crypto.randomUUID();
 
     // 4. Grouped updateMany per staffId
-    const recipientToInquiryIds = new Map();
+    const recipientToLeadIds = new Map();
     for (const item of rotation) {
-      if (!recipientToInquiryIds.has(item.assignedToId)) {
-        recipientToInquiryIds.set(item.assignedToId, []);
+      if (!recipientToLeadIds.has(item.assignedToId)) {
+        recipientToLeadIds.set(item.assignedToId, []);
       }
-      recipientToInquiryIds.get(item.assignedToId).push(item.inquiryId);
+      recipientToLeadIds.get(item.assignedToId).push(item.leadId);
     }
 
-    for (const [staffId, assignedIds] of recipientToInquiryIds.entries()) {
+    for (const [staffId, assignedIds] of recipientToLeadIds.entries()) {
       await tx.lead.updateMany({
         where: { id: { in: assignedIds } },
         data: { assignedToId: staffId }
@@ -610,7 +612,7 @@ const distributeLeads = async (payload, user) => {
     // 5. Create immutable audit log records
     const now = new Date();
     const logData = rotation.map(item => ({
-      leadId: item.leadId || item.inquiryId, inquiryId: item.leadId || item.inquiryId,
+      leadId: item.leadId,
       previousAssigneeId: null,
       newAssigneeId: item.assignedToId,
       assignedById: userId,
@@ -629,7 +631,7 @@ const distributeLeads = async (payload, user) => {
 
     return {
       batchId,
-      totalRequested: inquiryIds.length,
+      totalRequested: leadIds.length,
       totalDistributed: lockedIds.length,
       recipientCount: staffIds.length,
       allocations: summary.allocations,

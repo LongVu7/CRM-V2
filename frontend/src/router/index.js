@@ -6,7 +6,7 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/inquiries',
+      redirect: '/leads',
     },
     {
       path: '/dashboard',
@@ -33,40 +33,40 @@ const router = createRouter({
       meta: { permission: 'student.read' }
     },
     {
-      path: '/inquiries',
-      name: 'inquiries',
-      component: () => import('../views/inquiry/Inquiry.vue'),
-      meta: { permission: 'inquiry.read' }
+      path: '/leads',
+      name: 'leads',
+      component: () => import('../views/lead/Lead.vue'),
+      meta: { permission: 'lead.read' }
     },
     {
-      path: '/inquiries/new',
-      name: 'inquiry-new',
-      component: () => import('../views/inquiry/InquiryNew.vue'),
-      meta: { permission: 'inquiry.create' }
+      path: '/leads/new',
+      name: 'lead-new',
+      component: () => import('../views/lead/LeadNew.vue'),
+      meta: { permission: 'lead.create' }
     },
     {
-      path: '/inquiries/import',
-      name: 'inquiry-import',
-      component: () => import('../views/inquiry/InquiryImportView.vue'),
-      meta: { permission: ['inquiry.import'] }
+      path: '/leads/import',
+      name: 'lead-import',
+      component: () => import('../views/lead/LeadImportView.vue'),
+      meta: { permission: ['lead.import'] }
     },
     {
-      path: '/inquiries/:id',
-      name: 'inquiry-detail',
-      component: () => import('../views/inquiry/InquiryDetail.vue'),
-      meta: { permission: 'inquiry.read' }
+      path: '/leads/:id',
+      name: 'lead-detail',
+      component: () => import('../views/lead/LeadDetail.vue'),
+      meta: { permission: 'lead.read' }
     },
     {
-      path: '/inquiries/distribution',
-      name: 'inquiry-distribution',
-      component: () => import('../views/inquiry/InquiryDistributionView.vue'),
-      meta: { permission: 'inquiry.distribute' }
+      path: '/leads/distribution',
+      name: 'lead-distribution',
+      component: () => import('../views/lead/LeadDistributionView.vue'),
+      meta: { permission: 'lead.distribute' }
     },
     {
       path: '/calls',
       name: 'call-history',
       component: () => import('../views/call/CallHistory.vue'),
-      meta: { permission: 'inquiry.read' }
+      meta: { permission: 'lead.read' }
     },
     // ─── Admin Namespace ───
     {

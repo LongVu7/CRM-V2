@@ -7,8 +7,8 @@
         :style="{ width: '70vw' }"
     >
         <DataTable 
-            :value="inquiries" 
-            v-model:selection="selectedInquiries" 
+            :value="leads" 
+            v-model:selection="selectedLeads" 
             dataKey="id" 
             :loading="fetching || loading"
             paginator 
@@ -40,7 +40,7 @@ import Dialog from 'primevue/dialog';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
-import { getAllInquiries } from '@/services/inquiryService';
+import { getAllLeads } from '@/services/leadService';
 
 const props = defineProps({
     visible: Boolean,
@@ -57,41 +57,41 @@ const props = defineProps({
 const emit = defineEmits(['update:visible', 'add']);
 const toast = useToast();
 
-const inquiries = ref([]);
-const selectedInquiries = ref([]);
+const leads = ref([]);
+const selectedLeads = ref([]);
 const fetching = ref(false);
 
-const fetchInquiriesData = async () => {
+const fetchLeadsData = async () => {
     fetching.value = true;
     try {
-        const response = await getAllInquiries({ limit: 100, hasStudent: true });
-        const raw = response.data || response.inquiries || response || [];
-        const initialInquiryIds = new Set((props.initialRecipients || []).map(r => r.inquiryId));
+        const response = await getAllLeads({ limit: 100, hasStudent: true });
+        const raw = response.data || response.leads || response || [];
+        const initialLeadIds = new Set((props.initialRecipients || []).map(r => r.leadId));
 
-        // Filter inquiries with valid email and sort already selected recipients to the top
-        const validInquiries = raw.filter(inq => inq.student?.email?.trim());
-        validInquiries.sort((a, b) => (initialInquiryIds.has(b.id) ? 1 : 0) - (initialInquiryIds.has(a.id) ? 1 : 0));
+        // Filter leads with valid email and sort already selected recipients to the top
+        const validLeads = raw.filter(lead => lead.student?.email?.trim());
+        validLeads.sort((a, b) => (initialLeadIds.has(b.id) ? 1 : 0) - (initialLeadIds.has(a.id) ? 1 : 0));
 
-        inquiries.value = validInquiries;
-        selectedInquiries.value = validInquiries.filter(inq => initialInquiryIds.has(inq.id));
+        leads.value = validLeads;
+        selectedLeads.value = validLeads.filter(lead => initialLeadIds.has(lead.id));
     } catch (error) {
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load inquiries', life: 3000 });
+        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load leads', life: 3000 });
     } finally {
         fetching.value = false;
     }
 };
 
 const handleAdd = () => {
-    const inquiryIds = (selectedInquiries.value || [])
-        .map(inq => (typeof inq === 'object' && inq !== null ? inq.id : inq))
+    const leadIds = (selectedLeads.value || [])
+        .map(lead => (typeof lead === 'object' && lead !== null ? lead.id : lead))
         .filter(id => id !== null && id !== undefined && !isNaN(Number(id)))
         .map(Number);
-    emit('add', inquiryIds);
+    emit('add', leadIds);
 };
 
 onMounted(() => {
     if (props.visible) {
-        fetchInquiriesData();
+        fetchLeadsData();
     }
 });
 </script>

@@ -1,5 +1,5 @@
 /**
- * Calucate based on daily inquiry distribution time (unassigned time):
+ * Calucate based on daily lead distribution time (unassigned time):
  * - NORMAL:   < 1 day (< 24 hours, < 1440 minutes)
  * - ATTENTION: 1 - 2 days (24 - 48 hours, 1440 - 2879 minutes)
  * - WARNING:   2 - 3 days (48 - 72 hours, 2880 - 4319 minutes)

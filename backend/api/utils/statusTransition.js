@@ -52,18 +52,19 @@ async function resolveStatusHierarchy(tx, statusDataId) {
 }
 
 /**
- * Calculates milestone updates for an inquiry status transition.
+ * Calculates milestone updates for an lead status transition.
  */
-async function applyStatusTransition({ tx, inquiry, newStatusDataId, occurredAt = new Date() }) {
+async function applyStatusTransition({ tx, lead, newStatusDataId, occurredAt = new Date() }) {
   if (!newStatusDataId) return {};
 
+  const record = lead || {};
   const newHierarchy = await resolveStatusHierarchy(tx, newStatusDataId);
-  const oldHierarchy = inquiry.statusDataId ? await resolveStatusHierarchy(tx, inquiry.statusDataId) : null;
+  const oldHierarchy = record.statusDataId ? await resolveStatusHierarchy(tx, record.statusDataId) : null;
 
   const updates = {};
 
   // firstProcessedAt logic
-  if (!inquiry.firstProcessedAt) {
+  if (!record.firstProcessedAt) {
     const isNewProcessed = newHierarchy && isProcessed(newHierarchy.interaction);
     const isOldProcessed = oldHierarchy && isProcessed(oldHierarchy.interaction);
     if (isNewProcessed && !isOldProcessed) {
@@ -72,7 +73,7 @@ async function applyStatusTransition({ tx, inquiry, newStatusDataId, occurredAt 
   }
 
   // firstInteractedAt logic
-  if (!inquiry.firstInteractedAt) {
+  if (!record.firstInteractedAt) {
     const isNewInteracted = newHierarchy && isInteracted(newHierarchy.interaction);
     const isOldInteracted = oldHierarchy && isInteracted(oldHierarchy.interaction);
     if (isNewInteracted && !isOldInteracted) {
@@ -81,7 +82,7 @@ async function applyStatusTransition({ tx, inquiry, newStatusDataId, occurredAt 
   }
 
   // nbAt logic
-  if (!inquiry.nbAt) {
+  if (!record.nbAt) {
     const isNewNb = newHierarchy && isNb(newHierarchy.general);
     const isOldNb = oldHierarchy && isNb(oldHierarchy.general);
     if (isNewNb && !isOldNb) {

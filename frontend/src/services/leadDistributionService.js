@@ -1,6 +1,6 @@
 import api from '@/services/apiClient'
 
-const prefix = '/inquiries/distribution'
+const prefix = '/leads/distribution'
 
 export const getUnassignedPool = async (params = {}) => {
   const response = await api.get(`${prefix}/pool`, { params })

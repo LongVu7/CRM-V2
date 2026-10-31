@@ -1,5 +1,5 @@
 <template>
-  <div v-if="$can('assign', 'inquiry')">
+  <div v-if="$can('assign', 'lead')">
   <div class="section-card">
     <div class="card-header">
       <h2><i class="pi pi-briefcase"></i> Account Assignment</h2>
@@ -35,7 +35,7 @@
         />
       </div>
       <div v-else class="empty-state">
-        <p>No account assigned. Inquiry will be unassigned.</p>
+        <p>No account assigned. Lead will be unassigned.</p>
       </div>
     </div>
   </div>
@@ -46,7 +46,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
-import { searchAccounts } from '@/services/inquiryService'
+import { searchAccounts } from '@/services/leadService'
 
 const props = defineProps({
   initialAccount: {
@@ -82,7 +82,7 @@ const fetchAccounts = async () => {
     }
     allAccounts.value = list
   } catch (err) {
-    console.error('Failed to load accounts for inquiry assignment:', err)
+    console.error('Failed to load accounts for lead assignment:', err)
     allAccounts.value = props.initialAccount ? [props.initialAccount] : []
   } finally {
     loadingAccounts.value = false

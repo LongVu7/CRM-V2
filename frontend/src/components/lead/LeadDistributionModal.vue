@@ -3,21 +3,21 @@
     :visible="visible"
     modal
     position="right"
-    :header="`Distribute Inquiries to Staff (${selectedInquiries.length} Inquiries)`"
+    :header="`Distribute Leads to Staff (${selectedLeads.length} Leads)`"
     :style="{ width: '700px', maxWidth: '100vw', height: '100vh', maxHeight: '100vh', margin: 0 }"
     class="distribution-modal right-dock-modal"
     @update:visible="$emit('update:visible', $event)"
   >
     <div class="modal-body">
-      <!-- Summary Box of Inquiries to Distribute -->
+      <!-- Summary Box of Leads to Distribute -->
       <div class="distribute-summary-box">
         <div class="summary-icon">
           <i class="pi pi-share-alt"></i>
         </div>
         <div class="summary-content">
-          <h4>Distribute {{ selectedInquiries.length }} Unassigned Inquiries</h4>
+          <h4>Distribute {{ selectedLeads.length }} Unassigned Leads</h4>
           <p>
-            Inquiries are sequentially allocated among selected staff using Round-Robin rotation.
+            Leads are sequentially allocated among selected staff using Round-Robin rotation.
             Drag rows or click arrows below to adjust advisor priority order.
           </p>
         </div>
@@ -72,7 +72,7 @@
           optionValue="value"
           :placeholder="
             selectedTeamId
-              ? 'Select advisors to receive inquiries...'
+              ? 'Select advisors to receive leads...'
               : 'Please choose a team or staff pool first...'
           "
           :disabled="!selectedTeamId"
@@ -107,7 +107,7 @@
           </label>
           <small class="text-muted text-xs">
             <i class="pi pi-info-circle mr-1"></i> Drag rows or click arrows to prioritize who
-            receives inquiries first
+            receives leads first
           </small>
         </div>
 
@@ -115,9 +115,9 @@
           <!-- Metric Summary Row -->
           <div class="preview-metric-row">
             <div class="metric-item">
-              <span class="metric-label">Total Inquiries</span>
+              <span class="metric-label">Total Leads</span>
               <span class="metric-val text-primary font-bold"
-                >{{ selectedInquiries.length }} inquiries</span
+                >{{ selectedLeads.length }} leads</span
               >
             </div>
             <div class="metric-item">
@@ -129,7 +129,7 @@
             <div class="metric-item">
               <span class="metric-label">Average / Staff</span>
               <span class="metric-val text-emerald font-bold"
-                >~{{ averagePerStaff }} inquiries</span
+                >~{{ averagePerStaff }} leads</span
               >
             </div>
           </div>
@@ -152,7 +152,7 @@
                   <span
                     v-if="data.isPriorityTurn"
                     class="priority-dot"
-                    title="Priority Turn: Receives extra inquiry"
+                    title="Priority Turn: Receives extra lead"
                     >•</span
                   >
                 </span>
@@ -173,7 +173,7 @@
             <Column header="Current Load" style="width: 7.5rem">
               <template #body="{ data }">
                 <span class="text-muted text-xs font-medium">
-                  {{ data.activeInquiries }} inquiries
+                  {{ data.activeLeads }} leads
                 </span>
               </template>
             </Column>
@@ -181,7 +181,7 @@
             <Column header="Projected" style="width: 7.5rem; text-align: right">
               <template #body="{ data }">
                 <span class="alloc-badge">
-                  +<strong>{{ data.count }}</strong> inquiries
+                  +<strong>{{ data.count }}</strong> leads
                 </span>
               </template>
             </Column>
@@ -227,7 +227,7 @@
         <template v-else>
           <i class="pi pi-exclamation-circle mr-2 text-amber-500"></i>
           <span
-            >Please select at least 1 advisor from the list above to preview and execute inquiry
+            >Please select at least 1 advisor from the list above to preview and execute lead
             distribution.</span
           >
         </template>
@@ -238,11 +238,11 @@
       <div class="modal-footer">
         <Button label="Cancel" text severity="secondary" @click="closeModal" />
         <Button
-          :label="`Confirm Distribution (${selectedInquiries.length} Inquiries)`"
+          :label="`Confirm Distribution (${selectedLeads.length} Leads)`"
           icon="pi pi-check"
           severity="primary"
           :disabled="
-            !selectedTeamId || selectedStaffIds.length === 0 || selectedInquiries.length === 0
+            !selectedTeamId || selectedStaffIds.length === 0 || selectedLeads.length === 0
           "
           :loading="submitting"
           @click="submitDistribution"
@@ -265,14 +265,14 @@ import {
   getDistributionScopes,
   getRecipients,
   executeDistribution,
-} from '@/services/inquiryDistributionService'
+} from '@/services/leadDistributionService'
 
 const props = defineProps({
   visible: {
     type: Boolean,
     default: false,
   },
-  selectedInquiries: {
+  selectedLeads: {
     type: Array,
     default: () => [],
   },
@@ -326,7 +326,7 @@ const staffOptions = computed(() => {
       fullName: member.fullName,
       email: member.email,
       role: member.roleName || 'Advisor',
-      activeInquiries: member.activeInquiriesCount || 0,
+      activeLeads: member.activeLeadsCount || 0,
     }
   })
 })
@@ -377,12 +377,12 @@ const onTeamChange = async () => {
 const averagePerStaff = computed(() => {
   const count = selectedStaffIds.value.length
   if (count === 0) return 0
-  return Math.round((props.selectedInquiries.length / count) * 10) / 10
+  return Math.round((props.selectedLeads.length / count) * 10) / 10
 })
 
 const previewAllocations = computed(() => {
   const count = selectedStaffIds.value.length
-  const total = props.selectedInquiries.length
+  const total = props.selectedLeads.length
   if (count === 0 || total === 0) return []
 
   const baseCount = Math.floor(total / count)
@@ -397,7 +397,7 @@ const previewAllocations = computed(() => {
       fullName: staff.fullName || '',
       email: staff.email || '',
       role: staff.roleName || 'Advisor',
-      activeInquiries: staff.activeInquiriesCount || 0,
+      activeLeads: staff.activeLeadsCount || 0,
       count: baseCount + (isPriorityTurn ? 1 : 0),
       isPriorityTurn: isPriorityTurn && remainder > 0,
     }
@@ -456,7 +456,7 @@ const submitDistribution = async () => {
     toast.add({
       severity: 'warn',
       summary: 'No Staff Selected',
-      detail: 'Please select at least 1 staff member to receive inquiries',
+      detail: 'Please select at least 1 staff member to receive leads',
       life: 3000,
     })
     return
@@ -473,7 +473,7 @@ const submitDistribution = async () => {
   submitting.value = true
   try {
     const payload = {
-      inquiryIds: props.selectedInquiries.map((i) => i.id),
+      leadIds: props.selectedLeads.map((i) => i.id),
       staffIds: selectedStaffIds.value,
       teamId: selectedOpt.teamId || null,
       scope: scopePayload,
@@ -486,7 +486,7 @@ const submitDistribution = async () => {
       toast.add({
         severity: 'warn',
         summary: 'Partial Distribution',
-        detail: `${response.skipped.length} inquiry(ies) were skipped (already assigned or locked).`,
+        detail: `${response.skipped.length} lead(s) were skipped (already assigned or locked).`,
         life: 5000,
       })
     }
@@ -494,7 +494,7 @@ const submitDistribution = async () => {
     toast.add({
       severity: 'success',
       summary: 'Distribution Complete',
-      detail: `Successfully distributed ${response.totalDistributed} inquiries across ${selectedStaffIds.value.length} advisors (${currentScopeLabel.value})!`,
+      detail: `Successfully distributed ${response.totalDistributed} leads across ${selectedStaffIds.value.length} advisors (${currentScopeLabel.value})!`,
       life: 4500,
     })
 
@@ -507,14 +507,13 @@ const submitDistribution = async () => {
 
     if (
       status === 409 ||
-      reason === 'ALL_INQUIRIES_CONFLICTED' ||
       reason === 'ALL_LEADS_CONFLICTED'
     ) {
       toast.add({
         severity: 'error',
         summary: 'Distribution Conflict',
         detail:
-          'All requested inquiries were already assigned or locked by another operation. Refreshing pool...',
+          'All requested leads were already assigned or locked by another operation. Refreshing pool...',
         life: 5000,
       })
       emit('distributed')
@@ -530,7 +529,7 @@ const submitDistribution = async () => {
       toast.add({
         severity: 'error',
         summary: 'Distribution Failed',
-        detail: resData.message || err.message || 'An error occurred during inquiry distribution',
+        detail: resData.message || err.message || 'An error occurred during lead distribution',
         life: 5000,
       })
     }

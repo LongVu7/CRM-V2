@@ -231,14 +231,14 @@ const getLeadById = async (id) => {
  *   2. create a new lead with new student inline
  *   3. Create an lead alone
  */
-const createLead = async ({ studentId, student, assignedToId, ...inquiryFields }, user) => {
+const createLead = async ({ studentId, student, assignedToId, ...leadFields }, user) => {
   // If assignedToId is explicitly provided, parse it; otherwise keep unassigned (null)
   const targetAssignedToId = assignedToId ? parseInt(assignedToId, 10) : null;
 
   const leadData = buildLeadData({
     assignedToId: targetAssignedToId,
     createdById: user?.accountId || user?.id || null,
-    ...inquiryFields
+    ...leadFields
   });
 
   if (studentId) return _createWithExistingStudent(leadData, studentId, user);
@@ -740,15 +740,15 @@ module.exports = {
   getLeadStatusHistory,
 
   // Aliases for compatibility
-  getAllInquiries: getAllLeads,
-  getInquiryById: getLeadById,
-  createInquiry: createLead,
-  updateInquiry: updateLead,
-  deleteInquiry: deleteLead,
-  assignStudentToInquiry: assignStudentToLead,
-  unassignStudentFromInquiry: unassignStudentFromLead,
-  assignAccountToInquiry: assignAccountToLead,
-  exportInquiries: exportLeads,
-  getInquiryOptions: getLeadOptions,
-  getInquiryStatusHistory: getLeadStatusHistory
+  getAllLeads,
+  getLeadById,
+  createLead,
+  updateLead,
+  deleteLead,
+  assignStudentToLead,
+  unassignStudentFromLead,
+  assignAccountToLead,
+  exportLeads,
+  getLeadOptions,
+  getLeadStatusHistory
 };

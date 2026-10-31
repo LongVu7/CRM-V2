@@ -50,8 +50,8 @@ export const deleteActivity = async (campaignId, activityId) => {
 }
 
 // ─── Activity Recipients ───
-export const addActivityRecipients = async (campaignId, activityId, inquiryIds) => {
-  const response = await api.post(`${prefix}/${campaignId}/activities/${activityId}/recipients`, { inquiryIds })
+export const addActivityRecipients = async (campaignId, activityId, leadIds) => {
+  const response = await api.post(`${prefix}/${campaignId}/activities/${activityId}/recipients`, { leadIds })
   return response.data
 }
 

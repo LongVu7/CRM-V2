@@ -1,24 +1,24 @@
 <template>
-  <div class="inquiry-list-view">
-    <!-- Top Breadcrumb & Page Title (Exact same pattern as Inquiry.vue) -->
+  <div class="lead-list-view">
+    <!-- Top Breadcrumb & Page Title (Exact same pattern as Lead.vue) -->
     <div class="page-header">
       <div class="header-left">
         <div class="breadcrumb-bar">
           <span class="breadcrumb-muted">Pages</span>
           <i class="pi pi-angle-right breadcrumb-separator"></i>
-          <RouterLink to="/inquiries" class="breadcrumb-link">Inquiry Management</RouterLink>
+          <RouterLink to="/leads" class="breadcrumb-link">Lead Management</RouterLink>
           <i class="pi pi-angle-right breadcrumb-separator"></i>
-          <span class="breadcrumb-active">Inquiry Distribution</span>
+          <span class="breadcrumb-active">Lead Distribution</span>
         </div>
         <div class="title-row">
-          <h1><i class="pi pi-share-alt"></i> Inquiry Distribution</h1>
-          <Tag :value="`${totalRecords} unassigned inquiries`" severity="warn" rounded class="count-tag" />
+          <h1><i class="pi pi-share-alt"></i> Lead Distribution</h1>
+          <Tag :value="`${totalRecords} unassigned leads`" severity="warn" rounded class="count-tag" />
         </div>
       </div>
 
       <div class="header-actions">
-        <Button label="Back to Inquiries" icon="pi pi-arrow-left" severity="secondary" text
-          @click="$router.push('/inquiries')" />
+        <Button label="Back to Leads" icon="pi pi-arrow-left" severity="secondary" text
+          @click="$router.push('/leads')" />
       </div>
     </div>
 
@@ -48,11 +48,11 @@
       </div>
     </div>
 
-    <!-- Table Container (Unified with InquiryList.vue) -->
+    <!-- Table Container (Unified with LeadList.vue) -->
     <div class="table-container">
-      <DataTable :value="unassignedInquiries" v-model:selection="selectedInquiries" dataKey="id" :lazy="true" :loading="loading"
+      <DataTable :value="unassignedLeads" v-model:selection="selectedLeads" dataKey="id" :lazy="true" :loading="loading"
         :paginator="true" :rows="rowsPerPage" :totalRecords="totalRecords" :rowsPerPageOptions="[10, 20, 50, 100]"
-        :removableSort="true" :scrollable="true" :scrollHeight="'calc(100vh - 270px)'" class="inquiry-datatable"
+        :removableSort="true" :scrollable="true" :scrollHeight="'calc(100vh - 270px)'" class="lead-datatable"
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
         currentPageReportTemplate="Showing {first} to {last} of {totalRecords}" :paginatorLeft="true"
         :paginatorRight="true" @page="onPageChange">
@@ -63,12 +63,12 @@
               <IconField>
                 <InputIcon class="pi pi-search" />
                 <InputText v-model="searchQuery"
-                  placeholder="Search unassigned inquiries by student name, phone, email, source..." class="search-input" />
+                  placeholder="Search unassigned leads by student name, phone, email, source..." class="search-input" />
               </IconField>
             </div>
-            <div class="toolbar-actions" v-if="selectedInquiries.length > 0">
-              <Button :label="`Distribute (${selectedInquiries.length})`" icon="pi pi-share-alt" severity="primary"
-                @click="openDistributeModal(selectedInquiries)" class="distribute-btn" />
+            <div class="toolbar-actions" v-if="selectedLeads.length > 0">
+              <Button :label="`Distribute (${selectedLeads.length})`" icon="pi pi-share-alt" severity="primary"
+                @click="openDistributeModal(selectedLeads)" class="distribute-btn" />
             </div>
           </div>
 
@@ -77,12 +77,12 @@
             <div class="secondary-left">
               <Button icon="pi pi-refresh" text rounded v-tooltip.top="'Refresh Pool'" @click="fetchPoolData" />
 
-              <span v-if="selectedInquiries.length > 0" class="selection-count">
-                {{ selectedInquiries.length }} Selected
+              <span v-if="selectedLeads.length > 0" class="selection-count">
+                {{ selectedLeads.length }} Selected
               </span>
 
               <span v-else class="result-count">
-                {{ totalRecords }} Unassigned Inquiries
+                {{ totalRecords }} Unassigned Leads
               </span>
             </div>
           </div>
@@ -92,15 +92,15 @@
         <template #empty>
           <div class="empty-state">
             <i class="pi pi-check-circle text-emerald-500"></i>
-            <h3>No unassigned inquiries found</h3>
-            <p>All inquiries have been assigned to staff or no inquiries match your search criteria.</p>
+            <h3>No unassigned leads found</h3>
+            <p>All leads have been assigned to staff or no leads match your search criteria.</p>
           </div>
         </template>
 
         <!-- Multi-select Checkbox Column -->
         <Column selectionMode="multiple" headerStyle="width: 2.5rem" bodyStyle="width: 2.5rem" :exportable="false" />
 
-        <!-- Student Column (Inquiry student info: Name, Phone, Email) -->
+        <!-- Student Column (Lead student info: Name, Phone, Email) -->
         <Column field="student.fullName" header="Student" sortable style="min-width: 220px">
           <template #body="{ data }">
             <div class="student-cell-wrap" v-if="data.student">
@@ -153,11 +153,11 @@
           </template>
         </Column>
 
-        <!-- Actions Column (Distribute Inquiry) -->
+        <!-- Actions Column (Distribute Lead) -->
         <Column header="Actions" style="width: 110px" :exportable="false" frozen alignFrozen="right">
           <template #body="{ data }">
             <div class="action-buttons">
-              <Button icon="pi pi-arrow-circle-right" rounded outlined severity="primary" v-tooltip.top="'Distribute this inquiry'"
+              <Button icon="pi pi-arrow-circle-right" rounded outlined severity="primary" v-tooltip.top="'Distribute this lead'"
                 @click="openDistributeModal([data])" />
             </div>
           </template>
@@ -165,21 +165,21 @@
       </DataTable>
     </div>
 
-    <!-- Floating Bulk Action Dock when inquiries are selected (User's Original Layout Design) -->
+    <!-- Floating Bulk Action Dock when leads are selected (User's Original Layout Design) -->
     <transition name="dock-slide">
-      <div v-if="selectedInquiries.length > 0" class="floating-bulk-dock">
+      <div v-if="selectedLeads.length > 0" class="floating-bulk-dock">
         <div class="dock-badge">
           <i class="pi pi-check-circle"></i>
-          <span>Selected <strong>{{ selectedInquiries.length }}</strong> unassigned inquiries</span>
+          <span>Selected <strong>{{ selectedLeads.length }}</strong> unassigned leads</span>
         </div>
         <div class="dock-divider"></div>
         <div class="dock-actions">
           <Button
-            :label="`Distribute ${selectedInquiries.length} Inquiries (Round-Robin)`"
+            :label="`Distribute ${selectedLeads.length} Leads (Round-Robin)`"
             icon="pi pi-share-alt"
             severity="primary"
             size="small"
-            @click="openDistributeModal(selectedInquiries)"
+            @click="openDistributeModal(selectedLeads)"
           />
           <Button
             icon="pi pi-times"
@@ -188,14 +188,14 @@
             severity="secondary"
             size="small"
             v-tooltip.top="'Clear selection'"
-            @click="selectedInquiries = []"
+            @click="selectedLeads = []"
           />
         </div>
       </div>
     </transition>
 
-    <!-- Inquiry Distribution Modal Component -->
-    <InquiryDistributionModal v-model:visible="modalVisible" :selectedInquiries="inquiriesForModal"
+    <!-- Lead Distribution Modal Component -->
+    <LeadDistributionModal v-model:visible="modalVisible" :selectedLeads="leadsForModal"
       @distributed="handleDistributionSuccess" />
   </div>
 </template>
@@ -212,15 +212,15 @@ import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import { useToast } from 'primevue/usetoast'
 
-import InquiryDistributionModal from '@/components/inquiry/InquiryDistributionModal.vue'
-import { getUnassignedPool } from '@/services/inquiryDistributionService'
+import LeadDistributionModal from '@/components/lead/LeadDistributionModal.vue'
+import { getUnassignedPool } from '@/services/leadDistributionService'
 import { formatCompactDate, formatCompactTime } from '@/utils/dateUtils'
 
 const toast = useToast()
 
 const loading = ref(false)
-const unassignedInquiries = ref([])
-const selectedInquiries = ref([])
+const unassignedLeads = ref([])
+const selectedLeads = ref([])
 const searchQuery = ref('')
 const totalRecords = ref(0)
 const currentPage = ref(1)
@@ -284,7 +284,7 @@ const fetchPoolData = async () => {
       ...(selectedSlaTier.value && { slaTier: selectedSlaTier.value })
     }
     const res = await getUnassignedPool(params)
-    unassignedInquiries.value = res.data || []
+    unassignedLeads.value = res.data || []
     totalRecords.value = res.pagination?.totalCount || 0
     if (res.summary) {
       poolSummary.value = res.summary
@@ -293,7 +293,7 @@ const fetchPoolData = async () => {
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: err.response?.data?.message || 'Failed to load unassigned inquiries pool',
+      detail: err.response?.data?.message || 'Failed to load unassigned leads pool',
       life: 4000
     })
   } finally {
@@ -324,24 +324,24 @@ const onPageChange = (event) => {
 
 // Modal state
 const modalVisible = ref(false)
-const inquiriesForModal = ref([])
+const leadsForModal = ref([])
 
-const openDistributeModal = (inquiries) => {
-  if (!inquiries || inquiries.length === 0) {
+const openDistributeModal = (leads) => {
+  if (!leads || leads.length === 0) {
     toast.add({
       severity: 'warn',
-      summary: 'No inquiries selected',
-      detail: 'Please select at least one inquiry to distribute',
+      summary: 'No leads selected',
+      detail: 'Please select at least one lead to distribute',
       life: 3000
     })
     return
   }
-  inquiriesForModal.value = [...inquiries]
+  leadsForModal.value = [...leads]
   modalVisible.value = true
 }
 
 const handleDistributionSuccess = () => {
-  selectedInquiries.value = []
+  selectedLeads.value = []
   fetchPoolData()
 }
 
@@ -351,8 +351,8 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Page Layout matching Inquiry.vue */
-.inquiry-list-view {
+/* Page Layout matching Lead.vue */
+.lead-list-view {
   padding: 1.5rem 2rem;
   max-width: 100%;
 }

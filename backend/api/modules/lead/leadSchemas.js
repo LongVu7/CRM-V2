@@ -163,7 +163,6 @@ const recipientsQuerySchema = z.object({
 
 const distributionRequestSchema = z.object({
   leadIds: z.array(z.number().int().positive()).min(1).max(500).optional(),
-  inquiryIds: z.array(z.number().int().positive()).min(1).max(500).optional(),
   staffIds: z.array(z.number().int().positive()).min(1).max(100),
   teamId: z.number().int().positive().nullable().optional(),
   scope: z.object({
@@ -171,17 +170,16 @@ const distributionRequestSchema = z.object({
     teamId: z.number().int().positive().nullable().optional()
   }).optional(),
   method: z.literal('ROUND_ROBIN').default('ROUND_ROBIN')
-}).refine(data => (data.leadIds && data.leadIds.length > 0) || (data.inquiryIds && data.inquiryIds.length > 0), {
-  message: 'leadIds or inquiryIds must be provided and not empty'
+}).refine(data => (data.leadIds && data.leadIds.length > 0), {
+  message: 'leadIds must be provided and not empty'
 }).transform(data => {
-  const ids = data.leadIds || data.inquiryIds || [];
+  const ids = data.leadIds || [];
   const uniqueLeadIds = [...new Set(ids)];
   const uniqueStaffIds = [...new Set(data.staffIds)];
 
   return {
     ...data,
     leadIds: uniqueLeadIds,
-    inquiryIds: uniqueLeadIds,
     staffIds: uniqueStaffIds,
     teamId: data.teamId ?? data.scope?.teamId ?? null
   };
@@ -190,16 +188,13 @@ const distributionRequestSchema = z.object({
 module.exports = {
   createLeadSchema,
   updateLeadSchema,
-  createInquirySchema: createLeadSchema,
-  updateInquirySchema: updateLeadSchema,
   assignStudentSchema,
   assignAccountSchema,
   sheetLeadSyncSchema,
-  sheetInquirySyncSchema: sheetLeadSyncSchema,
   sanitizeSheetMobile,
   poolQuerySchema,
   recipientsQuerySchema,
   distributionRequestSchema,
   leadFields,
-  inquiryFields: leadFields
+  leadFields
 };

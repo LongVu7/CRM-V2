@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { getInquiryOptions } from '@/services/inquiryService'
+import { getLeadOptions } from '@/services/leadService'
 
 export function useSourceData() {
   const sources = ref([])
@@ -12,7 +12,7 @@ export function useSourceData() {
   const fetchSources = async () => {
     loadingSources.value = true
     try {
-      const data = await getInquiryOptions()
+      const data = await getLeadOptions()
       sources.value = data.sources || []
     } catch {
       sources.value = []

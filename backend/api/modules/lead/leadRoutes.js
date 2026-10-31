@@ -30,10 +30,10 @@ router.route('/import/template')
     .get(authenticate, authorize('import', 'lead'), leadController.downloadTemplate);
 
 router.route('/import/preview')
-    .post(authenticate, authorize('import', 'lead'), upload.single('file'), leadController.previewImportInquiry);
+    .post(authenticate, authorize('import', 'lead'), upload.single('file'), leadController.previewImportLead);
 
 router.route('/import/confirm')
-    .post(authenticate, authorize('import', 'lead'), leadController.confirmImportInquiry);
+    .post(authenticate, authorize('import', 'lead'), leadController.confirmImportLead);
 
 router.route('/import/sheet-sync')
     .post(authenticate, authorize('import', 'lead'), leadController.importFromGoogleSheets);

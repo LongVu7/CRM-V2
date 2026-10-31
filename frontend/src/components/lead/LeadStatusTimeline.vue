@@ -2,30 +2,30 @@
 import { ref, onMounted, watch } from 'vue'
 import Timeline from 'primevue/timeline'
 import Tag from 'primevue/tag'
-import { useInquiry } from '@/composables/useInquiry'
+import { useLead } from '@/composables/useLead'
 // import { formatDateTime } from '@/utils/dateUtils'
 import { formatDate } from '@/utils/dateUtils'
-import { getStatusSeverity } from '@/utils/inquiryLabels'
+import { getStatusSeverity } from '@/utils/leadLabels'
 
 const props = defineProps({
-  inquiryId: {
+  leadId: {
     type: [Number, String],
     required: true
   }
 })
 
-const { fetchInquiryStatusHistory } = useInquiry()
+const { fetchLeadStatusHistory } = useLead()
 
 const historyItems = ref([])
 const loading = ref(false)
 const error = ref(null)
 
 const loadHistory = async () => {
-  if (!props.inquiryId) return
+  if (!props.leadId) return
   loading.value = true
   error.value = null
   try {
-    historyItems.value = await fetchInquiryStatusHistory(props.inquiryId)
+    historyItems.value = await fetchLeadStatusHistory(props.leadId)
   } catch (err) {
     error.value = err.message || 'Không thể tải lịch sử trạng thái'
     historyItems.value = []
@@ -34,7 +34,7 @@ const loadHistory = async () => {
   }
 }
 
-watch(() => props.inquiryId, () => {
+watch(() => props.leadId, () => {
   loadHistory()
 })
 
@@ -44,7 +44,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="inquiry-timeline-container">
+  <div class="lead-timeline-container">
     <div v-if="loading" class="timeline-loading">
       <i class="pi pi-spin pi-spinner text-xl text-primary"></i>
       <span class="ml-2 text-sm text-500">Đang tải lịch sử trạng thái...</span>
@@ -129,7 +129,7 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.inquiry-timeline-container {
+.lead-timeline-container {
   padding: 0.5rem 0;
 }
 

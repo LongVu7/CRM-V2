@@ -51,7 +51,7 @@ export function buildAbilityRules(user = {}) {
     for (const field of getOwnerFields(sub)) {
       can(action, sub, { [field]: accountId })
     }
-    if (sub === 'inquiry' && accountId) {
+    if (sub === 'lead' && accountId) {
       can(action, sub, { createdById: accountId, assignedToId: null })
     }
   }
@@ -61,7 +61,7 @@ export function buildAbilityRules(user = {}) {
       can(action, sub, { id: { $in: teamIds } })
       return
     }
-    if (sub === 'inquiry') {
+    if (sub === 'lead') {
       grantOwnerAccess(action, sub)
       if (authorizedAccountIds.length > 0) {
         can(action, sub, { assignedToId: { $in: authorizedAccountIds } })

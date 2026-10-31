@@ -7,12 +7,10 @@ const createCallSchema = z.object({
   calleeId: z.string().max(100),
   destinationNumber: z.string().max(50).optional(),
   leadId: z.number().int().positive().optional(),
-  inquiryId: z.number().int().positive().optional(),
   studentId: z.number().int().positive().optional()
 }).strict().transform(data => ({
   ...data,
-  leadId: data.leadId || data.inquiryId,
-  inquiryId: data.leadId || data.inquiryId
+  leadId: data.leadId 
 }));
 
 const updateCallSchema = z.object({

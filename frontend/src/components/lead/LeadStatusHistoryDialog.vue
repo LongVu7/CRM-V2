@@ -1,7 +1,7 @@
 <template>
   <Dialog
     :visible="visible"
-    :header="`Inquiry #${inquiryId} Status Transition History`"
+    :header="`Lead #${leadId} Status Transition History`"
     modal
     :style="{ width: '600px', maxWidth: '92vw' }"
     :closable="true"
@@ -9,7 +9,7 @@
     @update:visible="onVisibleChange"
   >
     <div class="status-history-dialog-content">
-      <InquiryStatusTimeline v-if="visible && inquiryId" :inquiryId="inquiryId" />
+      <LeadStatusTimeline v-if="visible && leadId" :leadId="leadId" />
     </div>
 
     <template #footer>
@@ -23,14 +23,14 @@
 <script setup>
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
-import InquiryStatusTimeline from '@/components/inquiry/InquiryStatusTimeline.vue'
+import LeadStatusTimeline from '@/components/lead/LeadStatusTimeline.vue'
 
 const props = defineProps({
   visible: {
     type: Boolean,
     default: false
   },
-  inquiryId: {
+  leadId: {
     type: [Number, String],
     default: null
   }

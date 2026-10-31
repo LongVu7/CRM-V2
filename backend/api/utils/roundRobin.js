@@ -1,17 +1,16 @@
 /**
- * Distributes an array of inquiry IDs sequentially across an ordered array of staff IDs.
+ * Distributes an array of lead IDs sequentially across an ordered array of staff IDs.
  */
-function calculateRoundRobin(inquiryIds = [], staffIds = []) {
-  if (!Array.isArray(inquiryIds) || !Array.isArray(staffIds) || inquiryIds.length === 0 || staffIds.length === 0) {
+function calculateRoundRobin(leadIds = [], staffIds = []) {
+  if (!Array.isArray(leadIds) || !Array.isArray(staffIds) || leadIds.length === 0 || staffIds.length === 0) {
     return [];
   }
 
   const staffCount = staffIds.length;
-  return inquiryIds.map((id, index) => {
+  return leadIds.map((id, index) => {
     const staffIndex = index % staffCount;
     return {
       leadId: id,
-      inquiryId: id,
       assignedToId: staffIds[staffIndex],
       orderRank: staffIndex + 1
     };
@@ -22,8 +21,8 @@ function calculateRoundRobin(inquiryIds = [], staffIds = []) {
  * Summarizes Round-Robin allocations per recipient staff member.
  * Useful for distribution preview endpoints and confirmation payloads.
  */
-function summarizeAllocations(inquiryIds = [], staffList = []) {
-  const total = Array.isArray(inquiryIds) ? inquiryIds.length : 0;
+function summarizeAllocations(leadIds = [], staffList = []) {
+  const total = Array.isArray(leadIds) ? leadIds.length : 0;
   const staff = Array.isArray(staffList) ? staffList : [];
   const staffCount = staff.length;
 
@@ -46,9 +45,9 @@ function summarizeAllocations(inquiryIds = [], staffList = []) {
     const isPriorityTurn = index < remainder;
     const allocatedCount = baseCount + (isPriorityTurn ? 1 : 0);
 
-    const assignedInquiryIds = [];
+    const assignedLeadIds = [];
     for (let i = index; i < total; i += staffCount) {
-      assignedInquiryIds.push(inquiryIds[i]);
+      assignedLeadIds.push(leadIds[i]);
     }
 
     return {
@@ -57,7 +56,7 @@ function summarizeAllocations(inquiryIds = [], staffList = []) {
       orderRank: index + 1,
       allocatedCount,
       isPriorityTurn: isPriorityTurn && remainder > 0,
-      inquiryIds: assignedInquiryIds
+      leadIds: assignedLeadIds,
     };
   });
 

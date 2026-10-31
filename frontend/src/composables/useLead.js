@@ -1,19 +1,19 @@
 import { ref } from 'vue'
-import * as api from '@/services/inquiryService'
+import * as api from '@/services/leadService'
 
-export function useInquiry() {
-  const inquiries = ref([])
-  const inquiry = ref(null)
+export function useLead() {
+  const leads = ref([])
+  const lead = ref(null)
   const pagination = ref(null)
   const loading = ref(false)
   const error = ref(null)
 
-  const fetchInquiries = async (params = {}) => {
+  const fetchLeads = async (params = {}) => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.getAllInquiries(params)
-      inquiries.value = response.data
+      const response = await api.getAllLeads(params)
+      leads.value = response.data
       pagination.value = response.pagination
     } catch (err) {
       error.value = err.response?.data?.error || err.response?.data?.details || err.message
@@ -23,12 +23,12 @@ export function useInquiry() {
     }
   }
 
-  const fetchInquiryById = async (id) => {
+  const fetchLeadById = async (id) => {
     loading.value = true
     error.value = null
     try {
-      inquiry.value = await api.getInquiryById(id)
-      return inquiry.value
+      lead.value = await api.getLeadById(id)
+      return lead.value
     } catch (err) {
       error.value = err.response?.data?.error || err.response?.data?.details || err.message
       throw err
@@ -37,11 +37,11 @@ export function useInquiry() {
     }
   }
 
-  const createInquiry = async (payload) => {
+  const createLead = async (payload) => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.createInquiry(payload)
+      const response = await api.createLead(payload)
       return response
     } catch (err) {
       error.value = err.response?.data?.error || err.response?.data?.details || err.message
@@ -51,11 +51,11 @@ export function useInquiry() {
     }
   }
 
-  const updateInquiry = async (id, payload) => {
+  const updateLead = async (id, payload) => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.updateInquiry(id, payload)
+      const response = await api.updateLead(id, payload)
       return response
     } catch (err) {
       error.value = err.response?.data?.error || err.response?.data?.details || err.message
@@ -65,11 +65,11 @@ export function useInquiry() {
     }
   }
 
-  const unassignStudent = async (inquiryId, studentId) => {
+  const unassignStudent = async (leadId, studentId) => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.unassignStudent(inquiryId, studentId)
+      const response = await api.unassignStudent(leadId, studentId)
       return response
     } catch (err) {
       error.value = err.response?.data?.error || err.response?.data?.details || err.message
@@ -79,11 +79,11 @@ export function useInquiry() {
     }
   }
 
-  const assignStudent = async (inquiryId, studentId) => {
+  const assignStudent = async (leadId, studentId) => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.assignStudent(inquiryId, studentId)
+      const response = await api.assignStudent(leadId, studentId)
       return response
     } catch (err) {
       error.value = err.response?.data?.error || err.response?.data?.details || err.message
@@ -93,11 +93,11 @@ export function useInquiry() {
     }
   }
 
-  const deleteInquiry = async (id) => {
+  const deleteLead = async (id) => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.deleteInquiry(id)
+      const response = await api.deleteLead(id)
       return response
     } catch (err) {
       error.value = err.response?.data?.error || err.response?.data?.details || err.message
@@ -107,11 +107,11 @@ export function useInquiry() {
     }
   }
 
-  const deleteInquiries = async (ids) => {
+  const deleteLeads = async (ids) => {
     loading.value = true
     error.value = null
     try {
-      const response = await api.deleteInquiries(ids)
+      const response = await api.deleteLeads(ids)
       return response
     } catch (err) {
       error.value = err.response?.data?.error || err.response?.data?.details || err.message
@@ -121,11 +121,11 @@ export function useInquiry() {
     }
   }
 
-  const fetchInquiryStatusHistory = async (id) => {
+  const fetchLeadStatusHistory = async (id) => {
     loading.value = true
     error.value = null
     try {
-      return await api.getInquiryStatusHistory(id)
+      return await api.getLeadStatusHistory(id)
     } catch (err) {
       error.value = err.response?.data?.error || err.response?.data?.details || err.message
       throw err
@@ -135,18 +135,18 @@ export function useInquiry() {
   }
 
   return {
-    inquiries,
-    inquiry,
+    leads,
+    lead,
     pagination,
     loading,
     error,
-    fetchInquiries,
-    fetchInquiryById,
-    fetchInquiryStatusHistory,
-    createInquiry,
-    updateInquiry,
-    deleteInquiry,
-    deleteInquiries,
+    fetchLeads,
+    fetchLeadById,
+    fetchLeadStatusHistory,
+    createLead,
+    updateLead,
+    deleteLead,
+    deleteLeads,
     assignStudent,
     unassignStudent
   }

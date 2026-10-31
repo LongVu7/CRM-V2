@@ -1,7 +1,7 @@
 <template>
   <div class="table-container">
     <DataTable 
-      :value="inquiries" 
+      :value="leads" 
       lazy 
       :paginator="true" 
       :rows="pagination?.limit || 20"
@@ -11,12 +11,12 @@
       :loading="loading" 
       @page="onPage" 
       @sort="onSort" 
-      v-model:selection="selectedInquiries" 
+      v-model:selection="selectedLeads" 
       dataKey="id" 
       :removableSort="true" 
       :scrollable="true"
       :scrollHeight="'calc(100vh - 200px)'" 
-      class="inquiry-datatable"
+      class="lead-datatable"
       paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
       currentPageReportTemplate="Showing {first} to {last} of {totalRecords}"
       :paginatorLeft="true" 
@@ -29,7 +29,7 @@
             <IconField>
               <InputIcon class="pi pi-search" />
               <InputText 
-                placeholder="Search inquiries..." 
+                placeholder="Search leads..." 
                 @input="onSearch" 
                 :value="searchQuery" 
                 class="search-input" 
@@ -38,8 +38,8 @@
           </div>
           <div class="toolbar-actions">
             <Button 
-              v-if="selectedInquiries.length > 0 && $can('delete', 'inquiry')" 
-              :label="`Delete (${selectedInquiries.length})`" 
+              v-if="selectedLeads.length > 0 && $can('delete', 'lead')" 
+              :label="`Delete (${selectedLeads.length})`" 
               icon="pi pi-trash" 
               severity="danger" 
               text 
@@ -47,7 +47,7 @@
               class="delete-btn" 
             />
             <Button 
-              v-if="$can('import', 'inquiry')" 
+              v-if="$can('import', 'lead')" 
               label="Sync Google Sheets" 
               icon="pi pi-sync" 
               text 
@@ -56,15 +56,15 @@
               :loading="syncing" 
             />
             <Button 
-              v-if="$can('import', 'inquiry')" 
+              v-if="$can('import', 'lead')" 
               label="Import Excel" 
               icon="pi pi-file-excel" 
               text 
-              @click="router.push('/inquiries/import')" 
+              @click="router.push('/leads/import')" 
               class="import-btn" 
             />
             <Button 
-              v-if="$can('export', 'inquiry')" 
+              v-if="$can('export', 'lead')" 
               label="Export" 
               icon="pi pi-download" 
               text
@@ -73,10 +73,10 @@
               :loading="exporting" 
             />
             <Button 
-              v-if="$can('create', 'inquiry')" 
-              label="New Inquiry" 
+              v-if="$can('create', 'lead')" 
+              label="New Lead" 
               icon="pi pi-plus"
-              @click="router.push('/inquiries/new')" 
+              @click="router.push('/leads/new')" 
             />
           </div>
         </div>
@@ -94,11 +94,11 @@
               badgeSeverity="danger" 
             />
 
-            <span v-if="selectedInquiries.length > 0" class="selection-count">
-              {{ selectedInquiries.length }} Selected
+            <span v-if="selectedLeads.length > 0" class="selection-count">
+              {{ selectedLeads.length }} Selected
             </span>
 
-            <span v-if="selectedInquiries.length === 0" class="result-count">
+            <span v-if="selectedLeads.length === 0" class="result-count">
               {{ pagination?.totalCount || 0 }} Results
             </span>
           </div>
@@ -146,14 +146,14 @@
       <template #empty>
         <div class="empty-state">
           <i class="pi pi-inbox"></i>
-          <h3>No inquiries found</h3>
-          <p>Get started by creating a new inquiry or adjust your search and filters.</p>
+          <h3>No leads found</h3>
+          <p>Get started by creating a new lead or adjust your search and filters.</p>
           <div class="empty-actions">
             <Button 
-              v-if="$can('create', 'inquiry')" 
-              label="New Inquiry" 
+              v-if="$can('create', 'lead')" 
+              label="New Lead" 
               icon="pi pi-plus" 
-              @click="router.push('/inquiries/new')" 
+              @click="router.push('/leads/new')" 
             />
           </div>
         </div>
@@ -163,7 +163,7 @@
       <template #loading>
         <div class="loading-state">
           <i class="pi pi-spin pi-spinner" style="font-size: 1.5rem"></i>
-          <p>Loading inquiries...</p>
+          <p>Loading leads...</p>
         </div>
       </template>
 
@@ -262,8 +262,8 @@
               rounded 
               text 
               severity="info" 
-              aria-label="Edit Inquiry" 
-              v-tooltip.top="'Edit Inquiry'"
+              aria-label="Edit Lead" 
+              v-tooltip.top="'Edit Lead'"
               @click="onEdit(data.id)" 
             />
             <Button 
@@ -272,8 +272,8 @@
               rounded 
               text 
               severity="danger" 
-              aria-label="Delete Inquiry" 
-              v-tooltip.top="'Delete Inquiry'"
+              aria-label="Delete Lead" 
+              v-tooltip.top="'Delete Lead'"
               @click="confirmDeleteAction(data)" 
             />
             <span v-if="!canUpdate(data) && !canDelete(data)" class="null-text">—</span>
@@ -300,7 +300,7 @@
               rounded 
               text 
               severity="info" 
-              aria-label="View Inquiry Details" 
+              aria-label="View Lead Details" 
               v-tooltip.top="'View Details'"
               @click="emit('show', data.id)" 
             />
@@ -314,9 +314,9 @@
     <ConfirmDialog />
 
     <!-- Status Transition History Dialog -->
-    <InquiryStatusHistoryDialog
+    <LeadStatusHistoryDialog
       v-model:visible="statusHistoryDialogVisible"
-      :inquiryId="selectedInquiryIdForHistory"
+      :leadId="selectedLeadIdForHistory"
     />
   </div>
 </template>
@@ -336,21 +336,21 @@ import Popover from 'primevue/popover'
 import Tag from 'primevue/tag'
 import { useConfirm } from 'primevue/useconfirm'
 import { useSchoolOptions } from '@/composables/useSchoolOptions'
-import { getStatusLevel, getStatusTagSeverity } from '@/utils/inquiryLabels'
+import { getStatusLevel, getStatusTagSeverity } from '@/utils/leadLabels'
 import { formatCompactDate, formatCompactTime } from '@/utils/dateUtils'
 import { canPerform } from '@/services/ability'
-import InquiryStatusHistoryDialog from '@/components/inquiry/InquiryStatusHistoryDialog.vue'
+import LeadStatusHistoryDialog from '@/components/lead/LeadStatusHistoryDialog.vue'
 
 const statusHistoryDialogVisible = ref(false)
-const selectedInquiryIdForHistory = ref(null)
+const selectedLeadIdForHistory = ref(null)
 
 const openStatusHistory = (id) => {
-  selectedInquiryIdForHistory.value = id
+  selectedLeadIdForHistory.value = id
   statusHistoryDialogVisible.value = true
 }
 
 defineProps({
-  inquiries: { type: Array, default: () => [] },
+  leads: { type: Array, default: () => [] },
   loading: { type: Boolean, default: false },
   exporting: { type: Boolean, default: false },
   syncing: { type: Boolean, default: false },
@@ -373,16 +373,16 @@ const emit = defineEmits([
 const router = useRouter()
 const confirm = useConfirm()
 
-const canRead = (inquiry) => canPerform('read', 'inquiry', inquiry)
-const canUpdate = (inquiry) => canPerform('update', 'inquiry', inquiry)
-const canDelete = (inquiry) => canPerform('delete', 'inquiry', inquiry)
+const canRead = (lead) => canPerform('read', 'lead', lead)
+const canUpdate = (lead) => canPerform('update', 'lead', lead)
+const canDelete = (lead) => canPerform('delete', 'lead', lead)
 
 const onEdit = (id) => {
   emit('edit', id)
-  router.push(`/inquiries/${id}`)
+  router.push(`/leads/${id}`)
 }
 
-const selectedInquiries = ref([])
+const selectedLeads = ref([])
 const searchQuery = ref('')
 let searchTimeout = null
 
@@ -445,38 +445,38 @@ const onSearch = (e) => {
 }
 
 // Single delete confirmation
-const confirmDeleteAction = (inquiry) => {
+const confirmDeleteAction = (lead) => {
   confirm.require({
-    message: `Are you sure you want to delete inquiry #${inquiry.id}? Student records will be preserved.`,
-    header: 'Delete Inquiry',
+    message: `Are you sure you want to delete lead #${lead.id}? Student records will be preserved.`,
+    header: 'Delete Lead',
     icon: 'pi pi-exclamation-triangle',
     rejectLabel: 'Cancel',
     rejectProps: { severity: 'secondary', text: true },
     acceptLabel: 'Delete',
     acceptProps: { severity: 'danger' },
     accept: () => {
-      emit('delete', inquiry.id)
+      emit('delete', lead.id)
     }
   })
 }
 
 // Bulk delete confirmation
 const confirmDeleteSelected = () => {
-  if (!selectedInquiries.value || selectedInquiries.value.length === 0) return
+  if (!selectedLeads.value || selectedLeads.value.length === 0) return
 
-  const count = selectedInquiries.value.length
+  const count = selectedLeads.value.length
   confirm.require({
-    message: `Are you sure you want to delete ${count} selected ${count === 1 ? 'inquiry' : 'inquiries'}? Student records will be preserved.`,
-    header: 'Delete Selected Inquiries',
+    message: `Are you sure you want to delete ${count} selected ${count === 1 ? 'lead' : 'leads'}? Student records will be preserved.`,
+    header: 'Delete Selected Leads',
     icon: 'pi pi-exclamation-triangle',
     rejectLabel: 'Cancel',
     rejectProps: { severity: 'secondary', text: true },
     acceptLabel: 'Delete',
     acceptProps: { severity: 'danger' },
     accept: () => {
-      const idsToDelete = selectedInquiries.value.map(item => item.id)
+      const idsToDelete = selectedLeads.value.map(item => item.id)
       emit('delete-selected', idsToDelete)
-      selectedInquiries.value = []
+      selectedLeads.value = []
     }
   })
 }
@@ -584,13 +584,13 @@ const confirmDeleteSelected = () => {
 }
 
 /* ===== Compact DataTable Overrides matching StudentList ===== */
-.inquiry-datatable :deep(.p-datatable-header) {
+.lead-datatable :deep(.p-datatable-header) {
   padding: 0;
   background: var(--p-content-background);
   border-bottom: 1px solid var(--p-surface-200);
 }
 
-.inquiry-datatable :deep(.p-datatable-thead > tr > th) {
+.lead-datatable :deep(.p-datatable-thead > tr > th) {
   padding: 0.65rem 0.75rem;
   font-size: 0.75rem;
   font-weight: 500;
@@ -601,7 +601,7 @@ const confirmDeleteSelected = () => {
   white-space: nowrap;
 }
 
-.inquiry-datatable :deep(.p-datatable-tbody > tr > td) {
+.lead-datatable :deep(.p-datatable-tbody > tr > td) {
   padding: 0.55rem 0.75rem;
   font-size: 0.8125rem;
   border-bottom: 1px solid var(--p-surface-100);
@@ -610,29 +610,29 @@ const confirmDeleteSelected = () => {
   line-height: 1.4;
 }
 
-.inquiry-datatable :deep(.p-datatable-tbody > tr:hover) {
+.lead-datatable :deep(.p-datatable-tbody > tr:hover) {
   background: var(--p-surface-50) !important;
 }
 
-.inquiry-datatable :deep(.p-datatable-tbody > tr:nth-child(even)) {
+.lead-datatable :deep(.p-datatable-tbody > tr:nth-child(even)) {
   background: transparent;
 }
 
 /* Paginator compact */
-.inquiry-datatable :deep(.p-paginator) {
+.lead-datatable :deep(.p-paginator) {
   padding: 0.5rem 0.75rem;
   font-size: 0.8rem;
   border-top: 1px solid var(--p-surface-200);
   justify-content: center;
 }
 
-.inquiry-datatable :deep(.p-paginator .p-paginator-current) {
+.lead-datatable :deep(.p-paginator .p-paginator-current) {
   font-size: 0.8rem;
   color: var(--p-text-muted-color);
 }
 
 /* Frozen column styling */
-.inquiry-datatable :deep(.p-datatable-frozen-column) {
+.lead-datatable :deep(.p-datatable-frozen-column) {
   background: var(--p-content-background);
 }
 

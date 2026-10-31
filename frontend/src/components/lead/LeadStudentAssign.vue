@@ -73,7 +73,7 @@
         <p><i class="pi pi-info-circle"></i> No student assigned. Search an existing student above or click "Create New Student".</p>
       </div>
 
-      <!-- Inline Student Details Form (displayed inline just like Inquiry Details) -->
+      <!-- Inline Student Details Form (displayed inline just like Lead Details) -->
       <div v-else class="student-inline-fields">
         <!-- Section: Personal & Contact -->
         <div class="form-grid three-col">
@@ -194,7 +194,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import StudentForm from '@/components/student/StudentForm.vue'
-import { searchStudents } from '@/services/inquiryService'
+import { searchStudents } from '@/services/leadService'
 import { useStudent } from '@/composables/useStudent'
 import { formatDate } from '@/utils/dateUtils'
 import {
@@ -252,11 +252,11 @@ const studentOptions = computed(() =>
   allStudents.value.map(s => {
     const contactParts = [s.mobile, s.email].filter(Boolean)
     const contactStr = contactParts.length ? contactParts.join(' | ') : 'No contact'
-    const isAlreadyLinked = Boolean(s.inquiry && (!props.initialStudent || props.initialStudent.id !== s.id))
+    const isAlreadyLinked = Boolean(s.lead && (!props.initialStudent || props.initialStudent.id !== s.id))
     return {
       label: s.fullName
-        ? `${s.fullName} (${contactStr})${isAlreadyLinked ? ' - [Already linked to inquiry]' : ''}`
-        : `${contactStr}${isAlreadyLinked ? ' - [Already linked to inquiry]' : ''}`,
+        ? `${s.fullName} (${contactStr})${isAlreadyLinked ? ' - [Already linked to lead]' : ''}`
+        : `${contactStr}${isAlreadyLinked ? ' - [Already linked to lead]' : ''}`,
       value: s.id,
       disabled: isAlreadyLinked
     }
@@ -304,7 +304,7 @@ const fetchAllStudents = async () => {
     }
     allStudents.value = list
   } catch (err) {
-    console.error('Failed to load students for inquiry assignment:', err)
+    console.error('Failed to load students for lead assignment:', err)
     allStudents.value = props.initialStudent ? [props.initialStudent] : []
   } finally {
     loadingStudents.value = false
@@ -438,7 +438,7 @@ defineExpose({
   flex-direction: column;
 }
 
-/* Form Grid & Field matching InquiryForm exactly */
+/* Form Grid & Field matching LeadForm exactly */
 .student-inline-fields {
   display: flex;
   flex-direction: column;

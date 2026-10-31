@@ -42,7 +42,7 @@
 
     <div class="header-container">
       <h2>
-        <span v-if="step === 1">Upload Inquiry Excel File</span>
+        <span v-if="step === 1">Upload Lead Excel File</span>
         <span v-else-if="step === 2">Review & Verify Data Before Import</span>
         <span v-else>Import Completed</span>
       </h2>
@@ -52,12 +52,12 @@
         icon="pi pi-download" 
         severity="info" 
         size="small"
-        @click="downloadInquiryTemplate" 
+        @click="downloadLeadTemplate" 
       />
     </div>
 
     <!-- Step 1: Upload -->
-    <InquiryImportUpload 
+    <LeadImportUpload 
       v-if="step === 1" 
       ref="uploadRef"
       :isUploading="isUploading"
@@ -65,7 +65,7 @@
     />
 
     <!-- Step 2: Review -->
-    <InquiryImportReview 
+    <LeadImportReview 
       v-if="step === 2"
       :summary="summary"
       :parsedData="parsedData"
@@ -76,7 +76,7 @@
     />
 
     <!-- Step 3: Result -->
-    <InquiryImportResult 
+    <LeadImportResult 
       v-if="step === 3"
       :resultStats="resultStats"
       @reset="handleCancel"
@@ -88,11 +88,11 @@
   import { ref, computed } from 'vue'
   import Button from 'primevue/button'
   import { useToast } from 'primevue/usetoast'
-  import { downloadInquiryTemplate, previewImportInquiry, confirmImportInquiry } from '@/services/inquiryService'
+  import { downloadLeadTemplate, previewImportLead, confirmImportLead } from '@/services/leadService'
   
-  import InquiryImportUpload from './InquiryImportUpload.vue'
-  import InquiryImportReview from './InquiryImportReview.vue'
-  import InquiryImportResult from './InquiryImportResult.vue'
+  import LeadImportUpload from './LeadImportUpload.vue'
+  import LeadImportReview from './LeadImportReview.vue'
+  import LeadImportResult from './LeadImportResult.vue'
   
   const emit = defineEmits(['imported'])
   const toast = useToast()
@@ -115,7 +115,7 @@
   const handleUpload = async (file) => {
     isUploading.value = true
     try {
-      const response = await previewImportInquiry(file)
+      const response = await previewImportLead(file)
       importToken.value = response.data.importToken
       summary.value = response.data.summary
       parsedData.value = response.data.rows
@@ -133,7 +133,7 @@
     if (!importToken.value) return
     isConfirming.value = true
     try {
-      const response = await confirmImportInquiry(importToken.value)
+      const response = await confirmImportLead(importToken.value)
       resultStats.value = response.data
       toast.add({ severity: 'success', summary: 'Import Successful', detail: 'Processed successfully', life: 5000 })
       step.value = 3

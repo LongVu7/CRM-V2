@@ -5,8 +5,8 @@ export const getStringeeToken = async () => {
   return response.data;
 };
 
-export const checkCallReadiness = async (inquiryId) => {
-  const response = await api.get(`/inquiries/${inquiryId}/call-readiness`);
+export const checkCallReadiness = async (leadId) => {
+  const response = await api.get(`/leads/${leadId}/call-readiness`);
   return response.data;
 };
 
@@ -20,8 +20,8 @@ export const updateCall = async (callId, payload) => {
   return response.data;
 };
 
-export const getInquiryCalls = async (inquiryId) => {
-  const response = await api.get(`/inquiries/${inquiryId}/calls`);
+export const getLeadCalls = async (leadId) => {
+  const response = await api.get(`/leads/${leadId}/calls`);
   return response.data.data;
 };
 
@@ -35,6 +35,6 @@ export default {
   checkCallReadiness,
   createCall,
   updateCall,
-  getInquiryCalls,
+  getLeadCalls,
   getAllCalls
 };

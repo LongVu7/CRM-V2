@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { getInquiryOptions } from '@/services/inquiryService'
+import { getLeadOptions } from '@/services/leadService'
 
 export function useStatusData() {
   const interactions = ref([])
@@ -12,7 +12,7 @@ export function useStatusData() {
   const fetchInteractions = async () => {
     loadingInteractions.value = true
     try {
-      const data = await getInquiryOptions()
+      const data = await getLeadOptions()
       interactions.value = data.statuses || []
     } catch {
       interactions.value = []

@@ -1,49 +1,49 @@
 import api from '@/services/apiClient'
 
-const prefix = '/inquiries'
+const prefix = '/leads'
 
-export const getAllInquiries = async (params = {}) => {
+export const getAllLeads = async (params = {}) => {
   const response = await api.get(`${prefix}/`, { params })
   return response.data
 }
 
-export const getInquiryById = async (id) => {
+export const getLeadById = async (id) => {
   const response = await api.get(`${prefix}/${id}`)
   return response.data.data
 }
 
-export const getInquiryStatusHistory = async (id) => {
+export const getLeadStatusHistory = async (id) => {
   const response = await api.get(`${prefix}/${id}/status-history`)
   return response.data
 }
 
-export const createInquiry = async (data) => {
+export const createLead = async (data) => {
   const response = await api.post(`${prefix}/`, data)
   return response.data
 }
 
-export const updateInquiry = async (id, data) => {
+export const updateLead = async (id, data) => {
   const response = await api.put(`${prefix}/${id}`, data)
   return response.data
 }
 
-export const deleteInquiry = async (id) => {
+export const deleteLead = async (id) => {
   const response = await api.delete(`${prefix}/${id}`)
   return response.data
 }
 
-export const deleteInquiries = async (ids = []) => {
+export const deleteLeads = async (ids = []) => {
   return Promise.all(ids.map(id => api.delete(`${prefix}/${id}`)))
 }
 
 
-export const unassignStudent = async (inquiryId, studentId) => {
-  const response = await api.delete(`${prefix}/${inquiryId}/assign-student`, { data: { studentId } })
+export const unassignStudent = async (leadId, studentId) => {
+  const response = await api.delete(`${prefix}/${leadId}/assign-student`, { data: { studentId } })
   return response.data
 }
 
-export const assignStudent = async (inquiryId, studentId) => {
-  const response = await api.put(`${prefix}/${inquiryId}/assign-student`, { studentId })
+export const assignStudent = async (leadId, studentId) => {
+  const response = await api.put(`${prefix}/${leadId}/assign-student`, { studentId })
   return response.data
 }
 
@@ -59,19 +59,19 @@ export const searchStudents = async (query = '') => {
   return response.data.results
 }
 
-export const downloadInquiryTemplate = async () => {
+export const downloadLeadTemplate = async () => {
   const response = await api.get(`${prefix}/import/template`, { responseType: 'blob' })
   const url = window.URL.createObjectURL(new Blob([response.data]))
   const link = document.createElement('a')
   link.href = url
-  link.setAttribute('download', 'inquiry_import_template.xlsx')
+  link.setAttribute('download', 'lead_import_template.xlsx')
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
   window.URL.revokeObjectURL(url)
 }
 
-export const previewImportInquiry = async (file) => {
+export const previewImportLead = async (file) => {
   const formData = new FormData()
   formData.append('file', file)
   const response = await api.post(`${prefix}/import/preview`, formData, {
@@ -80,12 +80,12 @@ export const previewImportInquiry = async (file) => {
   return response.data
 }
 
-export const confirmImportInquiry = async (importToken) => {
+export const confirmImportLead = async (importToken) => {
   const response = await api.post(`${prefix}/import/confirm`, { importToken })
   return response.data
 }
 
-export const exportInquiries = async (paramsObj = {}) => {
+export const exportLeads = async (paramsObj = {}) => {
   const response = await api.get(`${prefix}/export`, {
     params: paramsObj,
     responseType: 'blob'
@@ -93,7 +93,7 @@ export const exportInquiries = async (paramsObj = {}) => {
   return response.data
 }
 
-export const getInquiryOptions = async () => {
+export const getLeadOptions = async () => {
   const response = await api.get(`${prefix}/options`)
   return response.data.data
 }

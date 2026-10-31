@@ -244,14 +244,14 @@ const downloadTemplate = (req, res) => {
   try {
     const buffer = leadImportService.generateTemplate();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="inquiry_import_template.xlsx"');
+    res.setHeader('Content-Disposition', 'attachment; filename="lead_import_template.xlsx"');
     res.send(buffer);
   } catch (error) {
     handleError(res, error);
   }
 };
 
-const previewImportInquiry = async (req, res) => {
+const previewImportLead = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
@@ -262,7 +262,7 @@ const previewImportInquiry = async (req, res) => {
     // Clean up uploaded file
     if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
 
-    const result = await leadImportService.previewImportInquiry(parsedData, req.user.accountId);
+    const result = await leadImportService.previewImportLead(parsedData, req.user.accountId);
 
     res.status(200).json({
       message: 'Preview generated successfully',
@@ -276,14 +276,14 @@ const previewImportInquiry = async (req, res) => {
   }
 };
 
-const confirmImportInquiry = async (req, res) => {
+const confirmImportLead = async (req, res) => {
   try {
     const { importToken } = req.body;
     if (!importToken) {
       return res.status(400).json({ error: 'importToken is required' });
     }
 
-    const result = await leadImportService.confirmImportInquiry(importToken, req.user.accountId);
+    const result = await leadImportService.confirmImportLead(importToken, req.user.accountId);
 
     res.status(200).json({
       message: 'Import confirmed successfully',
@@ -313,12 +313,12 @@ const importFromGoogleSheets = async (req, res) => {
 
     const results = await syncGoogleSheetsToLeads();
     const totalStudents = results.reduce((acc, r) => acc + (r.newStudentsCreated || 0), 0);
-    const totalInquiries = results.reduce((acc, r) => acc + (r.newInquiriesForExisting || 0), 0);
+    const totalLeads = results.reduce((acc, r) => acc + (r.newLeadsForExisting || 0), 0);
     const totalUpdated = results.reduce((acc, r) => acc + (r.existingStudentsUpdated || 0), 0);
     const totalSkipped = results.reduce((acc, r) => acc + (r.skipped || 0), 0);
 
     res.status(200).json({
-      message: `Google Sheets sync completed: ${totalStudents} new student(s), ${totalInquiries} new lead(s) created, ${totalUpdated} student(s) updated (${totalSkipped} skipped).`,
+      message: `Google Sheets sync completed: ${totalStudents} new student(s), ${totalLeads} new lead(s) created, ${totalUpdated} student(s) updated (${totalSkipped} skipped).`,
       data: results
     });
   } catch (error) {
@@ -397,8 +397,8 @@ module.exports = {
   searchStudents,
   searchAccounts,
   downloadTemplate,
-  previewImportInquiry,
-  confirmImportInquiry,
+  previewImportLead,
+  confirmImportLead,
   importFromGoogleSheets,
   getLeadOptions,
   getLeadStatusHistory,
@@ -409,15 +409,15 @@ module.exports = {
   distributeLeads,
 
   // Compatibility aliases
-  getAllInquiries: getAllLeads,
-  exportInquiries: exportLeads,
-  getInquiryById: getLeadById,
-  createInquiry: createLead,
-  updateInquiry: updateLead,
-  deleteInquiry: deleteLead,
-  assignStudentToInquiry: assignStudentToLead,
-  unassignStudentFromInquiry: unassignStudentFromLead,
-  assignAccountToInquiry: assignAccountToLead,
-  getInquiryOptions: getLeadOptions,
-  getInquiryStatusHistory: getLeadStatusHistory
+  getAllLeads,
+  exportLeads,
+  getLeadById,
+  createLead,
+  updateLead,
+  deleteLead,
+  assignStudentToLead,
+  unassignStudentFromLead,
+  assignAccountToLead,
+  getLeadOptions,
+  getLeadStatusHistory
 };

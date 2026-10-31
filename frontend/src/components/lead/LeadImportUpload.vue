@@ -32,7 +32,7 @@ defineExpose({ clear })
   <div>
     <div class="import-info">
       <i class="pi pi-info-circle"></i>
-      <p>Upload a single Excel file (<code>.xlsx</code>, <code>.xls</code>) matching the official template. The system will create new students or map inquiries to existing students.</p>
+      <p>Upload a single Excel file (<code>.xlsx</code>, <code>.xls</code>) matching the official template. The system will create new students or map leads to existing students.</p>
     </div>
     <FileUpload
       name="excelFile"

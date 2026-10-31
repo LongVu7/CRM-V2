@@ -132,14 +132,14 @@
           </template>
         </Column>
 
-        <Column field="inquiry" header="Inquiry" style="min-width: 110px">
+        <Column field="lead" header="Lead" style="min-width: 110px">
           <template #body="{ data }">
             <RouterLink
-              v-if="data.inquiry?.id"
-              :to="`/inquiries/${data.inquiry.id}`"
+              v-if="data.lead?.id"
+              :to="`/leads/${data.lead.id}`"
               class="p-button p-button-text p-button-sm p-0 text-primary"
             >
-              #{{ data.inquiry.id }}
+              #{{ data.lead.id }}
             </RouterLink>
             <span v-else class="text-500">—</span>
           </template>

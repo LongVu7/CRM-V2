@@ -2,7 +2,7 @@
   <div class="home">
     <div class="home-header">
       <h1>Welcome to Admissions CRM</h1>
-      <p class="subtitle">Manage student records, track inquiries, and optimize your recruitment workflow.</p>
+      <p class="subtitle">Manage student records, track leads, and optimize your recruitment workflow.</p>
     </div>
 
     <div class="stats-grid">
@@ -20,16 +20,16 @@
         <i class="pi pi-arrow-right stat-arrow"></i>
       </div>
 
-      <!-- Inquiries Card -->
-      <div class="stat-card" @click="router.push('/inquiries')">
-        <div class="stat-icon stat-icon--inquiries">
+      <!-- Leads Card -->
+      <div class="stat-card" @click="router.push('/leads')">
+        <div class="stat-icon stat-icon--leads">
           <i class="pi pi-ticket"></i>
         </div>
         <div class="stat-body">
           <span class="stat-value" :class="{ loading: loading }">
-            {{ loading ? '...' : inquiryCount }}
+            {{ loading ? '...' : leadCount }}
           </span>
-          <span class="stat-label">Open Inquiries</span>
+          <span class="stat-label">Open Leads</span>
         </div>
         <i class="pi pi-arrow-right stat-arrow"></i>
       </div>
@@ -65,7 +65,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import { getAllStudents } from '@/services/studentService'
-import { getAllInquiries } from '@/services/inquiryService'
+import { getAllLeads } from '@/services/leadService'
 import { getAllAccounts } from '@/services/accountService'
 import { useAuthStore } from '@/stores/auth'
 import { useAbility } from '@casl/vue'
@@ -74,7 +74,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const loading = ref(true)
 const studentCount = ref(0)
-const inquiryCount = ref(0)
+const leadCount = ref(0)
 const accountCount = ref(0)
 const { can } = useAbility()
 
@@ -86,8 +86,8 @@ onMounted(async () => {
     } catch { }
 
     try {
-      const inquiriesRes = await getAllInquiries()
-      inquiryCount.value = inquiriesRes.pagination?.totalCount || 0
+      const leadsRes = await getAllLeads()
+      leadCount.value = leadsRes.pagination?.totalCount || 0
     } catch { }
 
     if (can('read', 'account')) {
@@ -182,7 +182,7 @@ onMounted(async () => {
   color: #fff;
 }
 
-.stat-icon--inquiries {
+.stat-icon--leads {
   background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   color: #fff;
 }

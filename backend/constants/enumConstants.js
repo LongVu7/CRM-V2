@@ -128,7 +128,7 @@ const PROVINCE_ALIASES = {
 };
 // !--- End ---!
 
-// Province group rules for inquiry sync 
+// Province group rules for lead sync 
 const PROVINCE_GROUP_RULES = {
   // ── Tier 1: HO_CHI_MINH ──
   'thanh pho ho chi minh': 'HO_CHI_MINH',

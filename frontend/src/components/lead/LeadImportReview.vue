@@ -38,9 +38,9 @@ const viewRowDetails = (row) => {
 
 const getClassificationLabel = (cls) => {
   switch (cls) {
-    case 'READY_NEW_STUDENT_AND_INQUIRY': return 'New Student'
-    case 'READY_EXISTING_STUDENT_NEW_INQUIRY': return 'Existing Student'
-    case 'EXISTING_INQUIRY': return 'Skip (Exists)'
+    case 'READY_NEW_STUDENT_AND_LEAD': return 'New Student'
+    case 'READY_EXISTING_STUDENT_NEW_LEAD': return 'Existing Student'
+    case 'EXISTING_LEAD': return 'Skip (Exists)'
     case 'DUPLICATE_IN_FILE': return 'Duplicate'
     case 'MAPPING_ISSUE': return 'Mapping Error'
     case 'INVALID': return 'Invalid'
@@ -50,9 +50,9 @@ const getClassificationLabel = (cls) => {
 
 const getClassificationSeverity = (cls) => {
   switch (cls) {
-    case 'READY_NEW_STUDENT_AND_INQUIRY': return 'success'
-    case 'READY_EXISTING_STUDENT_NEW_INQUIRY': return 'info'
-    case 'EXISTING_INQUIRY': return 'warning'
+    case 'READY_NEW_STUDENT_AND_LEAD': return 'success'
+    case 'READY_EXISTING_STUDENT_NEW_LEAD': return 'info'
+    case 'EXISTING_LEAD': return 'warning'
     case 'DUPLICATE_IN_FILE': return 'warning'
     case 'MAPPING_ISSUE': return 'danger'
     case 'INVALID': return 'danger'
@@ -68,16 +68,16 @@ const getClassificationSeverity = (cls) => {
         <span class="count">{{ summary.total }}</span>
         <span class="label">Total Rows</span>
       </div>
-      <div class="summary-card text-green" title="New Student + Inquiry">
+      <div class="summary-card text-green" title="New Student + Lead">
         <span class="count">{{ summary.readyNew }}</span>
         <span class="label">Ready (New)</span>
       </div>
-      <div class="summary-card text-blue" title="Existing Student + New Inquiry">
+      <div class="summary-card text-blue" title="Existing Student + New Lead">
         <span class="count">{{ summary.readyExisting }}</span>
         <span class="label">Ready (Existing)</span>
       </div>
-      <div class="summary-card text-orange" title="Existing Inquiry (Skipped)">
-        <span class="count">{{ summary.existingInquiry }}</span>
+      <div class="summary-card text-orange" title="Existing Lead (Skipped)">
+        <span class="count">{{ summary.existingLead }}</span>
         <span class="label">Skipped</span>
       </div>
       <div class="summary-card text-red" title="Mapping/Validation Issues">
@@ -157,7 +157,7 @@ const getClassificationSeverity = (cls) => {
             <div class="field"><label>Class:</label> <span>{{ selectedRow.class }}</span></div>
           </div>
           <div class="detail-group">
-            <h4>Inquiry Details</h4>
+            <h4>Lead Details</h4>
             <div class="field"><label>Assigned To:</label> <span>{{ selectedRow.assignedTo }}</span></div>
             <div class="field"><label>Interaction:</label> <span>{{ selectedRow.statusInteraction }}</span></div>
             <div class="field"><label>General:</label> <span>{{ selectedRow.statusGeneral }}</span></div>

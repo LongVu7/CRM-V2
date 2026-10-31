@@ -2,36 +2,36 @@
 import { ref, shallowRef, watch } from 'vue'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
-import { useInquiry } from '@/composables/useInquiry'
+import { useLead } from '@/composables/useLead'
 import { formatDate, formatDateTime } from '@/utils/dateUtils'
 import {
   getStatusLevel,
   getSourceLevel,
   formatEventNames,
   getCompensationLabel
-} from '@/utils/inquiryLabels'
+} from '@/utils/leadLabels'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
-  inquiryId: { type: [Number, String], default: null }
+  leadId: { type: [Number, String], default: null }
 })
 
 defineEmits(['update:visible'])
 
-const { fetchInquiryById } = useInquiry()
+const { fetchLeadById } = useLead()
 
-const inquiryData = ref(null)
+const leadData = ref(null)
 const loading = shallowRef(false)
 
 watch(
   () => props.visible,
   async (isVisible) => {
-    if (isVisible && props.inquiryId) {
+    if (isVisible && props.leadId) {
       loading.value = true
       try {
-        inquiryData.value = await fetchInquiryById(props.inquiryId)
+        leadData.value = await fetchLeadById(props.leadId)
       } catch {
-        inquiryData.value = null
+        leadData.value = null
       } finally {
         loading.value = false
       }
@@ -44,7 +44,7 @@ watch(
   <Dialog
     :visible="visible"
     @update:visible="$emit('update:visible', $event)"
-    header="Inquiry Details"
+    header="Lead Details"
     modal
     :style="{ width: '65vw' }"
     maximizable
@@ -52,12 +52,12 @@ watch(
   >
     <div v-if="loading" class="loading-state">
       <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
-      <p>Loading inquiry data...</p>
+      <p>Loading lead data...</p>
     </div>
 
-    <div v-else-if="!inquiryData" class="empty-state">
+    <div v-else-if="!leadData" class="empty-state">
       <i class="pi pi-exclamation-triangle"></i>
-      <h3 class="empty-title">Inquiry Not Found</h3>
+      <h3 class="empty-title">Lead Not Found</h3>
     </div>
 
     <div v-else class="show-content">
@@ -67,15 +67,15 @@ watch(
         <div class="field-grid field-grid--three-col">
           <div class="field-item">
             <span class="field-label">Interaction Status</span>
-            <span class="field-value">{{ getStatusLevel(inquiryData.statusData, 'interaction') }}</span>
+            <span class="field-value">{{ getStatusLevel(leadData.statusData, 'interaction') }}</span>
           </div>
           <div class="field-item">
             <span class="field-label">General Status</span>
-            <span class="field-value">{{ getStatusLevel(inquiryData.statusData, 'general') }}</span>
+            <span class="field-value">{{ getStatusLevel(leadData.statusData, 'general') }}</span>
           </div>
           <div class="field-item">
             <span class="field-label">Detail Status</span>
-            <span class="field-value">{{ getStatusLevel(inquiryData.statusData, 'detail') }}</span>
+            <span class="field-value">{{ getStatusLevel(leadData.statusData, 'detail') }}</span>
           </div>
         </div>
       </div>
@@ -86,25 +86,25 @@ watch(
         <div class="field-grid field-grid--three-col">
           <div class="field-item">
             <span class="field-label">Source</span>
-            <span class="field-value">{{ getSourceLevel(inquiryData.sourceData, 'source') }}</span>
+            <span class="field-value">{{ getSourceLevel(leadData.sourceData, 'source') }}</span>
           </div>
           <div class="field-item">
             <span class="field-label">Source Detail</span>
-            <span class="field-value">{{ getSourceLevel(inquiryData.sourceData, 'sourceDetail') }}</span>
+            <span class="field-value">{{ getSourceLevel(leadData.sourceData, 'sourceDetail') }}</span>
           </div>
           <div class="field-item">
             <span class="field-label">Approach Method</span>
-            <span class="field-value">{{ getSourceLevel(inquiryData.sourceData, 'approachMethod') }}</span>
+            <span class="field-value">{{ getSourceLevel(leadData.sourceData, 'approachMethod') }}</span>
           </div>
         </div>
         <div class="field-grid" style="margin-top: 1rem;">
           <div class="field-item">
             <span class="field-label">Data Received</span>
-            <span class="field-value">{{ formatDate(inquiryData.dataReceived) }}</span>
+            <span class="field-value">{{ formatDate(leadData.dataReceived) }}</span>
           </div>
           <div class="field-item">
             <span class="field-label">Priority</span>
-            <span class="field-value">{{ inquiryData.priority || '—' }}</span>
+            <span class="field-value">{{ leadData.priority || '—' }}</span>
           </div>
         </div>
       </div>
@@ -112,7 +112,7 @@ watch(
       <!-- Description -->
       <div class="show-section">
         <h3 class="section-title"><i class="pi pi-align-left"></i> Description</h3>
-        <p class="description-text">{{ inquiryData.description || '—' }}</p>
+        <p class="description-text">{{ leadData.description || '—' }}</p>
       </div>
 
       
@@ -122,54 +122,54 @@ watch(
         <div class="field-grid">
           <div class="field-item">
             <span class="field-label">Ngày tạo</span>
-            <span class="field-value">{{ formatDate(inquiryData.createDate) }}</span>
+            <span class="field-value">{{ formatDate(leadData.createDate) }}</span>
           </div>
           <div class="field-item">
             <span class="field-label">Ngày tương tác</span>
-            <span class="field-value">{{ formatDate(inquiryData.interactionAt) }}</span>
+            <span class="field-value">{{ formatDate(leadData.interactionAt) }}</span>
           </div>
           <div class="field-item">
             <span class="field-label">Số lần gọi</span>
-            <span class="field-value">{{ inquiryData.callCount != null ? `${inquiryData.callCount} lần` : '—' }}</span>
+            <span class="field-value">{{ leadData.callCount != null ? `${leadData.callCount} lần` : '—' }}</span>
           </div>
           <div class="field-item">
             <span class="field-label">Tên sự kiện tham gia</span>
-            <span class="field-value">{{ formatEventNames(inquiryData.eventNames) }}</span>
+            <span class="field-value">{{ formatEventNames(leadData.eventNames) }}</span>
           </div>
           <div class="field-item">
             <span class="field-label">Báo bù</span>
-            <span class="field-value">{{ getCompensationLabel(inquiryData.compensationStatus) }}</span>
+            <span class="field-value">{{ getCompensationLabel(leadData.compensationStatus) }}</span>
           </div>
           <div class="field-item">
             <span class="field-label">File ghi âm cuộc gọi</span>
-            <span class="field-value field-value--muted">{{ inquiryData.recordFile || '—' }}</span>
+            <span class="field-value field-value--muted">{{ leadData.recordFile || '—' }}</span>
           </div>
         </div>
-        <div v-if="inquiryData.callLog" class="field-item" style="margin-top: 1rem">
+        <div v-if="leadData.callLog" class="field-item" style="margin-top: 1rem">
           <span class="field-label">Lịch sử cuộc gọi</span>
-          <p class="description-text">{{ inquiryData.callLog }}</p>
+          <p class="description-text">{{ leadData.callLog }}</p>
         </div>
       </div>
       <div class="show-section">
         <h3 class="section-title"><i class="pi pi-briefcase"></i> Assigned Account</h3>
-        <div v-if="inquiryData.assignedTo" class="entity-info">
+        <div v-if="leadData.assignedTo" class="entity-info">
           <div class="entity-avatar"><i class="pi pi-id-card"></i></div>
           <div class="entity-details">
-            <h4 class="entity-name">{{ inquiryData.assignedTo.fullName }}</h4>
-            <p class="entity-meta">{{ inquiryData.assignedTo.email || 'No email' }}</p>
+            <h4 class="entity-name">{{ leadData.assignedTo.fullName }}</h4>
+            <p class="entity-meta">{{ leadData.assignedTo.email || 'No email' }}</p>
           </div>
         </div>
         <span v-else class="field-value field-value--muted">No account assigned</span>
       </div>
 
       <!-- Student Assignment -->
-      <div v-if="$can('assign', 'inquiry')" class="show-section">
+      <div v-if="$can('assign', 'lead')" class="show-section">
         <h3 class="section-title"><i class="pi pi-user"></i> Student Assignment</h3>
-        <div v-if="inquiryData.student" class="entity-info">
+        <div v-if="leadData.student" class="entity-info">
           <div class="entity-avatar"><i class="pi pi-user"></i></div>
           <div class="entity-details">
-            <h4 class="entity-name">{{ inquiryData.student.fullName }}</h4>
-            <p class="entity-meta">{{ inquiryData.student.email || 'No email' }} | {{ inquiryData.student.mobile || 'No phone' }}</p>
+            <h4 class="entity-name">{{ leadData.student.fullName }}</h4>
+            <p class="entity-meta">{{ leadData.student.email || 'No email' }} | {{ leadData.student.mobile || 'No phone' }}</p>
           </div>
         </div>
         <span v-else class="field-value field-value--muted">No student assigned</span>
@@ -182,11 +182,11 @@ watch(
         <div class="field-grid">
           <div class="field-item">
             <span class="field-label">Created</span>
-            <span class="field-value field-value--muted">{{ formatDateTime(inquiryData.createdAt) }}</span>
+            <span class="field-value field-value--muted">{{ formatDateTime(leadData.createdAt) }}</span>
           </div>
           <div class="field-item">
             <span class="field-label">Updated</span>
-            <span class="field-value field-value--muted">{{ formatDateTime(inquiryData.updatedAt) }}</span>
+            <span class="field-value field-value--muted">{{ formatDateTime(leadData.updatedAt) }}</span>
           </div>
         </div>
       </div>

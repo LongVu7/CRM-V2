@@ -215,11 +215,11 @@ const openRecipientsForActivity = (activity) => {
     showRecipientDialog.value = true
 }
 
-const handleRecipientsAdded = async (inquiryIds) => {
+const handleRecipientsAdded = async (leadIds) => {
     if (!selectedActivityForRecipients.value) return
     recipientLoading.value = true
     try {
-        await addActivityRecipients(campaignId, selectedActivityForRecipients.value.id, inquiryIds)
+        await addActivityRecipients(campaignId, selectedActivityForRecipients.value.id, leadIds)
         toast.add({ severity: 'success', summary: 'Success', detail: 'Recipients added', life: 3000 })
         showRecipientDialog.value = false
         await loadData()

@@ -1,7 +1,7 @@
 <template>
   <div class="dashboard-summary">
     <div class="stat-card">
-      <div class="stat-title">Total Inquiries</div>
+      <div class="stat-title">Total Leads</div>
       <div class="stat-value">{{ summary?.total || 0 }}</div>
     </div>
     <div class="stat-card">

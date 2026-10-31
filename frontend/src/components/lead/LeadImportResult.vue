@@ -5,12 +5,12 @@
     
     <div class="result-stats">
       <div class="stat-row">
-        <span>New Students & Inquiries Created:</span>
+        <span>New Students & Leads Created:</span>
         <strong>{{ resultStats.newStudentsCreated }}</strong>
       </div>
       <div class="stat-row">
-        <span>Inquiries Created for Existing Students:</span>
-        <strong>{{ resultStats.newInquiriesForExisting }}</strong>
+        <span>Leads Created for Existing Students:</span>
+        <strong>{{ resultStats.newLeadsForExisting }}</strong>
       </div>
       <div class="stat-row">
         <span>Rows Skipped:</span>
@@ -20,7 +20,7 @@
     
     <div class="result-actions">
       <Button label="Import Another File" icon="pi pi-refresh" severity="secondary" outlined @click="emit('reset')" />
-      <Button label="Go to Inquiries" icon="pi pi-arrow-right" iconPos="right" @click="router.push('/inquiries')" />
+      <Button label="Go to Leads" icon="pi pi-arrow-right" iconPos="right" @click="router.push('/leads')" />
     </div>
   </div>
 </template>

@@ -149,7 +149,7 @@ export function useStringee() {
   /**
    * Initiate an outbound App-to-App call to a student
    */
-  const makeCall = async ({ inquiryId, studentId, calleeId, destinationNumber }) => {
+  const makeCall = async ({ leadId, studentId, calleeId, destinationNumber }) => {
     // Check microphone availability and permission
     if (navigator?.mediaDevices?.getUserMedia) {
       try {
@@ -178,7 +178,7 @@ export function useStringee() {
         calleeId: String(calleeId),
         destinationNumber: destinationNumber || String(calleeId),
         direction: 'OUTBOUND',
-        inquiryId: inquiryId ? Number(inquiryId) : undefined,
+        leadId: leadId ? Number(leadId) : undefined,
         studentId: studentId ? Number(studentId) : undefined
       });
       currentCallRecord.value = record;

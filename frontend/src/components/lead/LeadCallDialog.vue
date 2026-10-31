@@ -122,7 +122,7 @@ import { updateCall } from '@/services/voipService';
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
-  inquiryId: { type: [Number, String], required: true },
+  leadId: { type: [Number, String], required: true },
   student: { type: Object, default: () => ({}) },
   targetPhone: { type: String, default: '' }
 });

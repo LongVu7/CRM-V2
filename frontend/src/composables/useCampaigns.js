@@ -116,11 +116,11 @@ export function useCampaigns() {
     }
   }
 
-  const addActivityRecipients = async (campaignId, activityId, inquiryIds) => {
+  const addActivityRecipients = async (campaignId, activityId, leadIds) => {
     loading.value = true
     error.value = null
     try {
-      return await api.addActivityRecipients(campaignId, activityId, inquiryIds)
+      return await api.addActivityRecipients(campaignId, activityId, leadIds)
     } catch (err) {
       error.value = err.response?.data?.details || err.response?.data?.error || 'Failed to add recipients'
       throw err

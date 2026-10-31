@@ -1,5 +1,5 @@
 <template>
-  <div class="inquiry-form-fields">
+  <div class="lead-form-fields">
     <!-- Status Data Cascading Dropdowns -->
     <div class="form-grid three-col">
       <div class="form-field">
@@ -120,7 +120,7 @@ const callCountOptions = Array.from({ length: 10 }, (_, i) => ({
   value: i + 1
 }))
 
-import { eventOptions, compensationOptions, priorityOptions } from '@/constants/inquiry'
+import { eventOptions, compensationOptions, priorityOptions } from '@/constants/lead'
 const props = defineProps({
   modelValue: { type: Object, required: true },
   initialSourceDataId: { type: Number, default: null },
@@ -307,7 +307,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.inquiry-form-fields {
+.lead-form-fields {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
