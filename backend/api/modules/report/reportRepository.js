@@ -57,7 +57,7 @@ resolved_status AS (
   LEFT JOIN status_data general ON leaf.parent_id = general.id
   LEFT JOIN status_data interaction ON general.parent_id = interaction.id
 ),
-InquiryBase AS (
+LeadBase AS (
   SELECT 
     i.id,
     i.created_at,
@@ -71,16 +71,16 @@ InquiryBase AS (
     rs.general_status,
     se.province_group AS resolved_region_group,
     sc.old_province_id AS resolved_old_province_id
-  FROM inquiry i
+  FROM lead i
   LEFT JOIN student st ON i.student_id = st.id
   LEFT JOIN student_education se ON st.id = se.student_id
   LEFT JOIN school sc ON se.school_id = sc.id
   LEFT JOIN resolved_status rs ON i.status_data_id = rs.status_data_id
   WHERE ${scopeCondition}
 ),
-FilteredInquiry AS (
+FilteredLead AS (
   SELECT *
-  FROM InquiryBase
+  FROM LeadBase
   WHERE 1=1
     ${filterCondition}
 )
@@ -117,7 +117,7 @@ const getSummaryCounts = async (scope, { fromInstant, toExclusiveInstant }, filt
           AND fi.nb_at IS NOT NULL
           AND fi.nb_at < ${toExclusiveInstant}::timestamptz
       )::int AS nb
-    FROM FilteredInquiry fi;
+    FROM FilteredLead fi;
   `;
   return res[0] || { total: 0, processed: 0, interacted: 0, nb: 0 };
 };
@@ -131,18 +131,18 @@ const getTimelineCounts = async (scope, { fromInstant, toExclusiveInstant }, fil
     ${cte}
     SELECT
       to_char(event_time AT TIME ZONE ${BUSINESS_TZ}, 'YYYY-MM') AS month_val,
-      COUNT(DISTINCT inquiry_id) FILTER (WHERE is_processed)::int AS processed,
-      COUNT(DISTINCT inquiry_id) FILTER (WHERE is_interacted)::int AS interacted,
-      COUNT(DISTINCT inquiry_id) FILTER (WHERE is_nb)::int AS nb
+      COUNT(DISTINCT lead_id) FILTER (WHERE is_processed)::int AS processed,
+      COUNT(DISTINCT lead_id) FILTER (WHERE is_interacted)::int AS interacted,
+      COUNT(DISTINCT lead_id) FILTER (WHERE is_nb)::int AS nb
     FROM (
       SELECT
-        ish.inquiry_id,
+        ish.lead_id,
         ish.changed_at AS event_time,
         (rs.interaction_status IN ('interacted', 'not_interacted', 'not_interested', 'wrong_number')) AS is_processed,
         (rs.interaction_status = 'interacted') AS is_interacted,
         (rs.general_status = 'payment_completed_nb') AS is_nb
-      FROM inquiry_status_history ish
-      JOIN FilteredInquiry fi ON fi.id = ish.inquiry_id
+      FROM lead_status_history ish
+      JOIN FilteredLead fi ON fi.id = ish.lead_id
       JOIN resolved_status rs ON rs.status_data_id = ish.new_status_id
       WHERE ish.changed_at >= ${fromInstant}::timestamptz
         AND ish.changed_at < ${toExclusiveInstant}::timestamptz
@@ -154,51 +154,51 @@ const getTimelineCounts = async (scope, { fromInstant, toExclusiveInstant }, fil
       UNION ALL
 
       SELECT
-        fi.id AS inquiry_id,
+        fi.id AS lead_id,
         fi.first_processed_at AS event_time,
         TRUE AS is_processed,
         FALSE AS is_interacted,
         FALSE AS is_nb
-      FROM FilteredInquiry fi
+      FROM FilteredLead fi
       WHERE fi.first_processed_at IS NOT NULL
         AND fi.first_processed_at >= ${fromInstant}::timestamptz
         AND fi.first_processed_at < ${toExclusiveInstant}::timestamptz
         AND NOT EXISTS (
-          SELECT 1 FROM inquiry_status_history ish WHERE ish.inquiry_id = fi.id
+          SELECT 1 FROM lead_status_history ish WHERE ish.lead_id = fi.id
         )
 
       UNION ALL
 
       SELECT
-        fi.id AS inquiry_id,
+        fi.id AS lead_id,
         fi.first_interacted_at AS event_time,
         FALSE AS is_processed,
         TRUE AS is_interacted,
         FALSE AS is_nb
-      FROM FilteredInquiry fi
+      FROM FilteredLead fi
       WHERE fi.first_interacted_at IS NOT NULL
         AND fi.first_interacted_at >= ${fromInstant}::timestamptz
         AND fi.first_interacted_at < ${toExclusiveInstant}::timestamptz
         AND fi.interaction_status = 'interacted'
         AND NOT EXISTS (
-          SELECT 1 FROM inquiry_status_history ish WHERE ish.inquiry_id = fi.id
+          SELECT 1 FROM lead_status_history ish WHERE ish.lead_id = fi.id
         )
 
       UNION ALL
 
       SELECT
-        fi.id AS inquiry_id,
+        fi.id AS lead_id,
         fi.nb_at AS event_time,
         FALSE AS is_processed,
         FALSE AS is_interacted,
         TRUE AS is_nb
-      FROM FilteredInquiry fi
+      FROM FilteredLead fi
       WHERE fi.nb_at IS NOT NULL
         AND fi.nb_at >= ${fromInstant}::timestamptz
         AND fi.nb_at < ${toExclusiveInstant}::timestamptz
         AND fi.general_status = 'payment_completed_nb'
         AND NOT EXISTS (
-          SELECT 1 FROM inquiry_status_history ish WHERE ish.inquiry_id = fi.id
+          SELECT 1 FROM lead_status_history ish WHERE ish.lead_id = fi.id
         )
     ) t
     GROUP BY month_val
@@ -249,7 +249,7 @@ const getAccountCounts = async (scope, { fromInstant, toExclusiveInstant }, filt
       ${Prisma.join(statusFilters, '')}
 
     FROM account a
-    INNER JOIN FilteredInquiry fi ON fi.assigned_to_id = a.id
+    INNER JOIN FilteredLead fi ON fi.assigned_to_id = a.id
     GROUP BY a.id, a.full_name
     ORDER BY a.full_name ASC;
   `;
@@ -322,7 +322,7 @@ const getMajorCounts = async (scope, { fromInstant, toExclusiveInstant }, filter
 
       ${Prisma.join(statusFilters, '')}
 
-    FROM FilteredInquiry fi
+    FROM FilteredLead fi
     JOIN student st ON fi.student_id = st.id
     JOIN specialized_register sr ON st.specialized_register_id = sr.id
     JOIN ResolvedMajor rm ON rm.base_id = COALESCE(sr.interested_major_id, sr.specific_major_id)
@@ -394,7 +394,7 @@ const getSourceCounts = async (scope, { fromInstant, toExclusiveInstant }, filte
 
       ${Prisma.join(statusFilters, '')}
 
-    FROM FilteredInquiry fi
+    FROM FilteredLead fi
     JOIN ResolvedSource rs ON rs.base_id = fi.source_data_id
     JOIN source_data p ON p.id = rs.source_id
     LEFT JOIN source_data s ON s.id = rs.source_detail_id
@@ -465,7 +465,7 @@ const getRegionCounts = async (scope, { fromInstant, toExclusiveInstant }, filte
 
       ${Prisma.join(statusFilters, '')}
 
-    FROM FilteredInquiry fi
+    FROM FilteredLead fi
     WHERE fi.resolved_region_group IS NOT NULL
     GROUP BY fi.resolved_region_group
     HAVING COUNT(DISTINCT fi.id) FILTER (

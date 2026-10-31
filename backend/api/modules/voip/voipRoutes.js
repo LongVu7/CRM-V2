@@ -45,9 +45,9 @@ router.all('/answer-url', (req, res) => {
   ]);
 });
 
-// ─── Inquiry Call Readiness & History
-router.get('/inquiries/:id/call-readiness', authenticate, validateParams(idParamSchema), voipController.getCallReadiness);
-router.get('/inquiries/:id/calls', authenticate, validateParams(idParamSchema), voipController.getInquiryCalls);
+// ─── Lead Call Readiness & History
+router.get('/leads/:id/call-readiness', authenticate, validateParams(idParamSchema), voipController.getCallReadiness);
+router.get('/leads/:id/calls', authenticate, validateParams(idParamSchema), voipController.getLeadCalls);
 
 // ─── Call Lifecycle Logging & Global History
 router.get('/calls', authenticate, voipController.getAllCalls);

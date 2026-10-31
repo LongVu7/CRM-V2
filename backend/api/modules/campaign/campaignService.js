@@ -138,7 +138,7 @@ const deleteActivity = async (activityId) => {
 
 // ─── Activity Recipients ───
 
-const addRecipients = async (activityId, inquiryIds = []) => {
+const addRecipients = async (activityId, leadIds = []) => {
   const activity = await prisma.campaignActivity.findUnique({
     where: { id: Number(activityId) }
   });
@@ -149,40 +149,40 @@ const addRecipients = async (activityId, inquiryIds = []) => {
     where: { activityId: Number(activityId) }
   });
 
-  const existingInquiryIds = existingRecipients.map(r => r.inquiryId);
+  const existingLeadIds = existingRecipients.map(r => r.leadId);
   
   // Determine which to remove and which to add
-  const toRemoveInquiryIds = existingInquiryIds.filter(id => !inquiryIds.includes(id));
-  const toAddInquiryIds = inquiryIds.filter(id => !existingInquiryIds.includes(id));
+  const toRemoveLeadIds = existingLeadIds.filter(id => !leadIds.includes(id));
+  const toAddLeadIds = leadIds.filter(id => !existingLeadIds.includes(id));
 
   // Remove unselected recipients
-  if (toRemoveInquiryIds.length > 0) {
+  if (toRemoveLeadIds.length > 0) {
     await prisma.campaignRecipient.deleteMany({
       where: {
         activityId: Number(activityId),
-        inquiryId: { in: toRemoveInquiryIds }
+        leadId: { in: toRemoveLeadIds }
       }
     });
   }
 
   // Add new recipients
-  if (toAddInquiryIds.length > 0) {
-    const inquiries = await prisma.inquiry.findMany({
-      where: { id: { in: toAddInquiryIds } },
+  if (toAddLeadIds.length > 0) {
+    const leads = await prisma.lead.findMany({
+      where: { id: { in: toAddLeadIds } },
       include: { student: true }
     });
 
-    const validInquiries = activity.type === 'EMAIL'
-      ? inquiries.filter(inq => inq.student?.email?.trim())
-      : inquiries;
+    const validLeads = activity.type === 'EMAIL'
+      ? leads.filter(lead => lead.student?.email?.trim())
+      : leads;
 
-    if (validInquiries.length > 0) {
-      const recipientsData = validInquiries.map(inq => ({
+    if (validLeads.length > 0) {
+      const recipientsData = validLeads.map(lead => ({
         activityId: Number(activityId),
-        inquiryId: inq.id,
-        email: inq.student?.email || null,
-        mobile: inq.student?.mobile || null,
-        fullName: inq.student?.fullName || null,
+        leadId: lead.id,
+        email: lead.student?.email || null,
+        mobile: lead.student?.mobile || null,
+        fullName: lead.student?.fullName || null,
         status: 'pending'
       }));
 

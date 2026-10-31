@@ -36,7 +36,12 @@ const activitySchema = z.object({
 const updateActivitySchema = activitySchema.partial();
 
 const activityRecipientSchema = z.object({
-  inquiryIds: z.array(z.coerce.number().int()).default([])
+  leadIds: z.array(z.coerce.number().int()).optional(),
+}).transform(data => {
+  const ids = data.leadIds || [];
+  return {
+    leadIds: ids
+  };
 });
 
 const campaignTemplateSchema = z.object({

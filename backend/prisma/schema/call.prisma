@@ -20,13 +20,13 @@ model Call {
   studentId         Int?          @map("student_id")
   student           Student?      @relation(fields: [studentId], references: [id], onDelete: SetNull)
 
-  inquiryId         Int?          @map("inquiry_id")
-  inquiry           Inquiry?      @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
+  leadId            Int?          @map("lead_id")
+  lead              Lead?         @relation(fields: [leadId], references: [id], onDelete: SetNull)
 
   createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt         DateTime      @default(now()) @map("updated_at") @db.Timestamptz()
 
-  @@index([inquiryId])
+  @@index([leadId])
   @@index([studentId])
   @@index([handledById])
   @@index([startedAt])

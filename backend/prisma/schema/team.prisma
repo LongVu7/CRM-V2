@@ -15,8 +15,8 @@ model Team {
   createdBy   Account?     @relation("TeamCreator", fields: [createdById], references: [id], onDelete: SetNull)
   members     TeamMember[]
   campaigns   Campaign[]
-  inquiryStatusHistories InquiryStatusHistory[]
-  assignmentLogs InquiryAssignmentLog[]
+  leadStatusHistories    LeadStatusHistory[]
+  assignmentLogs         LeadAssignmentLog[]
 
   @@index([parentId])
   @@index([leaderId])

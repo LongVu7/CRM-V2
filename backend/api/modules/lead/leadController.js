@@ -1,9 +1,9 @@
-const inquiryService = require('./inquiryService');
+const leadService = require('./leadService');
 const { generateExcelBuffer } = require('../../utils/excelExport');
-const { syncGoogleSheetsToInquiries } = require('./inquiryGoogleSheetService');
+const { syncGoogleSheetsToLeads } = require('./leadGoogleSheetService');
 const fs = require('fs');
-const inquiryImportService = require('./inquiryImportService');
-const inquiryDistributionService = require('./inquiryDistributionService');
+const leadImportService = require('./leadImportService');
+const leadDistributionService = require('./leadDistributionService');
 const { parseExcelFiles } = require('../../utils/excelParser');
 const { parsePagination } = require('../../utils/pagination');
 
@@ -21,8 +21,8 @@ const handleError = (res, error) => {
 
 
 
-// ─── List all inquiries
-const getAllInquiries = async (req, res) => {
+// ─── List all leads
+const getAllLeads = async (req, res) => {
   try {
     const { page, limit, skip } = parsePagination(req.query);
     const search = req.query.search || '';
@@ -34,13 +34,13 @@ const getAllInquiries = async (req, res) => {
     const sortField = req.query.sortField || null;
     const sortOrder = req.query.sortOrder || null;
 
-    const { inquiries, pagination } = await inquiryService.getAllInquiries({ page, limit, skip, search, user: req.user, permissionScope: req.permissionScope, unassignedOnly: req.query.unassignedOnly, hasStudent, statusGeneral, assignedTo, birthYear, oldProvinceId, sortField, sortOrder });
+    const { leads, pagination } = await leadService.getAllLeads({ page, limit, skip, search, user: req.user, permissionScope: req.permissionScope, unassignedOnly: req.query.unassignedOnly, hasStudent, statusGeneral, assignedTo, birthYear, oldProvinceId, sortField, sortOrder });
 
     res.status(200).json({
-      message: 'Inquiries retrieved successfully',
+      message: 'Leads retrieved successfully',
       requestedByRole: req.user?.roleName,
       requestedByAccountId: req.user?.accountId,
-      data: inquiries,
+      data: leads,
       pagination
     });
   } catch (error) {
@@ -48,8 +48,8 @@ const getAllInquiries = async (req, res) => {
   }
 };
 
-// ─── Export Inquiries
-const exportInquiries = async (req, res) => {
+// ─── Export Leads
+const exportLeads = async (req, res) => {
   try {
     const filters = {
       search: req.query.search || '',
@@ -60,23 +60,23 @@ const exportInquiries = async (req, res) => {
       oldProvinceId: req.query.oldProvinceId || null
     };
 
-    const data = await inquiryService.exportInquiries(filters, req.permissionScope);
-    const buffer = generateExcelBuffer(data, 'Inquiries');
+    const data = await leadService.exportLeads(filters, req.permissionScope);
+    const buffer = generateExcelBuffer(data, 'Leads');
     
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="inquiries-${new Date().toISOString().split('T')[0]}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="leads-${new Date().toISOString().split('T')[0]}.xlsx"`);
     res.send(buffer);
   } catch (error) {
     handleError(res, error);
   }
 };
 
-// ─── Get specific inquiry
-const getInquiryById = async (req, res) => {
+// ─── Get specific lead
+const getLeadById = async (req, res) => {
   try {
-    const data = await inquiryService.getInquiryById(req.params.id);
+    const data = await leadService.getLeadById(req.params.id);
     res.status(200).json({
-      message: 'Inquiry retrieved successfully',
+      message: 'Lead retrieved successfully',
       requestedByRole: req.user?.roleName,
       requestedByAccountId: req.user?.accountId,
       data
@@ -86,12 +86,12 @@ const getInquiryById = async (req, res) => {
   }
 };
 
-// ─── Create inquiry
-const createInquiry = async (req, res) => {
+// ─── Create lead
+const createLead = async (req, res) => {
   try {
-    const data = await inquiryService.createInquiry(req.body, req.user);
+    const data = await leadService.createLead(req.body, req.user);
     res.status(201).json({
-      message: 'Inquiry created successfully',
+      message: 'Lead created successfully',
       requestedByRole: req.user?.roleName,
       requestedByAccountId: req.user?.accountId,
       data
@@ -101,12 +101,12 @@ const createInquiry = async (req, res) => {
   }
 };
 
-// ─── Update inquiry
-const updateInquiry = async (req, res) => {
+// ─── Update lead
+const updateLead = async (req, res) => {
   try {
-    const data = await inquiryService.updateInquiry(req.params.id, req.body, req.user);
+    const data = await leadService.updateLead(req.params.id, req.body, req.user);
     res.status(200).json({
-      message: 'Inquiry updated successfully',
+      message: 'Lead updated successfully',
       requestedByRole: req.user?.roleName,
       requestedByAccountId: req.user?.accountId,
       data
@@ -116,22 +116,22 @@ const updateInquiry = async (req, res) => {
   }
 };
 
-// ─── Get inquiry status history
-const getInquiryStatusHistory = async (req, res) => {
+// ─── Get lead status history
+const getLeadStatusHistory = async (req, res) => {
   try {
-    const data = await inquiryService.getInquiryStatusHistory(req.params.id);
+    const data = await leadService.getLeadStatusHistory(req.params.id);
     res.status(200).json(data);
   } catch (error) {
     handleError(res, error);
   }
 };
 
-// ─── Delete inquiry (preserves student records)
-const deleteInquiry = async (req, res) => {
+// ─── Delete lead (preserves student records)
+const deleteLead = async (req, res) => {
   try {
-    await inquiryService.deleteInquiry(req.params.id);
+    await leadService.deleteLead(req.params.id);
     res.status(200).json({
-      message: 'Inquiry deleted successfully. Associated student records were preserved.',
+      message: 'Lead deleted successfully. Associated student records were preserved.',
       requestedByRole: req.user?.roleName,
       requestedByAccountId: req.user?.accountId
     });
@@ -140,8 +140,8 @@ const deleteInquiry = async (req, res) => {
   }
 };
 
-// ─── Assign a student to an inquiry
-const assignStudentToInquiry = async (req, res) => {
+// ─── Assign a student to an lead
+const assignStudentToLead = async (req, res) => {
   try {
     const { studentId } = req.body;
 
@@ -149,9 +149,9 @@ const assignStudentToInquiry = async (req, res) => {
       return res.status(400).json({ error: 'studentId is required in the request body' });
     }
 
-    const data = await inquiryService.assignStudentToInquiry(req.params.id, studentId);
+    const data = await leadService.assignStudentToLead(req.params.id, studentId);
     res.status(200).json({
-      message: 'Student assigned to inquiry successfully',
+      message: 'Student assigned to lead successfully',
       requestedByRole: req.user?.roleName,
       requestedByAccountId: req.user?.accountId,
       data
@@ -161,8 +161,8 @@ const assignStudentToInquiry = async (req, res) => {
   }
 };
 
-// ─── Unassign a student from an inquiry
-const unassignStudentFromInquiry = async (req, res) => {
+// ─── Unassign a student from an lead
+const unassignStudentFromLead = async (req, res) => {
   try {
     const { studentId } = req.body;
 
@@ -170,9 +170,9 @@ const unassignStudentFromInquiry = async (req, res) => {
       return res.status(400).json({ error: 'studentId is required in the request body' });
     }
 
-    await inquiryService.unassignStudentFromInquiry(req.params.id, studentId);
+    await leadService.unassignStudentFromLead(req.params.id, studentId);
     res.status(200).json({
-      message: 'Student unassigned from inquiry successfully',
+      message: 'Student unassigned from lead successfully',
       requestedByRole: req.user?.roleName,
       requestedByAccountId: req.user?.accountId
     });
@@ -181,8 +181,8 @@ const unassignStudentFromInquiry = async (req, res) => {
   }
 };
 
-// ─── Assign an account to an inquiry
-const assignAccountToInquiry = async (req, res) => {
+// ─── Assign an account to an lead
+const assignAccountToLead = async (req, res) => {
   try {
     const { accountId } = req.body;
 
@@ -190,9 +190,9 @@ const assignAccountToInquiry = async (req, res) => {
       return res.status(400).json({ error: 'accountId is required in the request body' });
     }
 
-    const data = await inquiryService.assignAccountToInquiry(req.params.id, accountId);
+    const data = await leadService.assignAccountToLead(req.params.id, accountId);
     res.status(200).json({
-      message: 'Account assigned to inquiry successfully',
+      message: 'Account assigned to lead successfully',
       requestedByRole: req.user?.roleName,
       requestedByAccountId: req.user?.accountId,
       data
@@ -207,7 +207,7 @@ const searchStudents = async (req, res) => {
   try {
     const { q } = req.query;
 
-    const results = await inquiryService.searchStudents(q);
+    const results = await leadService.searchStudents(q);
     res.status(200).json({
       message: 'Students search results',
       requestedByRole: req.user?.roleName,
@@ -224,7 +224,7 @@ const searchAccounts = async (req, res) => {
   try {
     const { q } = req.query;
 
-    const results = await inquiryService.searchAccounts(q);
+    const results = await leadService.searchAccounts(q);
     res.status(200).json({
       message: 'Staff search results',
       requestedByRole: req.user?.roleName,
@@ -242,7 +242,7 @@ const searchAccounts = async (req, res) => {
 
 const downloadTemplate = (req, res) => {
   try {
-    const buffer = inquiryImportService.generateTemplate();
+    const buffer = leadImportService.generateTemplate();
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename="inquiry_import_template.xlsx"');
     res.send(buffer);
@@ -262,7 +262,7 @@ const previewImportInquiry = async (req, res) => {
     // Clean up uploaded file
     if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
 
-    const result = await inquiryImportService.previewImportInquiry(parsedData, req.user.accountId);
+    const result = await leadImportService.previewImportInquiry(parsedData, req.user.accountId);
 
     res.status(200).json({
       message: 'Preview generated successfully',
@@ -283,7 +283,7 @@ const confirmImportInquiry = async (req, res) => {
       return res.status(400).json({ error: 'importToken is required' });
     }
 
-    const result = await inquiryImportService.confirmImportInquiry(importToken, req.user.accountId);
+    const result = await leadImportService.confirmImportInquiry(importToken, req.user.accountId);
 
     res.status(200).json({
       message: 'Import confirmed successfully',
@@ -303,7 +303,7 @@ const importFromGoogleSheets = async (req, res) => {
 
       setImmediate(async () => {
         try {
-          await syncGoogleSheetsToInquiries();
+          await syncGoogleSheetsToLeads();
         } catch (err) {
           console.error(JSON.stringify({ error: 'Background sync failed', details: err.message }));
         }
@@ -311,14 +311,14 @@ const importFromGoogleSheets = async (req, res) => {
       return;
     }
 
-    const results = await syncGoogleSheetsToInquiries();
+    const results = await syncGoogleSheetsToLeads();
     const totalStudents = results.reduce((acc, r) => acc + (r.newStudentsCreated || 0), 0);
     const totalInquiries = results.reduce((acc, r) => acc + (r.newInquiriesForExisting || 0), 0);
     const totalUpdated = results.reduce((acc, r) => acc + (r.existingStudentsUpdated || 0), 0);
     const totalSkipped = results.reduce((acc, r) => acc + (r.skipped || 0), 0);
 
     res.status(200).json({
-      message: `Google Sheets sync completed: ${totalStudents} new student(s), ${totalInquiries} new inquiry(s) created, ${totalUpdated} student(s) updated (${totalSkipped} skipped).`,
+      message: `Google Sheets sync completed: ${totalStudents} new student(s), ${totalInquiries} new lead(s) created, ${totalUpdated} student(s) updated (${totalSkipped} skipped).`,
       data: results
     });
   } catch (error) {
@@ -326,11 +326,11 @@ const importFromGoogleSheets = async (req, res) => {
   }
 };
 
-const getInquiryOptions = async (req, res) => {
+const getLeadOptions = async (req, res) => {
   try {
-    const data = await inquiryService.getInquiryOptions();
+    const data = await leadService.getLeadOptions();
     res.status(200).json({
-      message: 'Inquiry options retrieved successfully',
+      message: 'Lead options retrieved successfully',
       data
     });
   } catch (error) {
@@ -341,7 +341,7 @@ const getInquiryOptions = async (req, res) => {
 // ─── Distribution handlers
 const getUnassignedPool = async (req, res) => {
   try {
-    const result = await inquiryDistributionService.getUnassignedPool(req.query);
+    const result = await leadDistributionService.getUnassignedPool(req.query);
     res.status(200).json(result);
   } catch (error) {
     handleError(res, error);
@@ -350,7 +350,7 @@ const getUnassignedPool = async (req, res) => {
 
 const getDistributionScopes = async (req, res) => {
   try {
-    const result = await inquiryDistributionService.getDistributionScopes(req.user);
+    const result = await leadDistributionService.getDistributionScopes(req.user);
     res.status(200).json(result);
   } catch (error) {
     handleError(res, error);
@@ -359,7 +359,7 @@ const getDistributionScopes = async (req, res) => {
 
 const getScopeRecipients = async (req, res) => {
   try {
-    const result = await inquiryDistributionService.getScopeRecipients(req.query, req.user);
+    const result = await leadDistributionService.getScopeRecipients(req.query, req.user);
     res.status(200).json(result);
   } catch (error) {
     handleError(res, error);
@@ -368,7 +368,7 @@ const getScopeRecipients = async (req, res) => {
 
 const previewDistribution = async (req, res) => {
   try {
-    const result = await inquiryDistributionService.previewDistribution(req.body, req.user);
+    const result = await leadDistributionService.previewDistribution(req.body, req.user);
     res.status(200).json(result);
   } catch (error) {
     handleError(res, error);
@@ -377,7 +377,7 @@ const previewDistribution = async (req, res) => {
 
 const distributeLeads = async (req, res) => {
   try {
-    const result = await inquiryDistributionService.distributeLeads(req.body, req.user);
+    const result = await leadDistributionService.distributeLeads(req.body, req.user);
     res.status(201).json(result);
   } catch (error) {
     handleError(res, error);
@@ -385,26 +385,39 @@ const distributeLeads = async (req, res) => {
 };
 
 module.exports = {
-  getAllInquiries,
-  exportInquiries,
-  getInquiryById,
-  createInquiry,
-  updateInquiry,
-  deleteInquiry,
-  assignStudentToInquiry,
-  unassignStudentFromInquiry,
-  assignAccountToInquiry,
+  getAllLeads,
+  exportLeads,
+  getLeadById,
+  createLead,
+  updateLead,
+  deleteLead,
+  assignStudentToLead,
+  unassignStudentFromLead,
+  assignAccountToLead,
   searchStudents,
   searchAccounts,
   downloadTemplate,
   previewImportInquiry,
   confirmImportInquiry,
   importFromGoogleSheets,
-  getInquiryOptions,
-  getInquiryStatusHistory,
+  getLeadOptions,
+  getLeadStatusHistory,
   getUnassignedPool,
   getDistributionScopes,
   getScopeRecipients,
   previewDistribution,
-  distributeLeads
+  distributeLeads,
+
+  // Compatibility aliases
+  getAllInquiries: getAllLeads,
+  exportInquiries: exportLeads,
+  getInquiryById: getLeadById,
+  createInquiry: createLead,
+  updateInquiry: updateLead,
+  deleteInquiry: deleteLead,
+  assignStudentToInquiry: assignStudentToLead,
+  unassignStudentFromInquiry: unassignStudentFromLead,
+  assignAccountToInquiry: assignAccountToLead,
+  getInquiryOptions: getLeadOptions,
+  getInquiryStatusHistory: getLeadStatusHistory
 };

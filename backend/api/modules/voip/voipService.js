@@ -24,46 +24,46 @@ const getStaffToken = async (account) => {
 };
 
 /**
- * Check the validation whether an inquiry can be called by the requesting user (Assigned to student)  
+ * Check the validation whether an lead can be called by the requesting user (Assigned to student)  
  */
-const checkCallReadiness = async (inquiryId, user, ability) => {
-  const inquiry = await prisma.inquiry.findUnique({
-    where: { id: Number(inquiryId) },
+const checkCallReadiness = async (leadId, user, ability) => {
+  const lead = await prisma.lead.findUnique({
+    where: { id: Number(leadId) },
     include: {
       student: true,
       assignedTo: { select: { id: true, fullName: true, email: true } }
     }
   });
 
-  if (!inquiry) {
-    return { canCall: false, reason: 'INQUIRY_NOT_FOUND', message: 'Inquiry not found' };
+  if (!lead) {
+    return { canCall: false, reason: 'INQUIRY_NOT_FOUND', message: 'Lead not found' };
   }
 
   // 1. Authorization check:
-  // User can call if they are the direct assignee OR they have read permissions on inquiry
-  const isAssignee = inquiry.assignedToId === user.id;
-  const hasInquiryAccess = ability ? ability.can('read', subject('inquiry', inquiry)) : true;
+  // User can call if they are the direct assignee OR they have read permissions on lead
+  const isAssignee = lead.assignedToId === user.id;
+  const hasLeadAccess = ability ? (ability.can('read', subject('lead', lead)) || ability.can('read', subject('inquiry', lead))) : true;
 
-  if (!isAssignee && !hasInquiryAccess) {
+  if (!isAssignee && !hasLeadAccess) {
     return {
       canCall: false,
       reason: 'UNAUTHORIZED_CALLER',
-      message: 'You do not have permission to place calls for this inquiry.'
+      message: 'You do not have permission to place calls for this lead.'
     };
   }
 
   // 2. Student presence check:
-  if (!inquiry.student) {
+  if (!lead.student) {
     return {
       canCall: false,
       reason: 'NO_STUDENT_LINKED',
-      message: 'No prospective student is currently associated with this inquiry.'
+      message: 'No prospective student is currently associated with this lead.'
     };
   }
 
   // 3. Phone number validation:
-  const primaryPhone = inquiry.student.mobile;
-  const otherPhone = inquiry.student.otherPhone;
+  const primaryPhone = lead.student.mobile;
+  const otherPhone = lead.student.otherPhone;
   const normalizedPrimary = normalizePhoneNumber(primaryPhone);
   const normalizedOther = normalizePhoneNumber(otherPhone);
 
@@ -77,11 +77,11 @@ const checkCallReadiness = async (inquiryId, user, ability) => {
 
   return {
     canCall: true,
-    inquiryId: inquiry.id,
+    leadId: lead.id, inquiryId: lead.id,
     isAssignee,
     student: {
-      id: inquiry.student.id,
-      fullName: inquiry.student.fullName,
+      id: lead.student.id,
+      fullName: lead.student.fullName,
       primaryPhone,
       normalizedPhone: normalizedPrimary,
       otherPhone,
@@ -104,7 +104,7 @@ const createCallRecord = async (payload, handledById) => {
       calleeId: payload.calleeId,
       destinationNumber: payload.destinationNumber || null,
       handledById: Number(handledById),
-      inquiryId: payload.inquiryId ? Number(payload.inquiryId) : null,
+      leadId: (payload.leadId || payload.inquiryId) ? Number(payload.leadId || payload.inquiryId) : null,
       studentId: payload.studentId ? Number(payload.studentId) : null
     },
     include: {
@@ -144,11 +144,11 @@ const updateCallRecord = async (callId, payload) => {
 };
 
 /**
- * Retrieves past call history for an inquiry
+ * Retrieves past call history for an lead
  */
-const getInquiryCallHistory = async (inquiryId) => {
+const getLeadCallHistory = async (leadId) => {
   return prisma.call.findMany({
-    where: { inquiryId: Number(inquiryId) },
+    where: { leadId: Number(leadId) },
     include: {
       handledBy: { select: { id: true, fullName: true, email: true } }
     },
@@ -187,7 +187,7 @@ const getAllCalls = async ({ page = 1, limit = 15, search = '', status, disposit
       include: {
         handledBy: { select: { id: true, fullName: true, email: true } },
         student: { select: { id: true, fullName: true, mobile: true } },
-        inquiry: { select: { id: true } }
+        lead: { select: { id: true } }
       },
       orderBy: { startedAt: 'desc' },
       skip,
@@ -213,6 +213,7 @@ module.exports = {
   checkCallReadiness,
   createCallRecord,
   updateCallRecord,
-  getInquiryCallHistory,
+  getLeadCallHistory,
+  getInquiryCallHistory: getLeadCallHistory,
   getAllCalls
 };

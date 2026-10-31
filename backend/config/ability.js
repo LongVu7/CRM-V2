@@ -56,7 +56,7 @@ function defineAbilityFor(account = {}) {
       canUnique(act, sub, { leaderId: accountId });
     } else if (sub === 'campaign') {
       canUnique(act, sub, { ownerId: accountId });
-    } else if (sub === 'inquiry') {
+    } else if (sub === 'lead') {
       canUnique(act, sub, { assignedToId: accountId });
       if (accountId) {
         canUnique(act, sub, { createdById: accountId, assignedToId: null });
@@ -77,7 +77,7 @@ function defineAbilityFor(account = {}) {
 
     grantOwnerAccess(act, sub);
 
-    if (sub === 'inquiry') {
+    if (sub === 'lead') {
       if (authorizedAccountIds.length > 0) {
         canUnique(act, sub, { assignedToId: { in: authorizedAccountIds } });
       }

@@ -10,8 +10,8 @@ const handleError = (message, status) => {
   return err;
 };
 
-// ─── Get options for inquiry form (sources tree & statuses tree)
-const getInquiryOptions = async () => {
+// ─── Get options for lead form (sources tree & statuses tree)
+const getLeadOptions = async () => {
   const [sourcesRaw, statusesRaw] = await prisma.$transaction([
     prisma.sourceData.findMany({
       where: { isActive: true },
@@ -35,7 +35,7 @@ const getInquiryOptions = async () => {
 };
 
 // ─── Shared query 
-const inquiryInclude = {
+const leadInclude = {
   student: {
     include: {
       education: {
@@ -89,7 +89,7 @@ const inquiryInclude = {
 };
 
 
-const buildInquiryData = ({ assignedToId, createdById, sourceDataId, statusDataId, dataReceived, interactionAt, createDate, eventNames, ...rest }) => ({
+const buildLeadData = ({ assignedToId, createdById, sourceDataId, statusDataId, dataReceived, interactionAt, createDate, eventNames, ...rest }) => ({
   ...rest,
   ...(eventNames !== undefined && { eventNames: eventNames === null ? [] : eventNames }),
   ...(dataReceived !== undefined && { dataReceived: dataReceived ? new Date(dataReceived) : null }),
@@ -102,10 +102,10 @@ const buildInquiryData = ({ assignedToId, createdById, sourceDataId, statusDataI
 });
 
 
-const fetchInquiry = (txOrPrisma, id) =>
-  txOrPrisma.inquiry.findUnique({
+const fetchLead = (txOrPrisma, id) =>
+  txOrPrisma.lead.findUnique({
     where: { id },
-    include: inquiryInclude
+    include: leadInclude
   });
 
 
@@ -113,8 +113,8 @@ const fetchInquiry = (txOrPrisma, id) =>
 
 
 
-// ─── Build Inquiry Where Clause
-const buildInquiryWhere = (filters, permissionScope = {}) => {
+// ─── Build Lead Where Clause
+const buildLeadWhere = (filters, permissionScope = {}) => {
   const andClauses = [];
 
   if (permissionScope && Object.keys(permissionScope).length > 0) {
@@ -123,7 +123,7 @@ const buildInquiryWhere = (filters, permissionScope = {}) => {
 
   const conditions = {};
 
-  // Optional filter for assigned inquiry within authorized scope
+  // Optional filter for assigned lead within authorized scope
   if (filters.unassignedOnly === true || filters.unassignedOnly === 'true') {
     conditions.assignedToId = null;
   }
@@ -181,10 +181,10 @@ const buildInquiryWhere = (filters, permissionScope = {}) => {
   return { AND: andClauses };
 };
 
-// ─── List all inquiries
-const getAllInquiries = async (filters) => {
+// ─── List all leads
+const getAllLeads = async (filters) => {
   const { page, limit, skip, permissionScope, sortField, sortOrder } = filters;
-  const where = buildInquiryWhere(filters, permissionScope);
+  const where = buildLeadWhere(filters, permissionScope);
 
   //Sort column 
   let orderBy = { createdAt: 'desc' };
@@ -200,53 +200,53 @@ const getAllInquiries = async (filters) => {
     current[keys[keys.length - 1]] = order;
   }
 
-  const [inquiries, totalCount] = await prisma.$transaction([
-    prisma.inquiry.findMany({
+  const [leads, totalCount] = await prisma.$transaction([
+    prisma.lead.findMany({
       where,
       skip,
       take: limit,
       orderBy,
-      include: inquiryInclude
+      include: leadInclude
     }),
-    prisma.inquiry.count({ where })
+    prisma.lead.count({ where })
   ]);
 
   return {
-    inquiries,
+    leads,
     pagination: buildPaginationMeta(page, limit, totalCount)
   };
 };
 
-// ─── Get specific inquiry by ID
-const getInquiryById = async (id) => {
-  const inquiry = await fetchInquiry(prisma, parseInt(id, 10));
-  if (!inquiry)
-    throw handleError('Inquiry not found', 404);
-  return inquiry;
+// ─── Get specific lead by ID
+const getLeadById = async (id) => {
+  const lead = await fetchLead(prisma, parseInt(id, 10));
+  if (!lead)
+    throw handleError('Lead not found', 404);
+  return lead;
 };
 
 
-/** Create inquiry cases:
+/** Create lead cases:
  *   1. Create and link an existing student
- *   2. create a new inquiry with new student inline
- *   3. Create an inquiry alone
+ *   2. create a new lead with new student inline
+ *   3. Create an lead alone
  */
-const createInquiry = async ({ studentId, student, assignedToId, ...inquiryFields }, user) => {
+const createLead = async ({ studentId, student, assignedToId, ...inquiryFields }, user) => {
   // If assignedToId is explicitly provided, parse it; otherwise keep unassigned (null)
   const targetAssignedToId = assignedToId ? parseInt(assignedToId, 10) : null;
 
-  const inquiryData = buildInquiryData({
+  const leadData = buildLeadData({
     assignedToId: targetAssignedToId,
     createdById: user?.accountId || user?.id || null,
     ...inquiryFields
   });
 
-  if (studentId) return _createWithExistingStudent(inquiryData, studentId, user);
-  if (student?.fullName) return _createWithNewStudent(inquiryData, student, user);
-  return _createAlone(inquiryData, user);
+  if (studentId) return _createWithExistingStudent(leadData, studentId, user);
+  if (student?.fullName) return _createWithNewStudent(leadData, student, user);
+  return _createAlone(leadData, user);
 };
 
-const _createWithExistingStudent = async (inquiryData, studentId, user) => {
+const _createWithExistingStudent = async (leadData, studentId, user) => {
   const sid = parseInt(studentId, 10);
 
   const existing = await prisma.student.findUnique({ where: { id: sid } });
@@ -256,13 +256,13 @@ const _createWithExistingStudent = async (inquiryData, studentId, user) => {
       404
     );
 
-  // Check if this student is already linked to another inquiry
-  const existingLink = await prisma.inquiry.findFirst({
+  // Check if this student is already linked to another lead
+  const existingLink = await prisma.lead.findFirst({
     where: { studentId: sid }
   });
   if (existingLink) {
     throw handleError(
-      `This student is already linked to another inquiry`,
+      `This student is already linked to another lead`,
       409
     );
   }
@@ -271,17 +271,17 @@ const _createWithExistingStudent = async (inquiryData, studentId, user) => {
   try {
     return await prisma.$transaction(async (tx) => {
       let milestoneUpdates = {};
-      const statusId = inquiryData.statusData?.connect?.id;
+      const statusId = leadData.statusData?.connect?.id;
       if (statusId) {
-        milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: statusId });
+        milestoneUpdates = await applyStatusTransition({ tx, lead: {}, newStatusDataId: statusId });
       }
-      const { id } = await tx.inquiry.create({
-        data: { ...inquiryData, ...milestoneUpdates, student: { connect: { id: sid } } }
+      const { id } = await tx.lead.create({
+        data: { ...leadData, ...milestoneUpdates, student: { connect: { id: sid } } }
       });
       if (statusId) {
-        await tx.inquiryStatusHistory.create({
+        await tx.leadStatusHistory.create({
           data: {
-            inquiryId: id,
+            leadId: id,
             previousStatusId: null,
             newStatusId: statusId,
             changedById: user?.accountId || null,
@@ -291,14 +291,14 @@ const _createWithExistingStudent = async (inquiryData, studentId, user) => {
           }
         });
       }
-      return fetchInquiry(tx, id);
+      return fetchLead(tx, id);
     });
   } catch (error) {
     if (error.code === 'P2002') {
       const fields = error.meta?.target || error.meta?.driverAdapterError?.cause?.constraint?.fields || [];
-      let message = 'An inquiry with this data already exists';
+      let message = 'An lead with this data already exists';
       if (fields.includes('studentId') || fields.includes('student_id')) {
-        message = 'This student is already linked to another inquiry';
+        message = 'This student is already linked to another lead';
       }
       const err = new Error(message);
       err.status = 409;
@@ -309,18 +309,18 @@ const _createWithExistingStudent = async (inquiryData, studentId, user) => {
 };
 
 //Private method 
-const _createWithNewStudent = async (inquiryData, student, user) => {
+const _createWithNewStudent = async (leadData, student, user) => {
   const { specializedRegister, education, ...studentData } = student;
   try {
     return await prisma.$transaction(async (tx) => {
       let milestoneUpdates = {};
-      const statusId = inquiryData.statusData?.connect?.id;
+      const statusId = leadData.statusData?.connect?.id;
       if (statusId) {
-        milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: statusId });
+        milestoneUpdates = await applyStatusTransition({ tx, lead: {}, newStatusDataId: statusId });
       }
-      const { id } = await tx.inquiry.create({
+      const { id } = await tx.lead.create({
         data: {
-          ...inquiryData,
+          ...leadData,
           ...milestoneUpdates,
           student: {
             create: {
@@ -341,9 +341,9 @@ const _createWithNewStudent = async (inquiryData, student, user) => {
         }
       });
       if (statusId) {
-        await tx.inquiryStatusHistory.create({
+        await tx.leadStatusHistory.create({
           data: {
-            inquiryId: id,
+            leadId: id,
             previousStatusId: null,
             newStatusId: statusId,
             changedById: user?.accountId || null,
@@ -353,16 +353,16 @@ const _createWithNewStudent = async (inquiryData, student, user) => {
           }
         });
       }
-      return fetchInquiry(tx, id);
+      return fetchLead(tx, id);
     });
   } catch (error) {
     if (error.code === 'P2002') {
       const fields = error.meta?.target || error.meta?.driverAdapterError?.cause?.constraint?.fields || [];
-      let message = 'An inquiry or associated student with this data already exists';
+      let message = 'An lead or associated student with this data already exists';
       if (fields.includes('mobile')) {
         message = `Student with mobile "${studentData.mobile}" already exists`;
       } else if (fields.includes('studentId') || fields.includes('student_id')) {
-        message = 'This student is already linked to another inquiry';
+        message = 'This student is already linked to another lead';
       }
       const err = new Error(message);
       err.status = 409;
@@ -372,18 +372,18 @@ const _createWithNewStudent = async (inquiryData, student, user) => {
   }
 };
 
-const _createAlone = async (inquiryData, user) => {
+const _createAlone = async (leadData, user) => {
   return await prisma.$transaction(async (tx) => {
     let milestoneUpdates = {};
-    const statusId = inquiryData.statusData?.connect?.id;
+    const statusId = leadData.statusData?.connect?.id;
     if (statusId) {
-      milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: statusId });
+      milestoneUpdates = await applyStatusTransition({ tx, lead: {}, newStatusDataId: statusId });
     }
-    const { id } = await tx.inquiry.create({ data: { ...inquiryData, ...milestoneUpdates } });
+    const { id } = await tx.lead.create({ data: { ...leadData, ...milestoneUpdates } });
     if (statusId) {
-      await tx.inquiryStatusHistory.create({
+      await tx.leadStatusHistory.create({
         data: {
-          inquiryId: id,
+          leadId: id,
           previousStatusId: null,
           newStatusId: statusId,
           changedById: user?.accountId || null,
@@ -393,13 +393,13 @@ const _createAlone = async (inquiryData, user) => {
         }
       });
     }
-    return fetchInquiry(tx, id);
+    return fetchLead(tx, id);
   });
 };
 
 
-// ─── Update inquiry
-const updateInquiry = async (id, updateData, user) => {
+// ─── Update lead
+const updateLead = async (id, updateData, user) => {
   const { sourceDataId, statusDataId, assignedToId, statusNotes, ...rest } = updateData;
 
   const data = {
@@ -431,23 +431,23 @@ const updateInquiry = async (id, updateData, user) => {
 
   try {
     return await prisma.$transaction(async (tx) => {
-      const currentInquiry = await tx.inquiry.findUnique({ where: { id: parseInt(id, 10) } });
-      if (!currentInquiry) throw handleError('Inquiry not found', 404);
+      const currentLead = await tx.lead.findUnique({ where: { id: parseInt(id, 10) } });
+      if (!currentLead) throw handleError('Lead not found', 404);
 
       let milestoneUpdates = {};
-      const newStatusDataId = statusDataId !== undefined ? (statusDataId ? parseInt(statusDataId, 10) : null) : currentInquiry.statusDataId;
+      const newStatusDataId = statusDataId !== undefined ? (statusDataId ? parseInt(statusDataId, 10) : null) : currentLead.statusDataId;
 
-      if (newStatusDataId && newStatusDataId !== currentInquiry.statusDataId) {
+      if (newStatusDataId && newStatusDataId !== currentLead.statusDataId) {
         milestoneUpdates = await applyStatusTransition({
           tx,
-          inquiry: currentInquiry,
+          lead: currentLead,
           newStatusDataId
         });
 
-        await tx.inquiryStatusHistory.create({
+        await tx.leadStatusHistory.create({
           data: {
-            inquiryId: currentInquiry.id,
-            previousStatusId: currentInquiry.statusDataId,
+            leadId: currentLead.id,
+            previousStatusId: currentLead.statusDataId,
             newStatusId: newStatusDataId,
             changedById: user?.accountId || null,
             teamId: null,
@@ -457,18 +457,18 @@ const updateInquiry = async (id, updateData, user) => {
         });
       }
 
-      return await tx.inquiry.update({
+      return await tx.lead.update({
         where: { id: parseInt(id, 10) },
         data: { ...data, ...milestoneUpdates },
-        include: inquiryInclude
+        include: leadInclude
       });
     });
   } catch (error) {
     if (error.code === 'P2002') {
       const fields = error.meta?.target || error.meta?.driverAdapterError?.cause?.constraint?.fields || [];
-      let message = 'An inquiry with this data already exists';
+      let message = 'An lead with this data already exists';
       if (fields.includes('studentId') || fields.includes('student_id')) {
-        message = 'This student is already linked to another inquiry';
+        message = 'This student is already linked to another lead';
       }
       const err = new Error(message);
       err.status = 409;
@@ -479,47 +479,47 @@ const updateInquiry = async (id, updateData, user) => {
 };
 
 
-// ─── Delete inquiry (preserves student records)
-const deleteInquiry = async (id) => {
-  const inquiryId = parseInt(id, 10);
-  await prisma.inquiry.delete({ where: { id: inquiryId } });
+// ─── Delete lead (preserves student records)
+const deleteLead = async (id) => {
+  const leadId = parseInt(id, 10);
+  await prisma.lead.delete({ where: { id: leadId } });
 };
 
 
-// ─── Assign a student to an inquiry
-const assignStudentToInquiry = async (inquiryId, studentId) => {
-  const iid = parseInt(inquiryId, 10);
+// ─── Assign a student to an lead
+const assignStudentToLead = async (leadId, studentId) => {
+  const iid = parseInt(leadId, 10);
   const sid = parseInt(studentId, 10);
 
-  const inquiry = await prisma.inquiry.findUnique({ where: { id: iid } });
-  if (!inquiry) throw handleError('Inquiry not found', 404);
+  const lead = await prisma.lead.findUnique({ where: { id: iid } });
+  if (!lead) throw handleError('Lead not found', 404);
 
   const student = await prisma.student.findUnique({ where: { id: sid } });
   if (!student) throw handleError('Student not found', 404);
 
-  // Check if this student is already linked to a different inquiry
-  const existingLink = await prisma.inquiry.findFirst({
+  // Check if this student is already linked to a different lead
+  const existingLink = await prisma.lead.findFirst({
     where: { studentId: sid, id: { not: iid } }
   });
   if (existingLink) {
     throw handleError(
-      `This student is already linked to another inquiry`,
+      `This student is already linked to another lead`,
       409
     );
   }
 
   try {
-    await prisma.inquiry.update({
+    await prisma.lead.update({
       where: { id: iid },
       data: { student: { connect: { id: sid } } }
     });
-    return { inquiryId: iid, student };
+    return { leadId: iid, student };
   } catch (error) {
     if (error.code === 'P2002') {
       const fields = error.meta?.target || error.meta?.driverAdapterError?.cause?.constraint?.fields || [];
-      let message = 'An inquiry with this data already exists';
+      let message = 'An lead with this data already exists';
       if (fields.includes('studentId') || fields.includes('student_id')) {
-        message = 'This student is already linked to another inquiry';
+        message = 'This student is already linked to another lead';
       }
       const err = new Error(message);
       err.status = 409;
@@ -529,38 +529,38 @@ const assignStudentToInquiry = async (inquiryId, studentId) => {
   }
 };
 
-// ─── Unassign a student from an inquiry
-const unassignStudentFromInquiry = async (inquiryId, studentId) => {
-  const iid = parseInt(inquiryId, 10);
+// ─── Unassign a student from an lead
+const unassignStudentFromLead = async (leadId, studentId) => {
+  const iid = parseInt(leadId, 10);
   const sid = parseInt(studentId, 10);
 
-  const inquiry = await prisma.inquiry.findUnique({ where: { id: iid } });
-  if (!inquiry) throw handleError('Inquiry not found', 404);
-  if (inquiry.studentId !== sid) throw handleError('Student is not linked to this inquiry', 400);
+  const lead = await prisma.lead.findUnique({ where: { id: iid } });
+  if (!lead) throw handleError('Lead not found', 404);
+  if (lead.studentId !== sid) throw handleError('Student is not linked to this lead', 400);
 
-  await prisma.inquiry.update({ where: { id: iid }, data: { student: { disconnect: true } } });
+  await prisma.lead.update({ where: { id: iid }, data: { student: { disconnect: true } } });
 };
 
-// ─── Assign an account to an inquiry
-const assignAccountToInquiry = async (inquiryId, accountId) => {
-  const iid = parseInt(inquiryId, 10);
+// ─── Assign an account to an lead
+const assignAccountToLead = async (leadId, accountId) => {
+  const iid = parseInt(leadId, 10);
   const aid = accountId ? parseInt(accountId, 10) : null;
 
-  const currentInquiry = await prisma.inquiry.findUnique({ where: { id: iid } });
-  if (!currentInquiry) throw handleError('Inquiry not found', 404);
+  const currentLead = await prisma.lead.findUnique({ where: { id: iid } });
+  if (!currentLead) throw handleError('Lead not found', 404);
 
   if (aid) {
     const account = await prisma.account.findUnique({ where: { id: aid } });
     if (!account) throw handleError('Account not found', 404);
   }
 
-  return prisma.inquiry.update({
+  return prisma.lead.update({
     where: { id: iid },
     data: {
       assignedToId: aid,
       updatedAt: new Date()
     },
-    include: inquiryInclude
+    include: leadInclude
   });
 };
 
@@ -579,7 +579,7 @@ const searchStudents = async (query) => {
   return prisma.student.findMany({
     where,
     include: {
-      inquiry: {
+      lead: {
         select: { id: true }
       },
       education: {
@@ -629,10 +629,10 @@ const searchAccounts = async (query) => {
   });
 };
 
-// ─── Export Inquiries
-const exportInquiries = async (filters, permissionScope = {}) => {
-  const where = buildInquiryWhere(filters, permissionScope);
-  const inquiries = await prisma.inquiry.findMany({
+// ─── Export Leads
+const exportLeads = async (filters, permissionScope = {}) => {
+  const where = buildLeadWhere(filters, permissionScope);
+  const leads = await prisma.lead.findMany({
     where,
     orderBy: { createdAt: 'desc' },
     include: {
@@ -659,7 +659,7 @@ const exportInquiries = async (filters, permissionScope = {}) => {
     }
   });
 
-  return inquiries.map(i => ({
+  return leads.map(i => ({
 
     // Assigned Staff
     'Assigned Staff': i.assignedTo?.fullName || '',
@@ -679,7 +679,7 @@ const exportInquiries = async (filters, permissionScope = {}) => {
     'Other Phone': i.student?.otherPhone || '',
     'Email': i.student?.email || '',
     'Primary Address': i.student?.primaryAddress || '',
-    // Inquiry basic details
+    // Lead basic details
     'Description': i.description || '',
     'Data Received': i.dataReceived ? i.dataReceived.toISOString().split('T')[0] : '',
     'Interaction At': i.interactionAt ? i.interactionAt.toISOString().split('T')[0] : '',
@@ -699,11 +699,11 @@ const exportInquiries = async (filters, permissionScope = {}) => {
   }));
 };
 
-// ─── Get Inquiry Status History
-const getInquiryStatusHistory = async (inquiryId) => {
-  const parsedId = parseInt(inquiryId, 10);
-  return await prisma.inquiryStatusHistory.findMany({
-    where: { inquiryId: parsedId },
+// ─── Get Lead Status History
+const getLeadStatusHistory = async (leadId) => {
+  const parsedId = parseInt(leadId, 10);
+  return await prisma.leadStatusHistory.findMany({
+    where: { leadId: parsedId },
     include: {
       previousStatus: {
         select: { id: true, name: true, label: true, level: true }
@@ -725,17 +725,30 @@ const getInquiryStatusHistory = async (inquiryId) => {
 
 
 module.exports = {
-  getAllInquiries,
-  getInquiryById,
-  createInquiry,
-  updateInquiry,
-  deleteInquiry,
-  assignStudentToInquiry,
-  unassignStudentFromInquiry,
-  assignAccountToInquiry,
+  getAllLeads,
+  getLeadById,
+  createLead,
+  updateLead,
+  deleteLead,
+  assignStudentToLead,
+  unassignStudentFromLead,
+  assignAccountToLead,
   searchStudents,
   searchAccounts,
-  exportInquiries,
-  getInquiryOptions,
-  getInquiryStatusHistory,
+  exportLeads,
+  getLeadOptions,
+  getLeadStatusHistory,
+
+  // Aliases for compatibility
+  getAllInquiries: getAllLeads,
+  getInquiryById: getLeadById,
+  createInquiry: createLead,
+  updateInquiry: updateLead,
+  deleteInquiry: deleteLead,
+  assignStudentToInquiry: assignStudentToLead,
+  unassignStudentFromInquiry: unassignStudentFromLead,
+  assignAccountToInquiry: assignAccountToLead,
+  exportInquiries: exportLeads,
+  getInquiryOptions: getLeadOptions,
+  getInquiryStatusHistory: getLeadStatusHistory
 };

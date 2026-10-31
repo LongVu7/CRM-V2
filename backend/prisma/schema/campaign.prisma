@@ -52,7 +52,7 @@ model CampaignActivity {
 model CampaignRecipient {
   id         Int      @id @default(autoincrement())
   activityId Int      @map("activity_id")
-  inquiryId  Int      @map("inquiry_id")
+  leadId     Int      @map("lead_id")
   email      String?  @db.VarChar(255)
   mobile     String?  @db.VarChar(20)
   fullName   String?  @map("full_name") @db.VarChar(255)
@@ -60,7 +60,7 @@ model CampaignRecipient {
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz()
 
   activity CampaignActivity @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  inquiry  Inquiry          @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  lead     Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   @@map("campaign_recipient")
 }

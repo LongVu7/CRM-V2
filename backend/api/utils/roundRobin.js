@@ -7,10 +7,11 @@ function calculateRoundRobin(inquiryIds = [], staffIds = []) {
   }
 
   const staffCount = staffIds.length;
-  return inquiryIds.map((inquiryId, index) => {
+  return inquiryIds.map((id, index) => {
     const staffIndex = index % staffCount;
     return {
-      inquiryId,
+      leadId: id,
+      inquiryId: id,
       assignedToId: staffIds[staffIndex],
       orderRank: staffIndex + 1
     };

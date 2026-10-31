@@ -1,7 +1,7 @@
 const { google } = require('googleapis');
 const auth = require('../../../config/googleAuth');
 const prisma = require('../../../config/db');
-const { sheetInquirySyncSchema, sanitizeSheetMobile } = require('./inquirySchemas');
+const { sheetInquirySyncSchema, sanitizeSheetMobile } = require('./leadSchemas');
 const {
   normalizeEnum,
   PROVINCE_MAP,
@@ -296,7 +296,7 @@ function classifyByExistingStudent(row, existingStudents) {
   if (student) {
     row.existingStudentId = student.id;
     row.existingStudent = student;
-    row._meta.classification = student.inquiry
+    row._meta.classification = student.lead
       ? 'EXISTING_INQUIRY'
       : 'READY_EXISTING_STUDENT_NEW_INQUIRY';
   } else {
@@ -495,7 +495,7 @@ function buildSummary(parsedRows) {
  * @param {Object} sheetMetadata - Sheet-level metadata (source, sheetName)
  * @returns {{ summary: Object, rows: Object[] }}
  */
-async function validateSheetInquiryRows(rawData, sheetMetadata = {}) {
+async function validateSheetLeadRows(rawData, sheetMetadata = {}) {
   if (!rawData || rawData.length === 0) {
     return { summary: { ...EMPTY_SUMMARY }, rows: [] };
   }
@@ -537,7 +537,7 @@ async function validateSheetInquiryRows(rawData, sheetMetadata = {}) {
   const distinctMobiles = [...new Set(parsedRows.map(r => r.mobile).filter(Boolean))];
   const existingStudents = await prisma.student.findMany({
     where: { mobile: { in: distinctMobiles } },
-    include: { inquiry: true }
+    include: { lead: true }
   });
 
   // ── Step 3: Enrich each non-classified row ──
@@ -594,7 +594,7 @@ function buildEducationData(studentId, row) {
  * Builds the Inquiry data payload.
  * Adds inquiry notes informing users if the input school/old province was not found in the DB.
  */
-function buildInquiryData(row, studentId) {
+function buildLeadData(row, studentId) {
   const notes = [];
   if (row.school && !row.schoolId)
     notes.push(`Missing School: ${row.school}`);
@@ -616,7 +616,7 @@ function buildInquiryData(row, studentId) {
 /**
  * Creates a new Student + StudentEducation + Inquiry (and optional SpecializedRegister).
  */
-async function handleNewStudentAndInquiry(tx, row) {
+async function handleNewStudentAndLead(tx, row) {
   const studentData = {
     fullName: row.fullName,
     gender: 'Unknown',
@@ -628,8 +628,8 @@ async function handleNewStudentAndInquiry(tx, row) {
     education: {
       create: buildEducationData(null, row)
     },
-    inquiry: {
-      create: buildInquiryData(row, null)
+    lead: {
+      create: buildLeadData(row, null)
     }
   };
 
@@ -652,9 +652,9 @@ async function handleNewStudentAndInquiry(tx, row) {
 /**
  * Creates a new Inquiry for an existing student (Insert-Only).
  */
-async function handleExistingStudentNewInquiry(tx, row) {
-  await tx.inquiry.create({
-    data: buildInquiryData(row, row.existingStudentId)
+async function handleExistingStudentNewLead(tx, row) {
+  await tx.lead.create({
+    data: buildLeadData(row, row.existingStudentId)
   });
 }
 
@@ -662,7 +662,7 @@ async function handleExistingStudentNewInquiry(tx, row) {
  * Persists validated Google Sheets rows using atomic per-row transactions.
  * Pure Insert-Only: existing inquiries and existing students are not mutated.
  */
-async function insertSheetInquiryRows(rows, context = { type: 'SYSTEM', name: 'Google Sheets Background Sync' }) {
+async function insertSheetLeadRows(rows, context = { type: 'SYSTEM', name: 'Google Sheets Background Sync' }) {
   const counters = {
     newStudentsCreated: 0,
     newInquiriesForExisting: 0,
@@ -673,11 +673,11 @@ async function insertSheetInquiryRows(rows, context = { type: 'SYSTEM', name: 'G
   /** Maps classification → { handler, counterKey } */
   const HANDLERS = {
     'READY_NEW_STUDENT_AND_INQUIRY': {
-      handler: handleNewStudentAndInquiry,
+      handler: handleNewStudentAndLead,
       counterKey: 'newStudentsCreated'
     },
     'READY_EXISTING_STUDENT_NEW_INQUIRY': {
-      handler: handleExistingStudentNewInquiry,
+      handler: handleExistingStudentNewLead,
       counterKey: 'newInquiriesForExisting'
     }
   };
@@ -768,7 +768,7 @@ async function processSingleSheet(sheet) {
   });
 
   // 3. Validate and enrich rows
-  const { summary, rows: previewRows } = await validateSheetInquiryRows(
+  const { summary, rows: previewRows } = await validateSheetLeadRows(
     remappedRows,
     { source: sheet.source, sheetName: sheet.name }
   );
@@ -787,7 +787,7 @@ async function processSingleSheet(sheet) {
   logProblemRows(sheet.name, previewRows);
 
   // 4. Persist valid rows
-  const result = await insertSheetInquiryRows(previewRows, {
+  const result = await insertSheetLeadRows(previewRows, {
     type: 'SYSTEM',
     name: `Google Sheets Background Sync: ${sheet.name}`
   });
@@ -811,7 +811,7 @@ let isSyncInProgress = false;
  * Main entry point: syncs all configured Google Sheets to CRM Inquiries.
  * Processes each sheet independently — one sheet's failure doesn't block others.
  */
-async function syncGoogleSheetsToInquiries() {
+async function syncGoogleSheetsToLeads() {
   if (isSyncInProgress) {
     logSync('WARN', 'Google Sheets sync already in progress, skipping trigger');
     return [{ status: 'SKIPPED', message: 'Sync already in progress' }];
@@ -865,12 +865,15 @@ async function syncGoogleSheetsToInquiries() {
 }
 
 module.exports = {
-  HEADER_MAP_WEB_HCM,
-  HEADER_MAP_MULTIPLE_CHOICE,
-  fetchSheetRows,
-  remapHeaders,
-  validateSheetInquiryRows,
-  insertSheetInquiryRows,
-  syncGoogleSheetsToInquiries,
-  resolveProvinceGroup
+  syncGoogleSheetsToLeads,
+  validateSheetLeadRows,
+  insertSheetLeadRows,
+  resolveProvinceGroup,
+  buildLeadData,
+
+  // Compatibility aliases
+  syncGoogleSheetsToInquiries: syncGoogleSheetsToLeads,
+  validateSheetInquiryRows: validateSheetLeadRows,
+  insertSheetInquiryRows: insertSheetLeadRows,
+  buildInquiryData: buildLeadData
 };

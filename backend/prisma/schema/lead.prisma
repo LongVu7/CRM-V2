@@ -1,5 +1,5 @@
-// !--- Inquiry table ---! //
-model Inquiry {
+// !--- Lead table ---! //
+model Lead {
   id Int @id @default(autoincrement())
 
   assignedToId Int? @map("assigned_to_id")
@@ -32,15 +32,15 @@ model Inquiry {
 
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
 
-  assignedTo Account? @relation("InquiryAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
-  createdBy  Account? @relation("InquiryCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  assignedTo Account? @relation("LeadAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy  Account? @relation("LeadCreator", fields: [createdById], references: [id], onDelete: SetNull)
 
   studentId Int?     @unique @map("student_id")
   student   Student? @relation(fields: [studentId], references: [id], onDelete: SetNull)
 
   campaignRecipients CampaignRecipient[]
-  statusHistories    InquiryStatusHistory[]
-  assignmentLogs     InquiryAssignmentLog[]
+  statusHistories    LeadStatusHistory[]
+  assignmentLogs     LeadAssignmentLog[]
   calls              Call[]
 
   @@index([createdAt])
@@ -50,14 +50,14 @@ model Inquiry {
   @@index([nbAt])
   @@index([createdById])
   @@index([assignedToId, createdAt])
-  @@map("inquiry")
+  @@map("lead")
 }
 
-model InquiryStatusHistory {
+model LeadStatusHistory {
   id               Int         @id @default(autoincrement())
 
-  inquiryId        Int         @map("inquiry_id")
-  inquiry          Inquiry     @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  leadId           Int         @map("lead_id")
+  lead             Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   previousStatusId Int?        @map("previous_status_id")
   previousStatus   StatusData? @relation("PreviousStatusHistory", fields: [previousStatusId], references: [id], onDelete: SetNull)
@@ -75,12 +75,12 @@ model InquiryStatusHistory {
 
   changedAt        DateTime    @default(now()) @map("changed_at") @db.Timestamptz()
 
-  @@index([inquiryId])
+  @@index([leadId])
   @@index([changedAt])
   @@index([teamId])
   @@index([newStatusId])
   @@index([changedAt, newStatusId])
-  @@map("inquiry_status_history")
+  @@map("lead_status_history")
 }
 
 enum EventName {
@@ -98,11 +98,11 @@ enum CompensationStatus {
   COMPENSATED
 }
 
-model InquiryAssignmentLog {
+model LeadAssignmentLog {
   id                 Int                    @id @default(autoincrement())
 
-  inquiryId          Int                    @map("inquiry_id")
-  inquiry            Inquiry                @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  leadId             Int                    @map("lead_id")
+  lead               Lead                   @relation(fields: [leadId], references: [id], onDelete: Cascade)
 
   previousAssigneeId Int?                   @map("previous_assignee_id")
   previousAssignee   Account?               @relation("AssignmentPrevious", fields: [previousAssigneeId], references: [id], onDelete: SetNull)
@@ -122,11 +122,11 @@ model InquiryAssignmentLog {
   orderRank          Int?                   @map("order_rank")
   assignedAt         DateTime               @default(now()) @map("assigned_at") @db.Timestamptz()
 
-  @@index([inquiryId])
+  @@index([leadId])
   @@index([batchId])
   @@index([newAssigneeId, assignedAt])
   @@index([assignedById, assignedAt])
-  @@map("inquiry_assignment_log")
+  @@map("lead_assignment_log")
 }
 
 enum AssignmentMethod {

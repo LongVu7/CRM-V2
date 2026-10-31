@@ -6,7 +6,7 @@ const cookieParser = require('cookie-parser');
 const passport = require('passport');
 
 const studentRoutes = require('./api/modules/student/studentRoutes');
-const inquiryRoutes = require('./api/modules/inquiry/inquiryRoutes');
+const leadRoutes = require('./api/modules/lead/leadRoutes');
 const accountRoutes = require('./api/modules/account/accountRoutes');
 const roleRoutes = require('./api/modules/role/roleRoutes');
 const authRoutes = require('./api/modules/auth/authRoutes');
@@ -49,7 +49,7 @@ app.use('/api/admin', adminRouter);
 // ─── Resource Routes ───
 app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
-app.use('/api/inquiries', inquiryRoutes);
+app.use('/api/leads', leadRoutes);
 app.use('/api/accounts', accountRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/roles', roleRoutes);

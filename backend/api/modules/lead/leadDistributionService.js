@@ -34,7 +34,7 @@ const resolveDistributionScope = (user) => {
 
   const permissions = Array.isArray(user?.rolePermissions) ? user.rolePermissions : [];
   const distributePerms = permissions.filter(p =>
-    p?.resource?.toLowerCase() === 'inquiry' &&
+    (p?.resource?.toLowerCase() === 'lead' || p?.resource?.toLowerCase() === 'inquiry') &&
     p?.action?.toLowerCase() === 'distribute'
   );
 
@@ -157,7 +157,7 @@ const getUnassignedPool = async (query) => {
   // Parallel queries: paginated data, total count, and single-pass SLA tier summary
   const [inquiries, totalCount, summaryRaw] =
     await prisma.$transaction([
-      prisma.inquiry.findMany({
+      prisma.lead.findMany({
         where,
         skip,
         take: limit,
@@ -200,14 +200,14 @@ const getUnassignedPool = async (query) => {
           }
         }
       }),
-      prisma.inquiry.count({ where }),
+      prisma.lead.count({ where }),
       prisma.$queryRaw`
         SELECT
           COUNT(*) FILTER (WHERE created_at >= ${now}::timestamptz - INTERVAL '24 hours') AS normal,
           COUNT(*) FILTER (WHERE created_at < ${now}::timestamptz - INTERVAL '24 hours' AND created_at >= ${now}::timestamptz - INTERVAL '48 hours') AS attention,
           COUNT(*) FILTER (WHERE created_at < ${now}::timestamptz - INTERVAL '48 hours' AND created_at >= ${now}::timestamptz - INTERVAL '72 hours') AS warning,
           COUNT(*) FILTER (WHERE created_at < ${now}::timestamptz - INTERVAL '72 hours') AS overdue
-        FROM inquiry
+        FROM lead
         WHERE assigned_to_id IS NULL
       `
     ]);
@@ -413,7 +413,7 @@ const getScopeRecipients = async (query, user) => {
 
   // Compute active workload: count inquiries currently assigned (excluding terminal/closed statuses)
   const workloadGroups = accountIds.length > 0
-    ? await prisma.inquiry.groupBy({
+    ? await prisma.lead.groupBy({
         by: ['assignedToId'],
         where: {
           assignedToId: { in: accountIds },
@@ -491,12 +491,12 @@ const validateRecipients = async (staffIds, user) => {
  * Preview dry-run Round-Robin lead distribution.
  */
 const previewDistribution = async (payload, user) => {
-  const { inquiryIds = [], staffIds = [] } = payload;
+  const leadIds = payload.leadIds || payload.inquiryIds || []; const { staffIds = [] } = payload; const inquiryIds = leadIds;
 
   const staffList = await validateRecipients(staffIds, user);
 
   // Check which inquiries are actually unassigned, sorted matching execution order
-  const existingInquiries = await prisma.inquiry.findMany({
+  const existingInquiries = await prisma.lead.findMany({
     where: { id: { in: inquiryIds } },
     select: { id: true, createdAt: true, assignedToId: true },
     orderBy: [{ createdAt: 'asc' }, { id: 'asc' }]
@@ -508,9 +508,9 @@ const previewDistribution = async (payload, user) => {
   for (const id of inquiryIds) {
     const inq = existingMap.get(id);
     if (!inq) {
-      skipped.push({ inquiryId: id, reason: 'NOT_FOUND' });
+      skipped.push({ leadId: id, inquiryId: id, reason: 'NOT_FOUND' });
     } else if (inq.assignedToId !== null) {
-      skipped.push({ inquiryId: id, reason: 'ALREADY_ASSIGNED' });
+      skipped.push({ leadId: id, inquiryId: id, reason: 'ALREADY_ASSIGNED' });
     }
   }
 
@@ -534,7 +534,7 @@ const previewDistribution = async (payload, user) => {
  * Execute atomic lead distribution in a single database transaction.
  */
 const distributeLeads = async (payload, user) => {
-  const { inquiryIds = [], staffIds = [], teamId, method = 'ROUND_ROBIN' } = payload;
+  const leadIds = payload.leadIds || payload.inquiryIds || []; const inquiryIds = leadIds; const { staffIds = [], teamId, method = 'ROUND_ROBIN' } = payload;
   const userId = user?.id || user?.accountId || null;
 
   // 1. Validate recipients upfront
@@ -545,7 +545,7 @@ const distributeLeads = async (payload, user) => {
     // Acquire row locks on unassigned leads
     const lockedRows = await tx.$queryRaw`
       SELECT id, created_at, assigned_to_id
-      FROM inquiry
+      FROM lead
       WHERE id = ANY(${inquiryIds}::int[])
         AND assigned_to_id IS NULL
       ORDER BY created_at ASC, id ASC
@@ -558,7 +558,7 @@ const distributeLeads = async (payload, user) => {
     // Identify skipped leads
     const skipped = [];
     if (lockedIds.length < inquiryIds.length) {
-      const allRows = await tx.inquiry.findMany({
+      const allRows = await tx.lead.findMany({
         where: { id: { in: inquiryIds } },
         select: { id: true, assignedToId: true }
       });
@@ -568,11 +568,11 @@ const distributeLeads = async (payload, user) => {
         if (!lockedMap.has(id)) {
           const row = allRowsMap.get(id);
           if (!row) {
-            skipped.push({ inquiryId: id, reason: 'NOT_FOUND' });
+            skipped.push({ leadId: id, inquiryId: id, reason: 'NOT_FOUND' });
           } else if (row.assignedToId !== null) {
-            skipped.push({ inquiryId: id, reason: 'ALREADY_ASSIGNED' });
+            skipped.push({ leadId: id, inquiryId: id, reason: 'ALREADY_ASSIGNED' });
           } else {
-            skipped.push({ inquiryId: id, reason: 'LOCKED' });
+            skipped.push({ leadId: id, inquiryId: id, reason: 'LOCKED' });
           }
         }
       }
@@ -601,7 +601,7 @@ const distributeLeads = async (payload, user) => {
     }
 
     for (const [staffId, assignedIds] of recipientToInquiryIds.entries()) {
-      await tx.inquiry.updateMany({
+      await tx.lead.updateMany({
         where: { id: { in: assignedIds } },
         data: { assignedToId: staffId }
       });
@@ -610,7 +610,7 @@ const distributeLeads = async (payload, user) => {
     // 5. Create immutable audit log records
     const now = new Date();
     const logData = rotation.map(item => ({
-      inquiryId: item.inquiryId,
+      leadId: item.leadId || item.inquiryId, inquiryId: item.leadId || item.inquiryId,
       previousAssigneeId: null,
       newAssigneeId: item.assignedToId,
       assignedById: userId,
@@ -621,7 +621,7 @@ const distributeLeads = async (payload, user) => {
       assignedAt: now
     }));
 
-    await tx.inquiryAssignmentLog.createMany({
+    await tx.leadAssignmentLog.createMany({
       data: logData
     });
 

@@ -16,7 +16,7 @@ model SourceData {
   parent   SourceData?  @relation("SourceHierarchy", fields: [parentId], references: [id])
   children SourceData[] @relation("SourceHierarchy")
 
-  inquiries Inquiry[]
+  leads Lead[]
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()

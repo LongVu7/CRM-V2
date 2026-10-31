@@ -11,8 +11,7 @@ const {
   Priority
 } = require('@prisma/client');
 
-
-const inquiryFields = {
+const leadFields = {
   statusDataId: z.number().int('statusDataId must be an integer').optional(),
   description: z.string().optional(),
   dataReceived: dateString.optional(),
@@ -30,11 +29,11 @@ const inquiryFields = {
   priority: z.enum(Priority).optional()
 };
 
-const createInquirySchema = z.object(inquiryFields).strict();
+const createLeadSchema = z.object(leadFields).strict();
 
-const updateInquirySchema = z.object({
+const updateLeadSchema = z.object({
   statusDataId: z.number().int().nullable().optional(),
-  description: inquiryFields.description,
+  description: leadFields.description,
   dataReceived: dateString.nullable().optional(),
   assignedToId: z.number().int().nullable().optional(),
   sourceDataId: z.number().int().nullable().optional(),
@@ -89,7 +88,7 @@ const sheetFullNameSchema = z.string({
   .max(255)
   .transform(capitalizeName);
 
-const sheetInquirySyncSchema = z.object({
+const sheetLeadSyncSchema = z.object({
   fullName: sheetFullNameSchema,
   mobile: sheetMobileSchema,
   email: z.preprocess(
@@ -163,7 +162,8 @@ const recipientsQuerySchema = z.object({
 });
 
 const distributionRequestSchema = z.object({
-  inquiryIds: z.array(z.number().int().positive()).min(1).max(500),
+  leadIds: z.array(z.number().int().positive()).min(1).max(500).optional(),
+  inquiryIds: z.array(z.number().int().positive()).min(1).max(500).optional(),
   staffIds: z.array(z.number().int().positive()).min(1).max(100),
   teamId: z.number().int().positive().nullable().optional(),
   scope: z.object({
@@ -171,27 +171,35 @@ const distributionRequestSchema = z.object({
     teamId: z.number().int().positive().nullable().optional()
   }).optional(),
   method: z.literal('ROUND_ROBIN').default('ROUND_ROBIN')
+}).refine(data => (data.leadIds && data.leadIds.length > 0) || (data.inquiryIds && data.inquiryIds.length > 0), {
+  message: 'leadIds or inquiryIds must be provided and not empty'
 }).transform(data => {
-  const uniqueInquiryIds = [...new Set(data.inquiryIds)];
+  const ids = data.leadIds || data.inquiryIds || [];
+  const uniqueLeadIds = [...new Set(ids)];
   const uniqueStaffIds = [...new Set(data.staffIds)];
 
   return {
     ...data,
-    inquiryIds: uniqueInquiryIds,
+    leadIds: uniqueLeadIds,
+    inquiryIds: uniqueLeadIds,
     staffIds: uniqueStaffIds,
     teamId: data.teamId ?? data.scope?.teamId ?? null
   };
 });
 
 module.exports = {
-  createInquirySchema,
-  updateInquirySchema,
+  createLeadSchema,
+  updateLeadSchema,
+  createInquirySchema: createLeadSchema,
+  updateInquirySchema: updateLeadSchema,
   assignStudentSchema,
   assignAccountSchema,
-  sheetInquirySyncSchema,
+  sheetLeadSyncSchema,
+  sheetInquirySyncSchema: sheetLeadSyncSchema,
   sanitizeSheetMobile,
   poolQuerySchema,
   recipientsQuerySchema,
-  distributionRequestSchema
+  distributionRequestSchema,
+  leadFields,
+  inquiryFields: leadFields
 };
-

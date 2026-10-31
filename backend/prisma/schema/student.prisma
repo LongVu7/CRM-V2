@@ -24,8 +24,8 @@ model Student {
 
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
 
-  inquiry Inquiry?
-  calls   Call[]
+  lead  Lead?
+  calls Call[]
 
   @@index([mobile])
   @@map("student")

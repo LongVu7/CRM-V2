@@ -5,83 +5,83 @@ const authorize = require('../../../middleware/authorize');
 const { validateBody, validateParams, validateQuery } = require('../../../middleware/validate');
 const { idParamSchema } = require('../../../schemas/commonSchemas');
 const {
-  createInquirySchema,
-  updateInquirySchema,
+  createLeadSchema,
+  updateLeadSchema,
   assignStudentSchema,
   assignAccountSchema,
   poolQuerySchema,
   recipientsQuerySchema,
   distributionRequestSchema
-} = require('./inquirySchemas');
+} = require('./leadSchemas');
 const upload = require('../../../middleware/upload');
-const inquiryController = require('./inquiryController');
+const leadController = require('./leadController');
 
-const inquiryIdorCheck = { resourceModel: 'inquiry' };
+const leadIdorCheck = { resourceModel: 'lead' };
 
 // ─── Search routes
 router.route('/search/students')
-    .get(authenticate, authorize([['create', 'inquiry'], ['read', 'inquiry'], ['update', 'inquiry']]), inquiryController.searchStudents);
+    .get(authenticate, authorize([['create', 'lead'], ['read', 'lead'], ['update', 'lead']]), leadController.searchStudents);
 
 router.route('/search/accounts')
-    .get(authenticate, authorize([['assign', 'inquiry'], ['create', 'inquiry']]), inquiryController.searchAccounts);
+    .get(authenticate, authorize([['assign', 'lead'], ['create', 'lead']]), leadController.searchAccounts);
 
 // ─── Import routes
 router.route('/import/template')
-    .get(authenticate, authorize('import', 'inquiry'), inquiryController.downloadTemplate);
+    .get(authenticate, authorize('import', 'lead'), leadController.downloadTemplate);
 
 router.route('/import/preview')
-    .post(authenticate, authorize('import', 'inquiry'), upload.single('file'), inquiryController.previewImportInquiry);
+    .post(authenticate, authorize('import', 'lead'), upload.single('file'), leadController.previewImportInquiry);
 
 router.route('/import/confirm')
-    .post(authenticate, authorize('import', 'inquiry'), inquiryController.confirmImportInquiry);
+    .post(authenticate, authorize('import', 'lead'), leadController.confirmImportInquiry);
 
 router.route('/import/sheet-sync')
-    .post(authenticate, authorize('import', 'inquiry'), inquiryController.importFromGoogleSheets);
+    .post(authenticate, authorize('import', 'lead'), leadController.importFromGoogleSheets);
 
 router.route('/import-sheets')
-    .post(authenticate, authorize('import', 'inquiry'), inquiryController.importFromGoogleSheets);
+    .post(authenticate, authorize('import', 'lead'), leadController.importFromGoogleSheets);
 
 // ─── Distribution routes
 router.route('/distribution/pool')
-    .get(authenticate, authorize('distribute', 'inquiry'), validateQuery(poolQuerySchema), inquiryController.getUnassignedPool);
+    .get(authenticate, authorize('distribute', 'lead'), validateQuery(poolQuerySchema), leadController.getUnassignedPool);
 
 router.route('/distribution/scopes')
-    .get(authenticate, authorize('distribute', 'inquiry'), inquiryController.getDistributionScopes);
+    .get(authenticate, authorize('distribute', 'lead'), leadController.getDistributionScopes);
 
 router.route('/distribution/recipients')
-    .get(authenticate, authorize('distribute', 'inquiry'), validateQuery(recipientsQuerySchema), inquiryController.getScopeRecipients);
+    .get(authenticate, authorize('distribute', 'lead'), validateQuery(recipientsQuerySchema), leadController.getScopeRecipients);
 
 router.route('/distribution/preview')
-    .post(authenticate, authorize('distribute', 'inquiry'), validateBody(distributionRequestSchema), inquiryController.previewDistribution);
+    .post(authenticate, authorize('distribute', 'lead'), validateBody(distributionRequestSchema), leadController.previewDistribution);
 
 router.route('/distribution')
-    .post(authenticate, authorize('distribute', 'inquiry'), validateBody(distributionRequestSchema), inquiryController.distributeLeads);
+    .post(authenticate, authorize('distribute', 'lead'), validateBody(distributionRequestSchema), leadController.distributeLeads);
 
 // ─── CRUD routes
 router.route('/')
-    .get(authenticate, authorize('read', 'inquiry'), inquiryController.getAllInquiries)
-    .post(authenticate, authorize('create', 'inquiry'), validateBody(createInquirySchema), inquiryController.createInquiry);
+    .get(authenticate, authorize('read', 'lead'), leadController.getAllLeads)
+    .post(authenticate, authorize('create', 'lead'), validateBody(createLeadSchema), leadController.createLead);
 
 router.route('/options')
-    .get(authenticate, inquiryController.getInquiryOptions);
+    .get(authenticate, leadController.getLeadOptions);
 
 router.route('/export')
-    .get(authenticate, authorize('export', 'inquiry'), inquiryController.exportInquiries);
+    .get(authenticate, authorize('export', 'lead'), leadController.exportLeads);
 
 router.route('/:id')
-    .get(authenticate, authorize('read', 'inquiry', inquiryIdorCheck), validateParams(idParamSchema), inquiryController.getInquiryById)
-    .put(authenticate, authorize('update', 'inquiry', inquiryIdorCheck), validateParams(idParamSchema), validateBody(updateInquirySchema), inquiryController.updateInquiry)
-    .delete(authenticate, authorize('delete', 'inquiry', inquiryIdorCheck), validateParams(idParamSchema), inquiryController.deleteInquiry);
+    .get(authenticate, authorize('read', 'lead', leadIdorCheck), validateParams(idParamSchema), leadController.getLeadById)
+    .put(authenticate, authorize('update', 'lead', leadIdorCheck), validateParams(idParamSchema), validateBody(updateLeadSchema), leadController.updateLead)
+    .delete(authenticate, authorize('delete', 'lead', leadIdorCheck), validateParams(idParamSchema), leadController.deleteLead);
 
 router.route('/:id/status-history')
-    .get(authenticate, authorize('read', 'inquiry', inquiryIdorCheck), validateParams(idParamSchema), inquiryController.getInquiryStatusHistory);
+    .get(authenticate, authorize('read', 'lead', leadIdorCheck), validateParams(idParamSchema), leadController.getLeadStatusHistory);
 
 // ─── Assignment routes
 router.route('/:id/assign-student')
-    .put(authenticate, authorize('update', 'inquiry', inquiryIdorCheck), validateParams(idParamSchema), validateBody(assignStudentSchema), inquiryController.assignStudentToInquiry)
-    .delete(authenticate, authorize('update', 'inquiry', inquiryIdorCheck), validateParams(idParamSchema), validateBody(assignStudentSchema), inquiryController.unassignStudentFromInquiry);
+    .put(authenticate, authorize('update', 'lead', leadIdorCheck), validateParams(idParamSchema), validateBody(assignStudentSchema), leadController.assignStudentToLead)
+    .delete(authenticate, authorize('update', 'lead', leadIdorCheck), validateParams(idParamSchema), validateBody(assignStudentSchema), leadController.unassignStudentFromLead);
 
 router.route('/:id/assign-account')
-    .put(authenticate, authorize('assign', 'inquiry', inquiryIdorCheck), validateParams(idParamSchema), validateBody(assignAccountSchema), inquiryController.assignAccountToInquiry);
+    .put(authenticate, authorize('assign', 'lead', leadIdorCheck), validateParams(idParamSchema), validateBody(assignAccountSchema), leadController.assignAccountToLead);
 
 module.exports = router;

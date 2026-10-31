@@ -15,7 +15,7 @@ const getCallReadiness = async (req, res) => {
     const { id } = req.params;
     const readiness = await voipService.checkCallReadiness(id, req.user, req.ability);
 
-    if (readiness.reason === 'INQUIRY_NOT_FOUND') {
+    if (readiness.reason === 'LEAD_NOT_FOUND') {
       return res.status(404).json(readiness);
     }
 
@@ -26,7 +26,7 @@ const getCallReadiness = async (req, res) => {
     return res.status(200).json(readiness);
   } catch (error) {
     console.error('Error checking call readiness:', error);
-    return res.status(500).json({ error: error.message || 'Failed to evaluate inquiry call readiness' });
+    return res.status(500).json({ error: error.message || 'Failed to evaluate call readiness' });
   }
 };
 
@@ -51,13 +51,13 @@ const updateCall = async (req, res) => {
   }
 };
 
-const getInquiryCalls = async (req, res) => {
+const getLeadCalls = async (req, res) => {
   try {
     const { id } = req.params;
-    const calls = await voipService.getInquiryCallHistory(id);
+    const calls = await voipService.getLeadCallHistory(id);
     return res.status(200).json({ data: calls });
   } catch (error) {
-    console.error('Error fetching inquiry call history:', error);
+    console.error('Error fetching lead call history:', error);
     return res.status(500).json({ error: error.message || 'Failed to retrieve call history' });
   }
 };
@@ -78,6 +78,6 @@ module.exports = {
   getCallReadiness,
   createCall,
   updateCall,
-  getInquiryCalls,
+  getLeadCalls,
   getAllCalls
 };

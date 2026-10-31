@@ -90,8 +90,8 @@ const deleteActivity = async (req, res) => {
 
 const addRecipients = async (req, res) => {
   try {
-    const { inquiryIds } = req.body;
-    const result = await campaignService.addRecipients(req.params.activityId, inquiryIds);
+    const leadIds = req.body.leadIds || [];
+    const result = await campaignService.addRecipients(req.params.activityId, leadIds);
     res.json(result);
   } catch (error) {
     res.status(500).json({ error: error.message || 'Error adding recipients' });

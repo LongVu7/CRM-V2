@@ -222,8 +222,8 @@ const deleteAccount = async (req, res) => {
         data: { groupLeaderId: null }
       });
 
-      // Unlink from any inquiries assigned to this account
-      await tx.inquiry.updateMany({
+      // Unlink from any leads assigned to this account
+      await tx.lead.updateMany({
         where: { assignedToId: Number(id) },
         data: { assignedToId: null }
       });

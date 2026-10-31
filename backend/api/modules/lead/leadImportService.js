@@ -240,7 +240,7 @@ const resolveLocationAndSchool = (row, { oldProvinces, schools, newProvinces, co
   }
 };
 
-const resolveCommonInquiryFields = (row, { accounts, statusData, sourceData }) => {
+const resolveCommonLeadFields = (row, { accounts, statusData, sourceData }) => {
   if (row.assignedTo) {
     const acc = accounts.find(a => a.email.toLowerCase() === row.assignedTo.toLowerCase());
     if (!acc) row._meta.errors.push(`UNRESOLVED_MAPPING: Assigned account Email "${row.assignedTo} is invalid"`);
@@ -301,7 +301,7 @@ const buildSummary = (rows) => ({
 
 // !------ Import process -------!
 // Validate headers and structure
-const validateInquiryRows = async (rawData) => {
+const validateLeadRows = async (rawData) => {
   validateRequiredHeaders(rawData);
 
   // 1. Parse and normalize row data
@@ -346,7 +346,7 @@ const validateInquiryRows = async (rawData) => {
     sourceData,
     accounts
   ] = await Promise.all([
-    prisma.student.findMany({ where: { mobile: { in: mobiles } }, include: { inquiry: true } }),
+    prisma.student.findMany({ where: { mobile: { in: mobiles } }, include: { lead: true } }),
     prisma.oldProvince.findMany(),
     prisma.school.findMany(),
     prisma.newProvince.findMany(),
@@ -366,7 +366,7 @@ const validateInquiryRows = async (rawData) => {
     const student = existingStudents.find(s => s.mobile === row.mobile);
     const isNew = !student;
 
-    if (!isNew && student.inquiry) {
+    if (!isNew && student.lead) {
       row._meta.classification = 'EXISTING_INQUIRY';
       continue;
     }
@@ -385,15 +385,15 @@ const validateInquiryRows = async (rawData) => {
       row._meta.warnings.push('Uploaded Student, Education, and Specialized Register data will be ignored as the student already exists.');
     }
 
-    resolveCommonInquiryFields(row, refData);
+    resolveCommonLeadFields(row, refData);
     classifyRow(row, isNew, student);
   }
 
   return { summary: buildSummary(parsedRows), rows: parsedRows };
 };
 
-const previewImportInquiry = async (parsedData, accountId) => {
-  const { summary, rows: parsedRows } = await validateInquiryRows(parsedData);
+const previewImportLead = async (parsedData, accountId) => {
+  const { summary, rows: parsedRows } = await validateLeadRows(parsedData);
 
   const importToken = crypto.randomUUID();
   importTokens.set(importToken, {
@@ -452,13 +452,13 @@ const createStudentRecord = async (tx, row) => {
   return student;
 };
 
-const createInquiryWithMilestones = async (tx, studentId, row, accountId) => {
+const createLeadWithMilestones = async (tx, studentId, row, accountId) => {
   let milestoneUpdates = {};
   if (row.statusDataId) {
     milestoneUpdates = await applyStatusTransition({ tx, inquiry: {}, newStatusDataId: row.statusDataId });
   }
 
-  const createdInquiry = await tx.inquiry.create({
+  const createdInquiry = await tx.lead.create({
     data: {
       assignedToId: row.assignedToId,
       createdById: accountId || null,
@@ -473,9 +473,9 @@ const createInquiryWithMilestones = async (tx, studentId, row, accountId) => {
   });
 
   if (row.statusDataId) {
-    await tx.inquiryStatusHistory.create({
+    await tx.leadStatusHistory.create({
       data: {
-        inquiryId: createdInquiry.id,
+        leadId: createdInquiry.id,
         previousStatusId: null,
         newStatusId: row.statusDataId,
         changedById: accountId || null,
@@ -489,7 +489,7 @@ const createInquiryWithMilestones = async (tx, studentId, row, accountId) => {
   return createdInquiry;
 };
 
-const insertInquiryRows = async (rows, context) => {
+const insertLeadRows = async (rows, context) => {
   const accountId = context?.accountId || null;
   let newStudentsCreated = 0;
   let newInquiriesForExisting = 0;
@@ -502,7 +502,7 @@ const insertInquiryRows = async (rows, context) => {
       try {
         await prisma.$transaction(async (tx) => {
           const student = await createStudentRecord(tx, row);
-          await createInquiryWithMilestones(tx, student.id, row, accountId);
+          await createLeadWithMilestones(tx, student.id, row, accountId);
         });
         newStudentsCreated++;
       } catch (err) {
@@ -513,16 +513,16 @@ const insertInquiryRows = async (rows, context) => {
       try {
         const student = await prisma.student.findUnique({
           where: { id: row.existingStudentId },
-          include: { inquiry: true }
+          include: { lead: true }
         });
 
-        if (!student || student.inquiry) {
+        if (!student || student.lead) {
           skipped++;
           continue;
         }
 
         await prisma.$transaction(async (tx) => {
-          await createInquiryWithMilestones(tx, row.existingStudentId, row, accountId);
+          await createLeadWithMilestones(tx, row.existingStudentId, row, accountId);
         });
         newInquiriesForExisting++;
       } catch (err) {
@@ -541,7 +541,7 @@ const insertInquiryRows = async (rows, context) => {
   };
 };
 
-const confirmImportInquiry = async (importToken, accountId) => {
+const confirmImportLead = async (importToken, accountId) => {
   const tokenData = importTokens.get(importToken);
 
   if (!tokenData) {
@@ -564,7 +564,7 @@ const confirmImportInquiry = async (importToken, accountId) => {
 
   tokenData.status = 'PROCESSING';
 
-  const result = await insertInquiryRows(tokenData.data, { type: 'USER', accountId });
+  const result = await insertLeadRows(tokenData.data, { type: 'USER', accountId });
 
   importTokens.delete(importToken);
 
@@ -572,9 +572,14 @@ const confirmImportInquiry = async (importToken, accountId) => {
 };
 
 module.exports = {
-  generateTemplate,
-  previewImportInquiry,
-  confirmImportInquiry,
-  validateInquiryRows,
-  insertInquiryRows
+  previewImportLead,
+  confirmImportLead,
+  validateLeadRows,
+  insertLeadRows,
+
+  // Compatibility aliases
+  previewImportInquiry: previewImportLead,
+  confirmImportInquiry: confirmImportLead,
+  validateInquiryRows: validateLeadRows,
+  insertInquiryRows: insertLeadRows
 };

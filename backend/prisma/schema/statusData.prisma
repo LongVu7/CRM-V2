@@ -16,9 +16,9 @@ model StatusData {
   parent   StatusData?  @relation("StatusHierarchy", fields: [parentId], references: [id])
   children StatusData[] @relation("StatusHierarchy")
 
-  inquiries Inquiry[]
-  previousStatusHistories InquiryStatusHistory[] @relation("PreviousStatusHistory")
-  newStatusHistories      InquiryStatusHistory[] @relation("NewStatusHistory")
+  leads                   Lead[]
+  previousStatusHistories LeadStatusHistory[] @relation("PreviousStatusHistory")
+  newStatusHistories      LeadStatusHistory[] @relation("NewStatusHistory")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz()
