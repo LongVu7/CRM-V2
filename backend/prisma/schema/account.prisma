@@ -23,6 +23,7 @@ model Account {
   assignmentLogsReceived InquiryAssignmentLog[] @relation("AssignmentRecipient")
   assignmentLogsCreated  InquiryAssignmentLog[] @relation("AssignmentCreator")
   assignmentLogsReleased InquiryAssignmentLog[] @relation("AssignmentPrevious")
+  callsHandled           Call[]                 @relation("CallsHandled")
 
   @@map("account")
 }

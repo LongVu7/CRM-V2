@@ -1,0 +1,50 @@
+// !--- Call table ---! //
+model Call {
+  id                Int           @id @default(autoincrement())
+  stringeeCallId    String?       @map("stringee_call_id") @db.VarChar(100)
+  direction         CallDirection @default(OUTBOUND)
+  status            CallStatus    @default(INITIATING)
+  callerId          String        @map("caller_id") @db.VarChar(100)
+  calleeId          String        @map("callee_id") @db.VarChar(100)
+  destinationNumber String?       @map("destination_number") @db.VarChar(50)
+  durationSeconds   Int?          @map("duration_seconds")
+  disposition       String?       @db.VarChar(50)
+  note              String?       @db.Text
+  startedAt         DateTime      @default(now()) @map("started_at") @db.Timestamptz()
+  answeredAt        DateTime?     @map("answered_at") @db.Timestamptz()
+  endedAt           DateTime?     @map("ended_at") @db.Timestamptz()
+
+  handledById       Int           @map("handled_by_id")
+  handledBy         Account       @relation("CallsHandled", fields: [handledById], references: [id], onDelete: Cascade)
+
+  studentId         Int?          @map("student_id")
+  student           Student?      @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  inquiryId         Int?          @map("inquiry_id")
+  inquiry           Inquiry?      @relation(fields: [inquiryId], references: [id], onDelete: SetNull)
+
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt         DateTime      @default(now()) @map("updated_at") @db.Timestamptz()
+
+  @@index([inquiryId])
+  @@index([studentId])
+  @@index([handledById])
+  @@index([startedAt])
+  @@index([stringeeCallId])
+  @@map("call")
+}
+
+enum CallDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum CallStatus {
+  INITIATING
+  RINGING
+  CONNECTED
+  COMPLETED
+  BUSY
+  NO_ANSWER
+  FAILED
+}

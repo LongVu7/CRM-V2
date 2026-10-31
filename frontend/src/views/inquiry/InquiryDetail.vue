@@ -2,7 +2,34 @@
   <div class="inquiry-detail-view">
     <div class="page-header">
       <h1>Edit Inquiry #{{ $route.params.id }}</h1>
-      <div class="header-actions">
+      <div class="header-actions flex gap-2 align-items-center">
+        <!-- Voice Call Button / SplitButton -->
+        <template v-if="callReadiness.canCall">
+          <SplitButton
+            v-if="phoneMenuItems.length > 1"
+            label="Call Student"
+            icon="pi pi-phone"
+            severity="success"
+            :model="phoneMenuItems"
+            @click="handlePrimaryCall"
+          />
+          <Button
+            v-else
+            label="Call Student"
+            icon="pi pi-phone"
+            severity="success"
+            @click="handlePrimaryCall"
+          />
+        </template>
+        <span v-else v-tooltip.top="callReadiness.message || 'Call unavailable'">
+          <Button
+            label="Call Student"
+            icon="pi pi-phone"
+            severity="secondary"
+            disabled
+          />
+        </span>
+
         <Button
           label="Status History"
           icon="pi pi-history"
@@ -40,26 +67,37 @@
       <InquiryStudentAssign ref="studentAssignRef" :initialStudent="linkedStudent"
         @remove-student="handleRemoveStudent" />
 
+        <div class="section-card">
+          <div class="card-header flex justify-between items-center">
+            <h2><i class="pi pi-history"></i> Status History</h2>
+            <!-- <Button
+              label="Open Dialog"
+              icon="pi pi-window-maximize"
+              text
+              size="small"
+              @click="statusHistoryDialogVisible = true"
+            /> -->
+          </div>
+          <InquiryStatusTimeline :inquiryId="$route.params.id" />
+        </div>
       <InquiryAccountAssign ref="accountAssignRef" :initialAccount="selectedStaff" />
 
-      <div class="section-card">
-        <div class="card-header flex justify-between items-center">
-          <h2><i class="pi pi-history"></i> Status History</h2>
-          <Button
-            label="Open Dialog"
-            icon="pi pi-window-maximize"
-            text
-            size="small"
-            @click="statusHistoryDialogVisible = true"
-          />
-        </div>
-        <InquiryStatusTimeline :inquiryId="$route.params.id" />
-      </div>
+
+
 
       <div class="global-actions">
         <Button label="Update Inquiry" icon="pi pi-check" size="large" @click="submitGlobal" :loading="isSubmitting" />
       </div>
     </div>
+
+    <!-- Voice Call Dialog -->
+    <InquiryCallDialog
+      v-model:visible="callDialogVisible"
+      :inquiryId="$route.params.id"
+      :student="callReadiness.student || linkedStudent"
+      :targetPhone="selectedTargetPhone"
+      @call-completed="handleCallCompleted"
+    />
 
     <!-- Status History Dialog -->
     <InquiryStatusHistoryDialog
@@ -96,7 +134,7 @@
       </div>
       <template #footer>
         <Button label="Cancel" severity="secondary" text @click="statusNotesDialogVisible = false" />
-        <Button label="Skip & Update" severity="secondary" outlined @click="handleSkipNotesAndUpdate" :loading="isSubmitting" />
+        <Button label="Skip & Update"  outlined @click="handleSkipNotesAndUpdate" :loading="isSubmitting" />
         <Button label="Save Notes & Update" icon="pi pi-check" @click="handleSaveNotesAndUpdate" :loading="isSubmitting" />
       </template>
     </Dialog>
@@ -104,25 +142,33 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import Button from 'primevue/button'
+import SplitButton from 'primevue/splitbutton'
+import Tag from 'primevue/tag'
+import DataTable from 'primevue/datatable'
+import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
 import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
 import { useInquiry } from '@/composables/useInquiry'
 import { useStudent } from '@/composables/useStudent'
+import { checkCallReadiness } from '@/services/voipService'
+import { useStringee } from '@/composables/useStringee'
 import InquiryForm from '@/components/inquiry/InquiryForm.vue'
 import InquiryStudentAssign from '@/components/inquiry/InquiryStudentAssign.vue'
 import InquiryAccountAssign from '@/components/inquiry/InquiryAccountAssign.vue'
 import InquiryStatusTimeline from '@/components/inquiry/InquiryStatusTimeline.vue'
 import InquiryStatusHistoryDialog from '@/components/inquiry/InquiryStatusHistoryDialog.vue'
+import InquiryCallDialog from '@/components/inquiry/InquiryCallDialog.vue'
 
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
 const { fetchInquiryById, updateInquiry, assignStudent, unassignStudent } = useInquiry()
 const { createStudent } = useStudent()
+const { makeCall, callState } = useStringee()
 
 const statusHistoryDialogVisible = ref(false)
 
@@ -143,6 +189,92 @@ const statusNotesDialogVisible = ref(false)
 const transitionNotes = ref('')
 let pendingStudentData = null
 
+// Voice Calling State
+const callDialogVisible = ref(false)
+const callReadiness = ref({ canCall: false, reason: null, message: '' })
+const selectedTargetPhone = ref('')
+const selectedTargetUserId = ref('')
+
+const loadCallReadiness = async () => {
+  try {
+    const res = await checkCallReadiness(route.params.id)
+    callReadiness.value = res
+  } catch (err) {
+    callReadiness.value = {
+      canCall: false,
+      reason: err.response?.data?.reason || 'ERROR',
+      message: err.response?.data?.message || 'Unable to check call readiness'
+    }
+  }
+}
+
+
+const phoneMenuItems = computed(() => {
+  const items = []
+  const st = callReadiness.value?.student
+  if (st?.primaryPhone) {
+    items.push({
+      label: `Mobile: ${st.primaryPhone}`,
+      icon: 'pi pi-phone',
+      command: () => initiateCall(st.primaryPhone, st.normalizedPhone)
+    })
+  }
+  if (st?.otherPhone) {
+    items.push({
+      label: `Other: ${st.otherPhone}`,
+      icon: 'pi pi-mobile',
+      command: () => initiateCall(st.otherPhone, st.normalizedOtherPhone)
+    })
+  }
+  return items
+})
+
+const initiateCall = async (phone, normalizedTarget) => {
+  selectedTargetPhone.value = phone
+  selectedTargetUserId.value = normalizedTarget
+  callDialogVisible.value = true
+  try {
+    await makeCall({
+      inquiryId: route.params.id,
+      studentId: callReadiness.value?.student?.id,
+      calleeId: normalizedTarget,
+      destinationNumber: phone
+    })
+  } catch (err) {
+    toast.add({
+      severity: 'error',
+      summary: 'Call Failed',
+      detail: err.message || 'Could not initiate voice call',
+      life: 5000
+    })
+  }
+}
+
+const handlePrimaryCall = () => {
+  const st = callReadiness.value?.student
+  const phone = st?.primaryPhone || st?.otherPhone
+  const normalized = st?.normalizedPhone || st?.normalizedOtherPhone
+  if (phone && normalized) {
+    initiateCall(phone, normalized)
+  }
+}
+
+const handleCallCompleted = () => {
+  toast.add({
+    severity: 'info',
+    summary: 'Call Concluded',
+    detail: 'Call record saved to Call History.',
+    life: 3000
+  })
+}
+
+const handleBeforeUnload = (e) => {
+  if (['calling', 'ringing', 'connected'].includes(callState.value)) {
+    e.preventDefault()
+    e.returnValue = ''
+  }
+}
+
 const handleSkipNotesAndUpdate = async () => {
   statusNotesDialogVisible.value = false
   await executeUpdate(pendingStudentData, null)
@@ -155,6 +287,7 @@ const handleSaveNotesAndUpdate = async () => {
 }
 
 onMounted(async () => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
   try {
     const data = await fetchInquiryById(route.params.id)
     inquiryForm.value = {
@@ -169,11 +302,18 @@ onMounted(async () => {
     if (data.assignedTo) {
       selectedStaff.value = data.assignedTo
     }
-  } catch {
+    // Load VoIP call readiness
+    loadCallReadiness()
+  } catch (err) {
+    console.error('Failed to load inquiry detail:', err)
     notFound.value = true
   } finally {
     loading.value = false
   }
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
 const submitGlobal = async () => {
@@ -251,6 +391,7 @@ const handleRemoveStudent = async (studentId) => {
   try {
     await unassignStudent(route.params.id, studentId)
     linkedStudent.value = null
+    await loadCallReadiness()
     toast.add({ severity: 'success', summary: 'Removed', detail: 'Student unassigned successfully', life: 3000 })
   } catch (error) {
     toast.add({ severity: 'error', summary: 'Error', detail: error.response?.data?.error || error.response?.data?.details || error.message, life: 5000 })

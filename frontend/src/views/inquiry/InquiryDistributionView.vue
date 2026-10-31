@@ -157,7 +157,7 @@
         <Column header="Actions" style="width: 110px" :exportable="false" frozen alignFrozen="right">
           <template #body="{ data }">
             <div class="action-buttons">
-              <Button icon="pi pi-share-alt" rounded outlined severity="primary" v-tooltip.top="'Distribute this inquiry'"
+              <Button icon="pi pi-arrow-circle-right" rounded outlined severity="primary" v-tooltip.top="'Distribute this inquiry'"
                 @click="openDistributeModal([data])" />
             </div>
           </template>

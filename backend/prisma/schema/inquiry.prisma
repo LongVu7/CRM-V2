@@ -41,6 +41,7 @@ model Inquiry {
   campaignRecipients CampaignRecipient[]
   statusHistories    InquiryStatusHistory[]
   assignmentLogs     InquiryAssignmentLog[]
+  calls              Call[]
 
   @@index([createdAt])
   @@index([sourceDataId])

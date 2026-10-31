@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Callee Simulator (Voice Call Receiver)</title>
+  <!-- Stringee Web SDK -->
+  <script src="https://cdn.stringee.com/sdk/web/latest/stringee-web-sdk.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #0f172a; color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; }
+    .phone-container { width: 100%; max-width: 420px; background: #1e293b; border: 1px solid #334155; border-radius: 28px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); overflow: hidden; display: flex; flex-direction: column; }
+    .notch { width: 140px; height: 18px; background: #0f172a; margin: 0 auto; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; }
+    .header { padding: 1.25rem 1.5rem; text-align: center; border-bottom: 1px solid #334155; }
+    .header h2 { font-size: 1.15rem; font-weight: 700; color: #38bdf8; }
+    .header p { font-size: 0.8rem; color: #94a3b8; margin-top: 4px; }
+    .phone-config { padding: 1rem 1.5rem; background: #0f172a; border-bottom: 1px solid #334155; display: flex; gap: 8px; }
+    .phone-config input { flex: 1; background: #1e293b; border: 1px solid #475569; color: #fff; padding: 8px 12px; border-radius: 8px; font-size: 0.875rem; font-family: monospace; outline: none; }
+    .phone-config button { background: #2563eb; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
+    .phone-config button:hover { background: #1d4ed8; }
+    .screen { padding: 2rem 1.5rem; text-align: center; min-height: 320px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+    .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 9999px; font-size: 0.8rem; font-weight: 600; margin-bottom: 1.5rem; }
+    .badge-ready { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+    .badge-connecting { background: rgba(234, 179, 8, 0.15); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); }
+    .badge-ringing { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); animation: pulse 1.2s infinite; }
+    .avatar-wrapper { position: relative; margin-bottom: 1.25rem; }
+    .avatar { width: 88px; height: 88px; border-radius: 50%; background: #334155; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; color: #38bdf8; margin: 0 auto; }
+    .ringing .avatar { background: #ef4444; color: #fff; animation: bounce 0.8s infinite alternate; }
+    .connected .avatar { background: #16a34a; color: #fff; }
+    .caller-title { font-size: 1.25rem; font-weight: 700; margin-bottom: 4px; }
+    .caller-id { font-size: 0.875rem; color: #94a3b8; font-family: monospace; margin-bottom: 1.5rem; }
+    .call-timer { font-size: 1.5rem; font-weight: 700; font-family: monospace; color: #4ade80; margin-bottom: 1.5rem; }
+    .call-controls { display: flex; gap: 1rem; justify-content: center; width: 100%; margin-top: auto; }
+    .btn { display: flex; align-items: center; justify-content: center; gap: 8px; border: none; padding: 14px 24px; border-radius: 9999px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: transform 0.15s; }
+    .btn:active { transform: scale(0.96); }
+    .btn-answer { background: #16a34a; color: #fff; flex: 1; }
+    .btn-answer:hover { background: #15803d; }
+    .btn-decline { background: #dc2626; color: #fff; flex: 1; }
+    .btn-decline:hover { background: #b91c1c; }
+    .btn-mute { background: #475569; color: #fff; padding: 12px 20px; font-size: 0.875rem; }
+    .log-panel { max-width: 420px; width: 100%; margin-top: 1.25rem; background: #0f172a; border: 1px solid #334155; border-radius: 12px; padding: 0.75rem 1rem; font-family: monospace; font-size: 0.75rem; color: #94a3b8; max-height: 120px; overflow-y: auto; }
+    .log-entry { margin-bottom: 4px; line-height: 1.4; }
+    .log-time { color: #64748b; }
+    .log-success { color: #4ade80; }
+    .log-warn { color: #facc15; }
+    .log-error { color: #f87171; }
+    @keyframes pulse { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
+    @keyframes bounce { 0% { transform: translateY(0); } 100% { transform: translateY(-6px); } }
+  </style>
+</head>
+<body>
+
+  <div class="phone-container">
+    <div class="notch"></div>
+    <div class="header">
+      <h2>Student Mobile (Callee)</h2>
+      <p>Simulating Prospective Student Device</p>
+    </div>
+
+    <div class="phone-config">
+      <input id="phoneInput" type="text" value="0000445567" placeholder="Student Phone Number" />
+      <button id="connectBtn" onclick="connectStudent()">Connect</button>
+    </div>
+
+    <!-- Screen Area -->
+    <div class="screen" id="screen">
+      <!-- 1. Idle State -->
+      <div id="stateIdle">
+        <span class="status-badge badge-connecting" id="connBadge">Connecting to Stringee...</span>
+        <div class="avatar-wrapper">
+          <div class="avatar">📱</div>
+        </div>
+        <div class="caller-title">Waiting for Call</div>
+        <p class="caller-id" id="displayUserId">Checking student token...</p>
+        <p style="font-size: 0.8rem; color: #64748b; max-width: 260px; line-height: 1.5;">
+          Keep this tab open. When admission staff clicks <strong>"Call Student"</strong> in the CRM, your device will ring here.
+        </p>
+      </div>
+
+      <!-- 2. Incoming Ringing State -->
+      <div id="stateRinging" style="display: none; width: 100%;">
+        <span class="status-badge badge-ringing">Incoming Voice Call...</span>
+        <div class="avatar-wrapper ringing">
+          <div class="avatar">📞</div>
+        </div>
+        <div class="caller-title" id="incomingCallerName">Admission Advisor</div>
+        <div class="caller-id" id="incomingCallerId">staff_caller</div>
+        <div class="call-controls">
+          <button class="btn btn-answer" onclick="answerCall()">Answer</button>
+          <button class="btn btn-decline" onclick="rejectCall()">Decline</button>
+        </div>
+      </div>
+
+      <!-- 3. Connected State -->
+      <div id="stateConnected" style="display: none; width: 100%;">
+        <span class="status-badge badge-ready">Connected • WebRTC Audio</span>
+        <div class="avatar-wrapper connected">
+          <div class="avatar">🎙️</div>
+        </div>
+        <div class="caller-title">Consultation In Progress</div>
+        <div class="caller-id" id="connectedCallerId">In conversation with Advisor</div>
+        <div class="call-timer" id="callTimer">00:00</div>
+        <div class="call-controls">
+          <button class="btn btn-mute" id="muteBtn" onclick="toggleMute()">Mute</button>
+          <button class="btn btn-decline" onclick="hangupCall()">End Call</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Audio Element for Hearing Caller Audio -->
+  <audio id="remoteAudio" autoplay></audio>
+
+  <!-- Telephony Signal Event Log -->
+  <div class="log-panel" id="logPanel">
+    <div class="log-entry"><span class="log-time">[Init]</span> Student receiver loaded</div>
+  </div>
+
+  <script>
+    let client = null;
+    let currentCall = null;
+    let timerInterval = null;
+    let callSeconds = 0;
+    let isMuted = false;
+
+    function log(msg, type = '') {
+      const p = document.getElementById('logPanel');
+      const time = new Date().toLocaleTimeString();
+      const div = document.createElement('div');
+      div.className = 'log-entry ' + (type ? 'log-' + type : '');
+      div.innerHTML = `<span class="log-time">[${time}]</span> ${msg}`;
+      p.appendChild(div);
+      p.scrollTop = p.scrollHeight;
+    }
+
+    async function connectStudent() {
+      const phone = document.getElementById('phoneInput').value.trim();
+      if (!phone) return;
+
+      log(`Requesting Stringee token for phone: ${phone}...`);
+      document.getElementById('connBadge').className = 'status-badge badge-connecting';
+      document.getElementById('connBadge').innerText = 'Authenticating...';
+
+      try {
+        const res = await fetch(`http://localhost:3003/api/test-token?phone=${encodeURIComponent(phone)}`);
+        const data = await res.json();
+
+        if (!data.token) {
+          throw new Error(data.error || 'No token received');
+        }
+
+        document.getElementById('displayUserId').innerText = `ID: ${data.userId}`;
+        log(`Token acquired for userId: ${data.userId}`, 'success');
+
+        if (!client) {
+          client = new StringeeClient();
+
+          client.on('connect', () => {
+            log('WebSocket socket connected to Stringee Cloud', 'success');
+          });
+
+          client.on('authen', (authRes) => {
+            if (authRes && authRes.r === 0) {
+              log(`Client authenticated as ${data.userId}`, 'success');
+              document.getElementById('connBadge').className = 'status-badge badge-ready';
+              document.getElementById('connBadge').innerText = `Online: ${data.userId}`;
+            } else {
+              log(`Authentication failed: ${authRes?.message}`, 'error');
+              document.getElementById('connBadge').className = 'status-badge badge-ringing';
+              document.getElementById('connBadge').innerText = 'Auth Error';
+            }
+          });
+
+          client.on('disconnect', () => {
+            log('Disconnected from Stringee', 'warn');
+            document.getElementById('connBadge').className = 'status-badge badge-connecting';
+            document.getElementById('connBadge').innerText = 'Disconnected';
+          });
+
+          // Handle INCOMING CALL from CRM Admission Staff (both StringeeCall and StringeeCall2)
+          const handleIncoming = (call) => {
+            log(`INCOMING CALL from ${call.fromNumber || call.from}!`, 'warn');
+            currentCall = call;
+            showRinging(call);
+            setupCallHandlers(call);
+          };
+
+          client.on('incomingcall', handleIncoming);
+          client.on('incomingcall2', handleIncoming);
+        }
+
+        client.connect(data.token);
+      } catch (err) {
+        log(`Connection error: ${err.message}`, 'error');
+        document.getElementById('connBadge').innerText = 'Connection Failed';
+      }
+    }
+
+    function setupCallHandlers(call) {
+      // StringeeCall uses addremotestream
+      call.on('addremotestream', (stream) => {
+        log('Remote audio stream received from Advisor', 'success');
+        const audio = document.getElementById('remoteAudio');
+        audio.srcObject = stream;
+        audio.play().catch(e => log('Audio play: ' + e.message, 'warn'));
+      });
+
+      // StringeeCall2 uses addremotetrack
+      call.on('addremotetrack', (track) => {
+        log('Remote audio track received from Advisor', 'success');
+        const audio = document.getElementById('remoteAudio');
+        if (track?.attach) {
+          const el = track.attach();
+          document.body.appendChild(el);
+        } else if (track && track.stream) {
+          audio.srcObject = track.stream;
+          audio.play().catch(e => log('Audio play: ' + e.message, 'warn'));
+        }
+      });
+
+      call.on('signalingstate', (state) => {
+        log(`Call state: ${state.code} (${state.reason || ''})`);
+        if (state.code === 4 || state.code === 3) {
+          showConnected();
+        } else if (state.code === 5 || state.code === 6) {
+          endAndReset();
+        }
+      });
+
+      call.on('mediastate', (state) => {
+        log(`Media state: ${state.code} (${state.description || ''})`);
+        if (state.code === 1) {
+          showConnected();
+        }
+      });
+
+      call.on('error', (err) => {
+        log(`Call error: ${JSON.stringify(err)}`, 'error');
+        endAndReset();
+      });
+    }
+
+    function showRinging(call) {
+      document.getElementById('stateIdle').style.display = 'none';
+      document.getElementById('stateConnected').style.display = 'none';
+      document.getElementById('stateRinging').style.display = 'block';
+      document.getElementById('incomingCallerName').innerText = 'Admission Advisor';
+      document.getElementById('incomingCallerId').innerText = call.fromNumber || call.from || 'CRM Staff';
+    }
+
+    function showConnected() {
+      document.getElementById('stateIdle').style.display = 'none';
+      document.getElementById('stateRinging').style.display = 'none';
+      document.getElementById('stateConnected').style.display = 'block';
+
+      if (!timerInterval) {
+        callSeconds = 0;
+        timerInterval = setInterval(() => {
+          callSeconds++;
+          const m = Math.floor(callSeconds / 60).toString().padStart(2, '0');
+          const s = (callSeconds % 60).toString().padStart(2, '0');
+          document.getElementById('callTimer').innerText = `${m}:${s}`;
+        }, 1000);
+      }
+    }
+
+    function answerCall() {
+      if (currentCall) {
+        log('Answering incoming call...');
+        const audio = document.getElementById('remoteAudio');
+        audio.play().catch(() => {});
+
+        if (typeof currentCall.initAnswer === 'function') {
+          currentCall.initAnswer(() => {
+            log('initAnswer ready');
+          });
+        }
+
+        currentCall.answer((res) => {
+          log(`Answer response: r=${res ? res.r : '0'}`, res?.r === 0 ? 'success' : 'warn');
+          showConnected();
+        });
+      }
+    }
+
+    function rejectCall() {
+      if (currentCall) {
+        log('Declining incoming call');
+        currentCall.reject(() => {});
+      }
+      endAndReset();
+    }
+
+    function hangupCall() {
+      if (currentCall) {
+        log('Hanging up active call');
+        currentCall.hangup(() => {});
+      }
+      endAndReset();
+    }
+
+    function toggleMute() {
+      if (currentCall) {
+        isMuted = !isMuted;
+        currentCall.mute(isMuted);
+        const btn = document.getElementById('muteBtn');
+        btn.innerText = isMuted ? 'Unmute' : 'Mute';
+        btn.style.background = isMuted ? '#b45309' : '#475569';
+        log(`Microphone ${isMuted ? 'muted' : 'unmuted'}`);
+      }
+    }
+
+    function endAndReset() {
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      currentCall = null;
+      isMuted = false;
+      document.getElementById('stateRinging').style.display = 'none';
+      document.getElementById('stateConnected').style.display = 'none';
+      document.getElementById('stateIdle').style.display = 'block';
+      document.getElementById('callTimer').innerText = '00:00';
+      log('Call ended. Ready for next incoming call.');
+    }
+
+    // Auto-connect on load
+    window.addEventListener('DOMContentLoaded', () => {
+      connectStudent();
+    });
+  </script>
+</body>
+</html>
