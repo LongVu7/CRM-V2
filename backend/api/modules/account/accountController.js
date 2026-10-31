@@ -65,7 +65,7 @@ const getAccountById = async (req, res) => {
         teamsLed: {
           select: { id: true, name: true }
         },
-        inquiries: {
+        leads: {
           select: { 
             id: true, 
             statusData: {
