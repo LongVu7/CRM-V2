@@ -364,19 +364,20 @@ const executeUpdate = async (studentData, notes = null) => {
   isSubmitting.value = true
   try {
     const leadId = route.params.id
+    const initialStudentId = linkedStudent.value?.id || null
 
-    // 1. Update lead fields
-    await updateLead(leadId, payload)
-
-    // 2. Handle student assignment
+    // 1. Handle student assignment only if new or changed (before lead fields update)
     if (studentData?.isCreating && studentData?.studentPayload) {
       // Create new student, then assign to lead
       const created = await createStudent(studentData.studentPayload)
       await assignStudent(leadId, created.student.id)
-    } else if (!studentData?.isCreating && studentData?.studentId) {
-      // Assign existing student to lead
+    } else if (!studentData?.isCreating && studentData?.studentId && studentData.studentId !== initialStudentId) {
+      // Assign changed student to lead
       await assignStudent(leadId, studentData.studentId)
     }
+
+    // 2. Update lead fields (including clearing assignedToId if unassigned)
+    await updateLead(leadId, payload)
 
     toast.add({ severity: 'success', summary: 'Updated', detail: 'Lead updated successfully', life: 3000 })
     router.push('/leads')

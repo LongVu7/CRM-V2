@@ -186,13 +186,13 @@ const assignAccountToLead = async (req, res) => {
   try {
     const { accountId } = req.body;
 
-    if (!accountId) {
+    if (accountId === undefined) {
       return res.status(400).json({ error: 'accountId is required in the request body' });
     }
 
-    const data = await leadService.assignAccountToLead(req.params.id, accountId);
+    const data = await leadService.assignAccountToLead(req.params.id, accountId, req.user);
     res.status(200).json({
-      message: 'Account assigned to lead successfully',
+      message: accountId ? 'Account assigned to lead successfully' : 'Account unassigned from lead successfully',
       requestedByRole: req.user?.roleName,
       requestedByAccountId: req.user?.accountId,
       data
@@ -223,8 +223,7 @@ const searchStudents = async (req, res) => {
 const searchAccounts = async (req, res) => {
   try {
     const { q } = req.query;
-
-    const results = await leadService.searchAccounts(q);
+    const results = await leadService.searchAccounts(q, req.user);
     res.status(200).json({
       message: 'Staff search results',
       requestedByRole: req.user?.roleName,
@@ -235,6 +234,7 @@ const searchAccounts = async (req, res) => {
     handleError(res, error);
   }
 };
+
 
 
 

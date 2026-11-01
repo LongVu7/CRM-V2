@@ -51,7 +51,6 @@ const getAccountById = async (req, res) => {
         isActive: true,
         createdAt: true,
         roleId: true,
-        groupId: true,
         role: {
           select: { id: true, name: true }
         },
@@ -94,7 +93,7 @@ const getAccountById = async (req, res) => {
 // ─── Create account
 const createAccount = async (req, res) => {
   try {
-    const { fullName, email, password, roleId, groupId } = req.body;
+    const { fullName, email, password, roleId } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({ error: "email and password are required" });
@@ -116,14 +115,6 @@ const createAccount = async (req, res) => {
       }
     }
 
-    // Validate groupId if provided
-    if (groupId) {
-      const group = await prisma.userGroup.findUnique({ where: { id: Number(groupId) } });
-      if (!group) {
-        return res.status(404).json({ error: "Group not found with the provided groupId" });
-      }
-    }
-
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -133,7 +124,6 @@ const createAccount = async (req, res) => {
         email,
         password: hashedPassword, 
         roleId: roleId ? Number(roleId) : undefined,
-        groupId: groupId ? Number(groupId) : undefined
       },
       select: {
         id: true,
@@ -160,7 +150,7 @@ const createAccount = async (req, res) => {
 const updateAccount = async (req, res) => {
   try {
     const { id } = req.params;
-    const { fullName, email, isActive, roleId, groupId, password } = req.body;
+    const { fullName, email, isActive, roleId, password } = req.body;
 
     const existing = await prisma.account.findUnique({ where: { id: Number(id) } });
     if (!existing) {
@@ -173,7 +163,6 @@ const updateAccount = async (req, res) => {
     if (email !== undefined) updateData.email = email;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (roleId !== undefined) updateData.roleId = roleId ? Number(roleId) : null;
-    if (groupId !== undefined) updateData.groupId = groupId ? Number(groupId) : null;
     if (password) {
       updateData.password = await bcrypt.hash(password, 10);
     }
@@ -216,13 +205,8 @@ const deleteAccount = async (req, res) => {
     }
 
     await prisma.$transaction(async (tx) => {
-      // Unlink from any groups this account leads
-      await tx.userGroup.updateMany({
-        where: { groupLeaderId: Number(id) },
-        data: { groupLeaderId: null }
-      });
-
-      // Unlink from any leads assigned to this account
+      // Unlink from any 
+      // leads assigned to this account
       await tx.lead.updateMany({
         where: { assignedToId: Number(id) },
         data: { assignedToId: null }

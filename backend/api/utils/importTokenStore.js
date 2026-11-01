@@ -3,7 +3,7 @@
 const importTokens = new Map();
 
 // Clean up expired tokens periodically
-setInterval(() => {
+const interval = setInterval(() => {
   const now = Date.now();
   for (const [token, value] of importTokens.entries()) {
     if (now > value.expiresAt) {
@@ -11,5 +11,6 @@ setInterval(() => {
     }
   }
 }, 60 * 1000);
+interval.unref();
 
 module.exports = importTokens;

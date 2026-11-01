@@ -7,6 +7,7 @@ const {
   classifySlaTier,
   tierToCreatedAtRange
 } = require('../../utils/slaTier');
+const { resolveDataScope } = require('../../../config/ability');
 
 const createServiceError = (message, statusCode = 400, reason = null, details = null) => {
   const err = new Error(message);
@@ -15,43 +16,6 @@ const createServiceError = (message, statusCode = 400, reason = null, details = 
   if (reason) err.reason = reason;
   if (details) err.details = details;
   return err;
-};
-
-/**
- * Resolves the effective distribution scope for the authenticated user.
- * Admin -> ALL
- * Role permission priority: ALL > TEAM_ONLY > OWNER_ONLY
- */
-const resolveDistributionScope = (user) => {
-  const roleName = (user?.roleName || '').toLowerCase();
-  if (roleName === 'admin' || roleName === 'administrator') {
-    return {
-      effectiveScope: 'ALL',
-      authorizedTeamIds: user?.authorizedTeamIds || [],
-      authorizedAccountIds: user?.authorizedAccountIds || []
-    };
-  }
-
-  const permissions = Array.isArray(user?.rolePermissions) ? user.rolePermissions : [];
-  const distributePerms = permissions.filter(p =>
-    (p?.resource?.toLowerCase() === 'lead') &&
-    p?.action?.toLowerCase() === 'distribute'
-  );
-
-  let effectiveScope = 'OWNER_ONLY';
-  if (distributePerms.some(p => (p.scope || '').toUpperCase() === 'ALL')) {
-    effectiveScope = 'ALL';
-  } else if (distributePerms.some(p => (p.scope || '').toUpperCase() === 'TEAM_ONLY')) {
-    effectiveScope = 'TEAM_ONLY';
-  } else if (distributePerms.some(p => (p.scope || '').toUpperCase() === 'OWNER_ONLY')) {
-    effectiveScope = 'OWNER_ONLY';
-  }
-
-  return {
-    effectiveScope,
-    authorizedTeamIds: user?.authorizedTeamIds || [],
-    authorizedAccountIds: user?.authorizedAccountIds || []
-  };
 };
 
 /**
@@ -256,7 +220,7 @@ const getUnassignedPool = async (query) => {
  * Returns eligible distribution scopes based on requester's permissions.
  */
 const getDistributionScopes = async (user) => {
-  const { effectiveScope, authorizedTeamIds } = resolveDistributionScope(user);
+  const { effectiveScope, authorizedTeamIds } = resolveDataScope(user, 'distribute', 'lead');
 
   if (effectiveScope === 'OWNER_ONLY') {
     return {
@@ -338,7 +302,7 @@ const getDistributionScopes = async (user) => {
  */
 const getScopeRecipients = async (query, user) => {
   const { scope, teamId } = query;
-  const { effectiveScope, authorizedTeamIds } = resolveDistributionScope(user);
+  const { effectiveScope, authorizedTeamIds } = resolveDataScope(user, 'distribute', 'lead');
 
   // Validate scope permission
   if (effectiveScope === 'OWNER_ONLY' && scope !== 'SELF') {
@@ -369,6 +333,7 @@ const getScopeRecipients = async (query, user) => {
     }
   }
 
+  // Search member account
   let accountWhere = { isActive: true };
 
   if (scope === 'SELF') {
@@ -379,11 +344,19 @@ const getScopeRecipients = async (query, user) => {
     const team = await prisma.team.findUnique({ where: { id: tid } });
     if (!team) {
       throw createServiceError('Team not found', 404, 'TEAM_NOT_FOUND');
-    }
-    accountWhere = {
+    } //Get team member only
+    // accountWhere = {
+    //   isActive: true,
+    //   teamMemberships: { some: { teamId: tid } }
+    // };
+    accountWhere = { // Get team members and team leaders - Notes: ask client to clear the ambiguous
       isActive: true,
-      teamMemberships: { some: { teamId: tid } }
+      OR: [
+        { teamMemberships: { some: { teamId: tid } } },
+        { teamsLed: { some: { id: tid } } }
+      ]
     };
+
   } else if (scope === 'NO_TEAM') {
     accountWhere = {
       isActive: true,
@@ -453,8 +426,8 @@ const getScopeRecipients = async (query, user) => {
 /**
  * Validates that all recipient staffIds exist, are active, and authorized.
  */
-const validateRecipients = async (staffIds, user) => {
-  const { effectiveScope, authorizedAccountIds } = resolveDistributionScope(user);
+const validateRecipients = async (staffIds, user, action = 'distribute') => {
+  const { effectiveScope, authorizedAccountIds } = resolveDataScope(user, action, 'lead');
   const userId = user?.id || user?.accountId;
 
   const staff = await prisma.account.findMany({
@@ -647,6 +620,7 @@ const distributeLeads = async (payload, user) => {
 
 module.exports = {
   createServiceError,
+  validateRecipients,
   getUnassignedPool,
   getDistributionScopes,
   getScopeRecipients,

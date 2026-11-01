@@ -1,7 +1,9 @@
+const crypto = require('crypto');
 const prisma = require('../../../config/db');
 const { applyStatusTransition } = require('../../utils/statusTransition');
 const { buildHierarchyTree } = require('../../utils/taxonomyHierarchy');
 const { buildPaginationMeta } = require('../../utils/pagination');
+const { resolveDataScope } = require('../../../config/ability');
 
 // ─── Error factory
 const handleError = (message, status) => {
@@ -488,10 +490,10 @@ const deleteLead = async (id) => {
 
 // ─── Assign a student to an lead
 const assignStudentToLead = async (leadId, studentId) => {
-  const iid = parseInt(leadId, 10);
+  const lid = parseInt(leadId, 10);
   const sid = parseInt(studentId, 10);
 
-  const lead = await prisma.lead.findUnique({ where: { id: iid } });
+  const lead = await prisma.lead.findUnique({ where: { id: lid } });
   if (!lead) throw handleError('Lead not found', 404);
 
   const student = await prisma.student.findUnique({ where: { id: sid } });
@@ -499,7 +501,7 @@ const assignStudentToLead = async (leadId, studentId) => {
 
   // Check if this student is already linked to a different lead
   const existingLink = await prisma.lead.findFirst({
-    where: { studentId: sid, id: { not: iid } }
+    where: { studentId: sid, id: { not: lid } }
   });
   if (existingLink) {
     throw handleError(
@@ -510,10 +512,10 @@ const assignStudentToLead = async (leadId, studentId) => {
 
   try {
     await prisma.lead.update({
-      where: { id: iid },
+      where: { id: lid },
       data: { student: { connect: { id: sid } } }
     });
-    return { leadId: iid, student };
+    return { leadId: lid, student };
   } catch (error) {
     if (error.code === 'P2002') {
       const fields = error.meta?.target || error.meta?.driverAdapterError?.cause?.constraint?.fields || [];
@@ -531,36 +533,71 @@ const assignStudentToLead = async (leadId, studentId) => {
 
 // ─── Unassign a student from an lead
 const unassignStudentFromLead = async (leadId, studentId) => {
-  const iid = parseInt(leadId, 10);
+  const lid = parseInt(leadId, 10);
   const sid = parseInt(studentId, 10);
 
-  const lead = await prisma.lead.findUnique({ where: { id: iid } });
+  const lead = await prisma.lead.findUnique({ where: { id: lid } });
   if (!lead) throw handleError('Lead not found', 404);
   if (lead.studentId !== sid) throw handleError('Student is not linked to this lead', 400);
 
-  await prisma.lead.update({ where: { id: iid }, data: { student: { disconnect: true } } });
+  await prisma.lead.update({ where: { id: lid }, data: { student: { disconnect: true } } });
 };
 
 // ─── Assign an account to an lead
-const assignAccountToLead = async (leadId, accountId) => {
-  const iid = parseInt(leadId, 10);
+const assignAccountToLead = async (leadId, accountId, user) => {
+  const lid = parseInt(leadId, 10);
   const aid = accountId ? parseInt(accountId, 10) : null;
 
-  const currentLead = await prisma.lead.findUnique({ where: { id: iid } });
+  const currentLead = await prisma.lead.findUnique({ where: { id: lid } });
   if (!currentLead) throw handleError('Lead not found', 404);
 
   if (aid) {
-    const account = await prisma.account.findUnique({ where: { id: aid } });
-    if (!account) throw handleError('Account not found', 404);
+    const account = await prisma.account.findUnique({ where: { id: aid }, select: { id: true, isActive: true } });
+    if (!account || !account.isActive) throw handleError('Account not found or inactive', 404);
+
+    if (user) {
+      const { effectiveScope, authorizedAccountIds } = resolveDataScope(user, 'assign', 'lead');
+      const requesterAccountId = user.accountId || user.id;
+
+      if (effectiveScope === 'OWNER_ONLY' && aid !== requesterAccountId) {
+        const err = handleError('You can only assign leads to yourself', 422);
+        err.reason = 'INVALID_RECIPIENTS';
+        throw err;
+      }
+      if (effectiveScope === 'TEAM_ONLY' && !authorizedAccountIds.includes(aid) && aid !== requesterAccountId) {
+        const err = handleError('Target account is not within your authorized team scope', 422);
+        err.reason = 'INVALID_RECIPIENTS';
+        throw err;
+      }
+    }
   }
 
-  return prisma.lead.update({
-    where: { id: iid },
-    data: {
-      assignedToId: aid,
-      updatedAt: new Date()
-    },
-    include: leadInclude
+  return prisma.$transaction(async (tx) => {
+    const updatedLead = await tx.lead.update({
+      where: { id: lid },
+      data: {
+        assignedToId: aid,
+        updatedAt: new Date()
+      },
+      include: leadInclude
+    });
+    // Create lead audit log if the assignedToId is changed
+    if (aid !== currentLead.assignedToId) {
+      const requesterAccountId = user?.accountId || user?.id || null;
+      await tx.leadAssignmentLog.create({
+        data: {
+          leadId: lid,
+          previousAssigneeId: currentLead.assignedToId,
+          newAssigneeId: aid,
+          assignedById: requesterAccountId,
+          batchId: crypto.randomUUID(),
+          method: 'MANUAL',
+          assignedAt: new Date()
+        }
+      });
+    }
+
+    return updatedLead;
   });
 };
 
@@ -603,10 +640,21 @@ const searchStudents = async (query) => {
 };
 
 // ─── Search staff accounts (for assignment UI)
-const searchAccounts = async (query) => {
+const searchAccounts = async (query, user) => {
   const where = {
     isActive: true
   };
+
+  if (user) {
+    const { effectiveScope, authorizedAccountIds } = resolveDataScope(user, 'assign', 'lead');
+    const requesterAccountId = user.accountId || user.id;
+    if (effectiveScope === 'TEAM_ONLY') {
+      const allowedIds = Array.from(new Set([...authorizedAccountIds, requesterAccountId])).filter(Boolean);
+      where.id = { in: allowedIds };
+    } else if (effectiveScope === 'OWNER_ONLY') {
+      where.id = requesterAccountId;
+    }
+  }
 
   if (query && typeof query === 'string' && query.trim().length > 0) {
     const q = query.trim();
@@ -738,17 +786,4 @@ module.exports = {
   exportLeads,
   getLeadOptions,
   getLeadStatusHistory,
-
-  // Aliases for compatibility
-  getAllLeads,
-  getLeadById,
-  createLead,
-  updateLead,
-  deleteLead,
-  assignStudentToLead,
-  unassignStudentFromLead,
-  assignAccountToLead,
-  exportLeads,
-  getLeadOptions,
-  getLeadStatusHistory
 };

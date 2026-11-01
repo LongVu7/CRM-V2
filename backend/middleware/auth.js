@@ -100,13 +100,17 @@ async function resolveTeamScopes(account) {
 }
 
 function buildUserContext(account, effectivePermissions, teamScopes) {
+  const roleName = account.role?.name || null;
+  const isAdmin = (roleName || '').toLowerCase() === 'admin' || (roleName || '').toLowerCase() === 'administrator';
+
   return {
     accountId: account.id,
     id: account.id,
     email: account.email,
     fullName: account.fullName,
     roleId: account.roleId,
-    roleName: account.role?.name || null,
+    roleName,
+    isAdmin,
     memberTeamId: teamScopes.memberTeamId,
     ledTeamIds: teamScopes.ledTeamIds,
     teamIds: teamScopes.authorizedTeamIds,

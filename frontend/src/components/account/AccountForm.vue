@@ -123,10 +123,7 @@ const getPayload = () => {
   if (form.value.email) payload.email = form.value.email.trim()
   if (form.value.password) payload.password = form.value.password
   if (form.value.roleId !== undefined) payload.roleId = form.value.roleId
-  if (form.value.teamId !== undefined) {
-    payload.teamId = form.value.teamId
-    payload.groupId = form.value.teamId
-  }
+  if (form.value.teamId !== undefined) payload.teamId = form.value.teamId
   if (props.isEditing && form.value.isActive !== undefined) payload.isActive = form.value.isActive
   return payload
 }

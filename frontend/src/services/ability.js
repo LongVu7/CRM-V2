@@ -69,6 +69,7 @@ export function buildAbilityRules(user = {}) {
       }
       return
     }
+    grantOwnerAccess(action, sub)
     if (teamIds.length > 0) {
       can(action, sub, { teamId: { $in: teamIds } })
       can(action, sub, { 'team.id': { $in: teamIds } })

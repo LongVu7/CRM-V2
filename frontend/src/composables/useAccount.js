@@ -16,8 +16,8 @@ export function useAccount() {
       const data = await api.getAllAccounts()
       accounts.value = (data || []).map(acc => ({
         ...acc,
-        teamId: acc.teamId ?? acc.teamMemberships?.[0]?.team?.id ?? acc.groupId ?? null,
-        team: acc.team || acc.teamMemberships?.[0]?.team || acc.group || null
+        teamId: acc.teamId ?? acc.teamMemberships?.[0]?.team?.id ?? null,
+        team: acc.team || acc.teamMemberships?.[0]?.team || null
       }))
     } catch (err) {
       error.value = err.response?.data?.details || err.message

@@ -121,8 +121,7 @@ const authorize = (action, resource, options = {}) => {
  * Restricts route strictly to super-administrators
  */
 const requireAdmin = (req, res, next) => {
-  const roleName = (req.user?.roleName || '').toLowerCase();
-  const isAdmin = roleName === 'admin' || roleName === 'administrator' || req.ability?.can('manage', 'all');
+  const isAdmin = req.ability?.can('manage', 'all') || req.user?.isAdmin;
 
   if (!isAdmin) {
     return res.status(403).json({

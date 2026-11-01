@@ -10,6 +10,58 @@ function normalizeSubject(subject) {
 }
 
 /**
+ * Checks if the user is a super-administrator
+ */
+function isAdmin(user) {
+  if (!user) return false;
+  if (user.isAdmin === true) return true;
+  const roleName = (user.roleName || user.role?.name || '').toLowerCase();
+  return roleName === 'admin' || roleName === 'administrator';
+}
+
+/**
+ * Resolves the effective permission scope ('ALL', 'TEAM_ONLY', 'OWNER_ONLY', or null)
+ * for a given user, action, and resource.
+ */
+function getEffectiveScope(user, action, resource) {
+  if (!user) return null;
+  if (isAdmin(user)) return 'ALL';
+
+  const permissions = Array.isArray(user.rolePermissions)
+    ? user.rolePermissions
+    : (Array.isArray(user.permissions) ? user.permissions : []);
+
+  //Normalize action & resource
+  const normAction = (action || '').toLowerCase();
+  const normResource = normalizeSubject(resource);
+
+  const matched = permissions.filter(p => {
+    if (!p) return false;
+    const pRes = normalizeSubject(p.resource || p.permission?.resource);
+    const pAct = (p.action || p.permission?.action || '').toLowerCase();
+    return pRes === normResource && (pAct === normAction || pAct === 'manage' || !pAct);
+  });
+
+  if (matched.length === 0) return null;
+  if (matched.some(p => (p.scope || '').toUpperCase() === 'ALL')) return 'ALL';
+  if (matched.some(p => (p.scope || '').toUpperCase() === 'TEAM_ONLY')) return 'TEAM_ONLY';
+  if (matched.some(p => (p.scope || '').toUpperCase() === 'OWNER_ONLY')) return 'OWNER_ONLY';
+  return null;
+}
+
+/**
+ * Resolves effective scope and authorized boundaries for any given resource
+ */
+function resolveDataScope(user, action, resource) {
+  const effectiveScope = getEffectiveScope(user, action, resource) || (isAdmin(user) ? 'ALL' : 'OWNER_ONLY');
+  return {
+    effectiveScope,
+    authorizedTeamIds: user?.authorizedTeamIds || [],
+    authorizedAccountIds: user?.authorizedAccountIds || []
+  };
+}
+
+/**
  * Constructs a Prisma-capable CASL Ability instance reflecting the user's role
  * and permissions compiled with dynamic scopes over authorized team subtrees.
  */
@@ -17,10 +69,9 @@ function defineAbilityFor(account = {}) {
   const { can, build } = new AbilityBuilder(createPrismaAbility);
 
   const accountId = account.accountId !== undefined ? account.accountId : account.id;
-  const roleName = (account.roleName || account.role?.name || '').toLowerCase();
 
   // 1. Super-administrator bypass
-  if (roleName === 'admin' || roleName === 'administrator') {
+  if (isAdmin(account)) {
     can('manage', 'all');
     return build();
   }
@@ -140,5 +191,8 @@ function buildPrismaScope(ability, action, subjectName) {
 module.exports = {
   defineAbilityFor,
   buildPrismaScope,
-  normalizeSubject
+  normalizeSubject,
+  isAdmin,
+  getEffectiveScope,
+  resolveDataScope
 };

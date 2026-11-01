@@ -1,6 +1,7 @@
 const reportRepository = require('./reportRepository');
 const { getIctDateBoundaries, getMonthsArray, BUSINESS_TZ } = require('../../utils/reportDateUtils');
 const { STATUS_BUCKETS } = require('../../../constants/reportConstants');
+const { getEffectiveScope, isAdmin } = require('../../../config/ability');
 
 /**
  * Builds an SQL-compatible scope object for reportRepository raw queries
@@ -9,26 +10,17 @@ const { STATUS_BUCKETS } = require('../../../constants/reportConstants');
 function buildSqlReportScope(user) {
   if (!user) return { mode: 'none' };
 
-  // Super-administrator or ALL scope on report.read
-  const roleName = (user.roleName || user.role?.name || '').toLowerCase();
-  if (roleName === 'admin' || roleName === 'administrator') {
+  if (isAdmin(user)) {
     return { mode: 'all' };
   }
 
-  const rolePerms = user.rolePermissions || user.permissions || [];
-  const reportPerms = Array.isArray(rolePerms)
-    ? rolePerms.filter(
-      p => (p.resource === 'report' || p.code === 'report.read') && (p.action === 'read' || p.action === 'manage' || !p.action)
-    )
-    : [];
-
-  const hasAll = reportPerms.some(p => p.scope === 'ALL');
-  if (hasAll) {
+  const effectiveScope = getEffectiveScope(user, 'read', 'report');
+  if (effectiveScope === 'ALL') {
     return { mode: 'all' };
   }
 
-  const hasTeamOnly = reportPerms.some(p => p.scope === 'TEAM_ONLY');
-  const hasOwnerOnly = reportPerms.some(p => p.scope === 'OWNER_ONLY');
+  const hasTeamOnly = effectiveScope === 'TEAM_ONLY';
+  const hasOwnerOnly = effectiveScope === 'OWNER_ONLY';
   const authorizedAccountIds = user.authorizedAccountIds || [];
   const accountId = user.accountId ?? user.id;
 

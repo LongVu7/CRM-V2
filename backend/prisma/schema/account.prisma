@@ -2,7 +2,6 @@
 model Account {
   id        Int      @id @default(autoincrement())
   roleId    Int?     @map("role_id")
-  groupId   Int?     @map("group_id")
   password  String   @db.VarChar(255)
   fullName  String?  @map("full_name") @db.VarChar(255)
   email     String   @unique @db.VarChar(255)

@@ -55,7 +55,7 @@ const assignStudentSchema = z.object({
 }).strict();
 
 const assignAccountSchema = z.object({
-  accountId: z.number().int('accountId must be an integer')
+  accountId: z.number().int('accountId must be an integer').nullable()
 }).strict();
 
 const { capitalizeName } = require('../student/studentSchemas');
