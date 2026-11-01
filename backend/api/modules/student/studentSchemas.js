@@ -25,6 +25,16 @@ const optionalMobileString = z.preprocess(
     .optional()
 );
 
+const optionalOtherPhoneString = z.preprocess(
+  (val) => (val === '' || val === null ? null : val),
+  z.string()
+    .length(10, 'Other phone number must be exactly 10 digits long')
+    .startsWith('0', 'Other phone number must start with 0')
+    .regex(/^\d+$/, 'Other phone number must contain only numbers')
+    .nullable()
+    .optional()
+);
+
 const mobileString = z.preprocess(
   (val) => (val === '' || val === null ? undefined : val),
   z.string({ required_error: 'mobile is required' })
@@ -64,7 +74,7 @@ const createStudentSchema = z.object({
   gender: z.string().max(20),
   email: z.email('email must be a valid email address').max(255).nullable().optional(),
   mobile: mobileString,
-  otherPhone: optionalMobileString,
+  otherPhone: optionalOtherPhoneString,
   birthDate: dateString.nullable().optional(),
   primaryAddress: z.string().max(255).nullable().optional(),
   education: educationSchema,
@@ -77,7 +87,7 @@ const updateStudentSchema = z.object({
   gender: z.string().max(20).optional(),
   email: z.email('email must be a valid email address').max(255).nullable().optional(),
   mobile: mobileString.optional(),
-  otherPhone: optionalMobileString.optional(),
+  otherPhone: optionalOtherPhoneString.optional(),
   birthDate: dateString.nullable().optional(),
   primaryAddress: z.string().max(255).nullable().optional(),
   education: educationSchema.optional(),
@@ -107,7 +117,7 @@ const importStudentSchema = z.object({
   primaryAddress: z.string().max(255).optional(),
   education: educationSchema.optional(),
   specializedRegister: specializedRegisterSchema.optional(),
-  // Flat SR fields from Excel columns — preprocessed to handle empty strings
+  // SpecializedRegister fields from Excel columns — preprocessed to handle empty strings
   gpa: cleanEnumForImport(GPA),
   englishCertificate: cleanEnumForImport(EnglishCertificate),
   programScore: cleanEnumForImport(ProgramScore),

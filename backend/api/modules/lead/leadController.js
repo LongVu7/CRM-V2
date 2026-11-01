@@ -126,12 +126,12 @@ const getLeadStatusHistory = async (req, res) => {
   }
 };
 
-// ─── Delete lead (preserves student records)
+// ─── Delete lead (and associated student records)
 const deleteLead = async (req, res) => {
   try {
     await leadService.deleteLead(req.params.id);
     res.status(200).json({
-      message: 'Lead deleted successfully. Associated student records were preserved.',
+      message: 'Lead and associated student deleted successfully',
       requestedByRole: req.user?.roleName,
       requestedByAccountId: req.user?.accountId
     });
@@ -140,46 +140,7 @@ const deleteLead = async (req, res) => {
   }
 };
 
-// ─── Assign a student to an lead
-const assignStudentToLead = async (req, res) => {
-  try {
-    const { studentId } = req.body;
 
-    if (!studentId) {
-      return res.status(400).json({ error: 'studentId is required in the request body' });
-    }
-
-    const data = await leadService.assignStudentToLead(req.params.id, studentId);
-    res.status(200).json({
-      message: 'Student assigned to lead successfully',
-      requestedByRole: req.user?.roleName,
-      requestedByAccountId: req.user?.accountId,
-      data
-    });
-  } catch (error) {
-    handleError(res, error);
-  }
-};
-
-// ─── Unassign a student from an lead
-const unassignStudentFromLead = async (req, res) => {
-  try {
-    const { studentId } = req.body;
-
-    if (!studentId) {
-      return res.status(400).json({ error: 'studentId is required in the request body' });
-    }
-
-    await leadService.unassignStudentFromLead(req.params.id, studentId);
-    res.status(200).json({
-      message: 'Student unassigned from lead successfully',
-      requestedByRole: req.user?.roleName,
-      requestedByAccountId: req.user?.accountId
-    });
-  } catch (error) {
-    handleError(res, error);
-  }
-};
 
 // ─── Assign an account to an lead
 const assignAccountToLead = async (req, res) => {
@@ -202,22 +163,7 @@ const assignAccountToLead = async (req, res) => {
   }
 };
 
-// ─── Search students (for assignment UI)
-const searchStudents = async (req, res) => {
-  try {
-    const { q } = req.query;
 
-    const results = await leadService.searchStudents(q);
-    res.status(200).json({
-      message: 'Students search results',
-      requestedByRole: req.user?.roleName,
-      requestedByAccountId: req.user?.accountId,
-      results
-    });
-  } catch (error) {
-    handleError(res, error);
-  }
-};
 
 // ─── Search staff accounts (for assignment UI)
 const searchAccounts = async (req, res) => {
@@ -312,13 +258,12 @@ const importFromGoogleSheets = async (req, res) => {
     }
 
     const results = await syncGoogleSheetsToLeads();
-    const totalStudents = results.reduce((acc, r) => acc + (r.newStudentsCreated || 0), 0);
-    const totalLeads = results.reduce((acc, r) => acc + (r.newLeadsForExisting || 0), 0);
-    const totalUpdated = results.reduce((acc, r) => acc + (r.existingStudentsUpdated || 0), 0);
+    const totalNewLeads = results.reduce((acc, r) => acc + (r.newStudentsCreated || 0), 0);
+    const totalReInquiryLeads = results.reduce((acc, r) => acc + (r.newLeadsForExisting || 0), 0);
     const totalSkipped = results.reduce((acc, r) => acc + (r.skipped || 0), 0);
 
     res.status(200).json({
-      message: `Google Sheets sync completed: ${totalStudents} new student(s), ${totalLeads} new lead(s) created, ${totalUpdated} student(s) updated (${totalSkipped} skipped).`,
+      message: `Google Sheets sync completed: ${totalNewLeads} new lead(s), ${totalReInquiryLeads} re-inquiry lead(s) created (${totalSkipped} skipped).`,
       data: results
     });
   } catch (error) {
@@ -391,10 +336,7 @@ module.exports = {
   createLead,
   updateLead,
   deleteLead,
-  assignStudentToLead,
-  unassignStudentFromLead,
   assignAccountToLead,
-  searchStudents,
   searchAccounts,
   downloadTemplate,
   previewImportLead,
@@ -406,18 +348,5 @@ module.exports = {
   getDistributionScopes,
   getScopeRecipients,
   previewDistribution,
-  distributeLeads,
-
-  // Compatibility aliases
-  getAllLeads,
-  exportLeads,
-  getLeadById,
-  createLead,
-  updateLead,
-  deleteLead,
-  assignStudentToLead,
-  unassignStudentFromLead,
-  assignAccountToLead,
-  getLeadOptions,
-  getLeadStatusHistory
+  distributeLeads
 };

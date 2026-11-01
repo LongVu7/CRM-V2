@@ -7,7 +7,6 @@ const { idParamSchema } = require('../../../schemas/commonSchemas');
 const {
   createLeadSchema,
   updateLeadSchema,
-  assignStudentSchema,
   assignAccountSchema,
   poolQuerySchema,
   recipientsQuerySchema,
@@ -19,9 +18,6 @@ const leadController = require('./leadController');
 const leadIdorCheck = { resourceModel: 'lead' };
 
 // ─── Search routes
-router.route('/search/students')
-    .get(authenticate, authorize([['create', 'lead'], ['read', 'lead'], ['update', 'lead']]), leadController.searchStudents);
-
 router.route('/search/accounts')
     .get(authenticate, authorize([['assign', 'lead'], ['create', 'lead']]), leadController.searchAccounts);
 
@@ -77,10 +73,6 @@ router.route('/:id/status-history')
     .get(authenticate, authorize('read', 'lead', leadIdorCheck), validateParams(idParamSchema), leadController.getLeadStatusHistory);
 
 // ─── Assignment routes
-router.route('/:id/assign-student')
-    .put(authenticate, authorize('update', 'lead', leadIdorCheck), validateParams(idParamSchema), validateBody(assignStudentSchema), leadController.assignStudentToLead)
-    .delete(authenticate, authorize('update', 'lead', leadIdorCheck), validateParams(idParamSchema), validateBody(assignStudentSchema), leadController.unassignStudentFromLead);
-
 router.route('/:id/assign-account')
     .put(authenticate, authorize('assign', 'lead', leadIdorCheck), validateParams(idParamSchema), validateBody(assignAccountSchema), leadController.assignAccountToLead);
 

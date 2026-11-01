@@ -183,7 +183,7 @@
         </template>
       </Column>
 
-      <Column field="student.fullName" header="Student" sortable style="min-width: 160px">
+      <Column field="student.fullName" header="Full Name" sortable style="min-width: 160px">
         <template #body="{ data }">
           <span v-if="data.student" class="student-name">{{ data.student.fullName }}</span>
           <span v-else class="null-text">—</span>

@@ -1,42 +1,103 @@
 const { z } = require('zod');
-const { createStudentSchema } = require('../student/studentSchemas');
 
 const dateString = z.string().refine((val) => !isNaN(Date.parse(val)), {
   message: 'Must be a valid date string'
 });
 
-const { 
+const {
   EventName,
   CompensationStatus,
-  Priority
+  Priority,
+  ProvinceGroup,
+  StudentClass,
+  SchoolType,
+  EnglishCertificate,
+  GPA,
+  ProgramScore
 } = require('@prisma/client');
 
-const leadFields = {
-  statusDataId: z.number().int('statusDataId must be an integer').optional(),
-  description: z.string().optional(),
-  dataReceived: dateString.optional(),
-  assignedToId: z.number().int('assignedToId must be an integer').optional(),
-  sourceDataId: z.number().int('sourceDataId must be an integer').optional(),
-  studentId: z.number().int('studentId must be an integer').optional(),
-  student: createStudentSchema.optional(),
-  createDate: dateString.optional(),
-  interactionAt: dateString.optional(),
-  callCount: z.number().int().min(1).max(10).optional(),
-  eventNames: z.array(z.enum(EventName)).optional(),
-  callLog: z.string().max(5000).optional(),
-  recordFile: z.string().optional(),
-  compensationStatus: z.enum(CompensationStatus).optional(),
-  priority: z.enum(Priority).optional()
+const capitalizeName = (str) => {
+  if (typeof str !== 'string' || !str.trim()) return str;
+  return str.trim().split(/\s+/).map(word =>
+    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  ).join(' ');
 };
 
-const createLeadSchema = z.object(leadFields).strict();
+const mobileString = z.preprocess(
+  (val) => (val === '' || val === null ? undefined : val),
+  z.string({ required_error: 'Mobile is required' })
+    .length(10, 'Mobile number must be exactly 10 digits long')
+    .startsWith('0', 'Mobile number must start with 0')
+    .regex(/^\d+$/, 'Mobile number must contain only numbers')
+);
 
-const updateLeadSchema = z.object({
-  statusDataId: z.number().int().nullable().optional(),
-  description: leadFields.description,
+const optionalMobileString = z.preprocess(
+  (val) => (val === '' || val === null ? null : val),
+  z.string()
+    .length(10, 'Mobile number must be exactly 10 digits long')
+    .startsWith('0', 'Mobile number must start with 0')
+    .regex(/^\d+$/, 'Mobile number must contain only numbers')
+    .nullable()
+    .optional()
+);
+
+const optionalOtherPhoneString = z.preprocess(
+  (val) => (val === '' || val === null ? null : val),
+  z.string()
+    .length(10, 'Other phone number must be exactly 10 digits long')
+    .startsWith('0', 'Other phone number must start with 0')
+    .regex(/^\d+$/, 'Other phone number must contain only numbers')
+    .nullable()
+    .optional()
+);
+
+const fullNameSchema = z.string({
+  required_error: 'Full Name is required',
+  invalid_type_error: 'Full Name must be a string'
+})
+  .trim()
+  .min(1, 'Full Name is required')
+  .max(255)
+  .transform(capitalizeName);
+
+const leadFields = {
+  fullName: fullNameSchema,
+  gender: z.string({ required_error: 'Gender is required' }).trim().min(1, 'Gender is required').max(20),
+  mobile: mobileString,
+  email: z.preprocess(
+    (val) => (val === '' || val === null || val === undefined ? null : val),
+    z.string().email('Email format is incorrect').max(255).nullable().optional()
+  ),
+  otherPhone: optionalOtherPhoneString,
+  birthDate: dateString.nullable().optional(),
+  primaryAddress: z.preprocess(
+    (val) => (val === '' || val === null ? null : val),
+    z.string().max(255).nullable().optional()
+  ),
+
+  oldProvinceId: z.number().int().positive().nullable().optional(),
+  schoolId: z.number().int().positive().nullable().optional(),
+  newProvinceId: z.number().int().positive().nullable().optional(),
+  countryId: z.number().int().positive().nullable().optional(),
+  provinceGroup: z.enum(ProvinceGroup).nullable().optional(),
+  schoolType: z.enum(SchoolType).nullable().optional(),
+  class: z.enum(StudentClass).nullable().optional(),
+
+  interestedMajorId: z.number().int().positive().nullable().optional(),
+  specificMajorId: z.number().int().positive().nullable().optional(),
+  admissionYear: z.preprocess(
+    (val) => (val === '' || val === null ? null : (val === undefined ? undefined : Number(val))),
+    z.number().int().nullable().optional()
+  ),
+  englishCertificate: z.enum(EnglishCertificate).nullable().optional(),
+  gpa: z.enum(GPA).nullable().optional(),
+  programScore: z.enum(ProgramScore).nullable().optional(),
+
+  statusDataId: z.number().int('statusDataId must be an integer').nullable().optional(),
+  description: z.string().max(5000).nullable().optional(),
   dataReceived: dateString.nullable().optional(),
-  assignedToId: z.number().int().nullable().optional(),
-  sourceDataId: z.number().int().nullable().optional(),
+  assignedToId: z.number().int('assignedToId must be an integer').nullable().optional(),
+  sourceDataId: z.number().int('sourceDataId must be an integer').nullable().optional(),
   createDate: dateString.nullable().optional(),
   interactionAt: dateString.nullable().optional(),
   callCount: z.number().int().min(1).max(10).nullable().optional(),
@@ -44,21 +105,26 @@ const updateLeadSchema = z.object({
   callLog: z.string().max(5000).nullable().optional(),
   recordFile: z.string().nullable().optional(),
   compensationStatus: z.enum(CompensationStatus).nullable().optional(),
-  priority: z.enum(Priority).nullable().optional(),
+  priority: z.enum(Priority).nullable().optional()
+};
+
+const createLeadSchema = z.object(leadFields).strict();
+
+const updateLeadFields = {
+  ...leadFields,
+  fullName: fullNameSchema.optional(),
+  gender: z.string().trim().min(1).max(20).optional(),
+  mobile: optionalMobileString,
   statusNotes: z.string().max(2000, 'Notes cannot exceed 2000 characters').nullable().optional()
-}).strict().refine((data) => Object.keys(data).length > 0, {
+};
+
+const updateLeadSchema = z.object(updateLeadFields).strict().refine((data) => Object.keys(data).length > 0, {
   message: 'Request body cannot be empty'
 });
-
-const assignStudentSchema = z.object({
-  studentId: z.number().int('studentId must be an integer')
-}).strict();
 
 const assignAccountSchema = z.object({
   accountId: z.number().int('accountId must be an integer').nullable()
 }).strict();
-
-const { capitalizeName } = require('../student/studentSchemas');
 
 const sanitizeSheetMobile = (val) => {
   if (val === undefined || val === null || val === '') return undefined;
@@ -93,7 +159,7 @@ const sheetLeadSyncSchema = z.object({
   mobile: sheetMobileSchema,
   email: z.preprocess(
     (val) => (val === '' || val === null || val === undefined ? undefined : String(val).trim()),
-    z.email('Email format is incorrect').max(255).optional()
+    z.string().email('Email format is incorrect').max(255).optional()
   ),
   otherPhone: z.preprocess(
     sanitizeSheetMobile,
@@ -188,7 +254,6 @@ const distributionRequestSchema = z.object({
 module.exports = {
   createLeadSchema,
   updateLeadSchema,
-  assignStudentSchema,
   assignAccountSchema,
   sheetLeadSyncSchema,
   sanitizeSheetMobile,
@@ -196,5 +261,5 @@ module.exports = {
   recipientsQuerySchema,
   distributionRequestSchema,
   leadFields,
-  leadFields
+  capitalizeName
 };

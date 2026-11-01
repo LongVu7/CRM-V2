@@ -36,28 +36,12 @@ export const deleteLeads = async (ids = []) => {
   return Promise.all(ids.map(id => api.delete(`${prefix}/${id}`)))
 }
 
-
-export const unassignStudent = async (leadId, studentId) => {
-  const response = await api.delete(`${prefix}/${leadId}/assign-student`, { data: { studentId } })
-  return response.data
-}
-
-export const assignStudent = async (leadId, studentId) => {
-  const response = await api.put(`${prefix}/${leadId}/assign-student`, { studentId })
-  return response.data
-}
-
 export const searchAccounts = async (query = '') => {
   const params = query ? { q: query } : {}
   const response = await api.get(`${prefix}/search/accounts`, { params })
   return response.data.results
 }
 
-export const searchStudents = async (query = '') => {
-  const params = query ? { q: query } : {}
-  const response = await api.get(`${prefix}/search/students`, { params })
-  return response.data.results
-}
 
 export const downloadLeadTemplate = async () => {
   const response = await api.get(`${prefix}/import/template`, { responseType: 'blob' })

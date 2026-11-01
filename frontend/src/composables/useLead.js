@@ -16,7 +16,7 @@ export function useLead() {
       leads.value = response.data
       pagination.value = response.pagination
     } catch (err) {
-      error.value = err.response?.data?.error || err.response?.data?.details || err.message
+      error.value = err.response?.data?.details || err.response?.data?.error || err.message
       throw err
     } finally {
       loading.value = false
@@ -30,7 +30,7 @@ export function useLead() {
       lead.value = await api.getLeadById(id)
       return lead.value
     } catch (err) {
-      error.value = err.response?.data?.error || err.response?.data?.details || err.message
+      error.value = err.response?.data?.details || err.response?.data?.error || err.message
       throw err
     } finally {
       loading.value = false
@@ -44,7 +44,7 @@ export function useLead() {
       const response = await api.createLead(payload)
       return response
     } catch (err) {
-      error.value = err.response?.data?.error || err.response?.data?.details || err.message
+      error.value = err.response?.data?.details || err.response?.data?.error || err.message
       throw err
     } finally {
       loading.value = false
@@ -58,40 +58,14 @@ export function useLead() {
       const response = await api.updateLead(id, payload)
       return response
     } catch (err) {
-      error.value = err.response?.data?.error || err.response?.data?.details || err.message
+      error.value = err.response?.data?.details || err.response?.data?.error || err.message
       throw err
     } finally {
       loading.value = false
     }
   }
 
-  const unassignStudent = async (leadId, studentId) => {
-    loading.value = true
-    error.value = null
-    try {
-      const response = await api.unassignStudent(leadId, studentId)
-      return response
-    } catch (err) {
-      error.value = err.response?.data?.error || err.response?.data?.details || err.message
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
 
-  const assignStudent = async (leadId, studentId) => {
-    loading.value = true
-    error.value = null
-    try {
-      const response = await api.assignStudent(leadId, studentId)
-      return response
-    } catch (err) {
-      error.value = err.response?.data?.error || err.response?.data?.details || err.message
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
 
   const deleteLead = async (id) => {
     loading.value = true
@@ -100,7 +74,7 @@ export function useLead() {
       const response = await api.deleteLead(id)
       return response
     } catch (err) {
-      error.value = err.response?.data?.error || err.response?.data?.details || err.message
+      error.value = err.response?.data?.details || err.response?.data?.error || err.message
       throw err
     } finally {
       loading.value = false
@@ -114,7 +88,7 @@ export function useLead() {
       const response = await api.deleteLeads(ids)
       return response
     } catch (err) {
-      error.value = err.response?.data?.error || err.response?.data?.details || err.message
+      error.value = err.response?.data?.details || err.response?.data?.error || err.message
       throw err
     } finally {
       loading.value = false
@@ -127,7 +101,7 @@ export function useLead() {
     try {
       return await api.getLeadStatusHistory(id)
     } catch (err) {
-      error.value = err.response?.data?.error || err.response?.data?.details || err.message
+      error.value = err.response?.data?.details || err.response?.data?.error || err.message
       throw err
     } finally {
       loading.value = false
@@ -146,8 +120,6 @@ export function useLead() {
     createLead,
     updateLead,
     deleteLead,
-    deleteLeads,
-    assignStudent,
-    unassignStudent
+    deleteLeads
   }
 }

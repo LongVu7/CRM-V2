@@ -374,7 +374,7 @@ const validateLeadRows = async (rawData) => {
     if (isNew) {
       for (const [header, config] of Object.entries(COLUMN_MAP)) {
         if (config.requiredNew && (row[config.key] === null || row[config.key] === '' || row[config.key] === undefined)) {
-          row._meta.errors.push(`MISSING_REQUIRED_FIELD: ${header} is required for new students`);
+          row._meta.errors.push(`MISSING_REQUIRED_FIELD: ${header} is required`);
         }
       }
 
@@ -382,7 +382,7 @@ const validateLeadRows = async (rawData) => {
       resolveStudentEnums(row);
       resolveMajorAndAcademicIntentions(row, majorData);
     } else {
-      row._meta.warnings.push('Uploaded Student, Education, and Specialized Register data will be ignored as the student already exists.');
+      row._meta.warnings.push('Existing contact profile found for this mobile. Creating new lead inquiry.');
     }
 
     resolveCommonLeadFields(row, refData);
@@ -576,7 +576,7 @@ module.exports = {
   confirmImportLead,
   validateLeadRows,
   insertLeadRows,
-
+  generateTemplate,
   // Compatibility aliases
   previewImportLead,
   confirmImportLead,

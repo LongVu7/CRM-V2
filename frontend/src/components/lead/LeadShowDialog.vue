@@ -162,17 +162,45 @@ watch(
         <span v-else class="field-value field-value--muted">No account assigned</span>
       </div>
 
-      <!-- Student Assignment -->
-      <div v-if="$can('assign', 'lead')" class="show-section">
-        <h3 class="section-title"><i class="pi pi-user"></i> Student Assignment</h3>
-        <div v-if="leadData.student" class="entity-info">
-          <div class="entity-avatar"><i class="pi pi-user"></i></div>
-          <div class="entity-details">
-            <h4 class="entity-name">{{ leadData.student.fullName }}</h4>
-            <p class="entity-meta">{{ leadData.student.email || 'No email' }} | {{ leadData.student.mobile || 'No phone' }}</p>
+      <!-- Contact & Academic Information -->
+      <div class="show-section">
+        <h3 class="section-title"><i class="pi pi-user"></i> Contact & Academic Information</h3>
+        <div v-if="leadData.fullName || leadData.mobile || leadData.student" class="student-details-block">
+          <div class="entity-info" style="margin-bottom: 0.75rem;">
+            <div class="entity-avatar"><i class="pi pi-user"></i></div>
+            <div class="entity-details">
+              <h4 class="entity-name">{{ leadData.fullName || leadData.student?.fullName || '—' }}</h4>
+              <p class="entity-meta">{{ leadData.mobile || leadData.student?.mobile || 'No phone' }} | {{ leadData.email || leadData.student?.email || 'No email' }} | {{ leadData.gender || leadData.student?.gender || '—' }}</p>
+            </div>
+          </div>
+          <div class="field-grid field-grid--three-col">
+            <div class="field-item">
+              <span class="field-label">School</span>
+              <span class="field-value">{{ leadData.school?.name || leadData.student?.education?.school?.name || leadData.student?.education?.schoolName || '—' }}</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Old Province</span>
+              <span class="field-value">{{ leadData.oldProvince?.name || leadData.student?.education?.oldProvince?.name || '—' }}</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Class</span>
+              <span class="field-value">{{ leadData.class || leadData.student?.education?.class || '—' }}</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Interested Major</span>
+              <span class="field-value">{{ leadData.interestedMajor?.label || leadData.student?.specializedRegister?.interestedMajor?.label || '—' }}</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">Specific Major</span>
+              <span class="field-value">{{ leadData.specificMajor?.label || leadData.student?.specializedRegister?.specificMajor?.label || '—' }}</span>
+            </div>
+            <div class="field-item">
+              <span class="field-label">GPA</span>
+              <span class="field-value">{{ leadData.gpa || leadData.student?.specializedRegister?.gpa || '—' }}</span>
+            </div>
           </div>
         </div>
-        <span v-else class="field-value field-value--muted">No student assigned</span>
+        <span v-else class="field-value field-value--muted">No contact information available</span>
       </div>
 
       

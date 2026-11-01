@@ -18,6 +18,6 @@ import Button from 'primevue/button'
 const router = useRouter()
 
 const goHome = () => {
-  router.push('/')
+  router.push('/leads')
 }
 </script>

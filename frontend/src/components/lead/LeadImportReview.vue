@@ -38,8 +38,8 @@ const viewRowDetails = (row) => {
 
 const getClassificationLabel = (cls) => {
   switch (cls) {
-    case 'READY_NEW_STUDENT_AND_LEAD': return 'New Student'
-    case 'READY_EXISTING_STUDENT_NEW_LEAD': return 'Existing Student'
+    case 'READY_NEW_STUDENT_AND_LEAD': return 'New Lead'
+    case 'READY_EXISTING_STUDENT_NEW_LEAD': return 'Re-inquiry Lead'
     case 'EXISTING_LEAD': return 'Skip (Exists)'
     case 'DUPLICATE_IN_FILE': return 'Duplicate'
     case 'MAPPING_ISSUE': return 'Mapping Error'
@@ -68,11 +68,11 @@ const getClassificationSeverity = (cls) => {
         <span class="count">{{ summary.total }}</span>
         <span class="label">Total Rows</span>
       </div>
-      <div class="summary-card text-green" title="New Student + Lead">
+      <div class="summary-card text-green" title="New Lead">
         <span class="count">{{ summary.readyNew }}</span>
         <span class="label">Ready (New)</span>
       </div>
-      <div class="summary-card text-blue" title="Existing Student + New Lead">
+      <div class="summary-card text-blue" title="Re-inquiry Lead">
         <span class="count">{{ summary.readyExisting }}</span>
         <span class="label">Ready (Existing)</span>
       </div>
@@ -98,7 +98,7 @@ const getClassificationSeverity = (cls) => {
       class="p-datatable-sm mt-3 review-table"
     >
       <Column field="_meta.rowNumber" header="Row" style="width: 5%"></Column>
-      <Column field="fullName" header="Student Name" style="width: 20%"></Column>
+      <Column field="fullName" header="Full Name" style="width: 20%"></Column>
       <Column field="mobile" header="Mobile" style="width: 15%"></Column>
       <Column header="School / Status" style="width: 20%">
         <template #body="{ data }">
@@ -147,7 +147,7 @@ const getClassificationSeverity = (cls) => {
 
         <div class="details-grid">
           <div class="detail-group">
-            <h4>Student & Education</h4>
+            <h4>Contact & Education</h4>
             <div class="field"><label>Name:</label> <span>{{ selectedRow.fullName }}</span></div>
             <div class="field"><label>Mobile:</label> <span>{{ selectedRow.mobile }}</span></div>
             <div class="field"><label>Email:</label> <span>{{ selectedRow.email }}</span></div>

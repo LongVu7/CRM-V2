@@ -5,11 +5,11 @@
     
     <div class="result-stats">
       <div class="stat-row">
-        <span>New Students & Leads Created:</span>
+        <span>New Leads Created:</span>
         <strong>{{ resultStats.newStudentsCreated }}</strong>
       </div>
       <div class="stat-row">
-        <span>Leads Created for Existing Students:</span>
+        <span>Re-inquiry Leads Created:</span>
         <strong>{{ resultStats.newLeadsForExisting }}</strong>
       </div>
       <div class="stat-row">
