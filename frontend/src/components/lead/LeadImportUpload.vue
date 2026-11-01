@@ -45,6 +45,7 @@ defineExpose({ clear })
       ref="fileUpload"
       @uploader="onUpload"
       :disabled="isUploading"
+      :pt="{ fileThumbnail: { style: 'display: none' } }"
     >
       <template #empty>
         <div class="upload-empty">
@@ -92,5 +93,44 @@ defineExpose({ clear })
 .upload-empty i {
   font-size: 2rem;
   color: var(--p-green-400);
+}
+
+:deep(.p-fileupload-file-thumbnail) {
+  display: none !important;
+}
+
+:deep(.p-fileupload-file) {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  background: var(--p-surface-50);
+  border: 1px solid var(--p-surface-200);
+}
+
+:deep(.p-fileupload-file)::before {
+  content: '\e98e';
+  font-family: 'primeicons';
+  font-size: 2rem;
+  color: #10b981;
+}
+
+:deep(.p-fileupload-file-info) {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+:deep(.p-fileupload-file-name) {
+  font-weight: 600;
+  color: var(--p-text-color);
+  word-break: break-all;
+}
+
+:deep(.p-fileupload-file-size) {
+  font-size: 0.8rem;
+  color: var(--p-text-muted-color);
 }
 </style>
