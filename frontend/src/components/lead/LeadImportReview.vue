@@ -38,8 +38,7 @@ const viewRowDetails = (row) => {
 
 const getClassificationLabel = (cls) => {
   switch (cls) {
-    case 'READY_NEW_STUDENT_AND_LEAD': return 'New Lead'
-    case 'READY_EXISTING_STUDENT_NEW_LEAD': return 'Re-inquiry Lead'
+    case 'READY': return 'Ready'
     case 'EXISTING_LEAD': return 'Skip (Exists)'
     case 'DUPLICATE_IN_FILE': return 'Duplicate'
     case 'MAPPING_ISSUE': return 'Mapping Error'
@@ -50,8 +49,7 @@ const getClassificationLabel = (cls) => {
 
 const getClassificationSeverity = (cls) => {
   switch (cls) {
-    case 'READY_NEW_STUDENT_AND_LEAD': return 'success'
-    case 'READY_EXISTING_STUDENT_NEW_LEAD': return 'info'
+    case 'READY': return 'success'
     case 'EXISTING_LEAD': return 'warning'
     case 'DUPLICATE_IN_FILE': return 'warning'
     case 'MAPPING_ISSUE': return 'danger'
@@ -68,20 +66,16 @@ const getClassificationSeverity = (cls) => {
         <span class="count">{{ summary.total }}</span>
         <span class="label">Total Rows</span>
       </div>
-      <div class="summary-card text-green" title="New Lead">
-        <span class="count">{{ summary.readyNew }}</span>
-        <span class="label">Ready (New)</span>
-      </div>
-      <div class="summary-card text-blue" title="Re-inquiry Lead">
-        <span class="count">{{ summary.readyExisting }}</span>
-        <span class="label">Ready (Existing)</span>
+      <div class="summary-card text-green" title="Ready to Import">
+        <span class="count">{{ summary.ready || 0 }}</span>
+        <span class="label">Ready to Import</span>
       </div>
       <div class="summary-card text-orange" title="Existing Lead (Skipped)">
-        <span class="count">{{ summary.existingLead }}</span>
-        <span class="label">Skipped</span>
+        <span class="count">{{ summary.existingLead || 0 }}</span>
+        <span class="label">Skipped (Exists)</span>
       </div>
       <div class="summary-card text-red" title="Mapping/Validation Issues">
-        <span class="count">{{ summary.mappingIssue + summary.invalid + summary.duplicateInFile }}</span>
+        <span class="count">{{ (summary.mappingIssue || 0) + (summary.invalid || 0) + (summary.duplicateInFile || 0) }}</span>
         <span class="label">Issues</span>
       </div>
     </div>

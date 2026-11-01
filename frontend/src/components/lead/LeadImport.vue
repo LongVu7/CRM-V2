@@ -109,7 +109,7 @@
   const resultStats = ref({})
   
   const canConfirm = computed(() => {
-    return (summary.value.readyNew || 0) > 0 || (summary.value.readyExisting || 0) > 0
+    return (summary.value.ready || 0) > 0
   })
   
   const handleUpload = async (file) => {

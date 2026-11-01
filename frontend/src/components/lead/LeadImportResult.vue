@@ -5,16 +5,12 @@
     
     <div class="result-stats">
       <div class="stat-row">
-        <span>New Leads Created:</span>
-        <strong>{{ resultStats.newStudentsCreated }}</strong>
-      </div>
-      <div class="stat-row">
-        <span>Re-inquiry Leads Created:</span>
-        <strong>{{ resultStats.newLeadsForExisting }}</strong>
+        <span>Leads Imported:</span>
+        <strong>{{ resultStats.importedCount ?? 0 }}</strong>
       </div>
       <div class="stat-row">
         <span>Rows Skipped:</span>
-        <strong>{{ resultStats.skipped }}</strong>
+        <strong>{{ resultStats.skipped ?? 0 }}</strong>
       </div>
     </div>
     

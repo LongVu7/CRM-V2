@@ -15,7 +15,7 @@
             :rows="5"
         >
             <Column selectionMode="multiple" headerStyle="width: 3rem"></Column>
-            <Column field="student.fullName" header="Student Name"></Column>
+            <Column field="student.fullName" header="Full Name"></Column>
             <Column field="student.email" header="Email"></Column>
             <Column field="student.mobile" header="Mobile"></Column>
             <Column header="Status">
