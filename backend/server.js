@@ -14,7 +14,6 @@ const schoolRoutes = require('./api/modules/school/schoolRoutes');
 const campaignRoutes = require('./api/modules/campaign/campaignRoutes');
 const campaignTemplateRoutes = require('./api/modules/campaignTemplate/templateRoutes');
 const errorReportRoutes = require('./api/modules/errorReport/errorReportRoutes');
-const permissionRoutes = require('./api/modules/permission/permissionRoutes');
 const countryRoutes = require('./api/modules/country/countryRoutes');
 const reportRoutes = require('./api/modules/report/reportRoutes');
 const teamRoutes = require('./api/modules/team/teamRoutes');
@@ -58,14 +57,17 @@ app.use('/api/schools', schoolRoutes);
 app.use('/api/campaigns', campaignRoutes);
 app.use('/api/campaign-templates', campaignTemplateRoutes);
 app.use('/api/error-reports', errorReportRoutes);
-app.use('/api/permissions', permissionRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api', voipRoutes);
 
 app.listen(port);
 
 app.use((req, res) => {
-  res.status(404).send({ url: `${req.originalUrl} not found` });
+  res.status(404).json({
+    error: 'Not Found',
+    message: `Route ${req.originalUrl} not found`,
+    reason: 'ROUTE_NOT_FOUND'
+  });
 });
 
 require('./config/scheduler');

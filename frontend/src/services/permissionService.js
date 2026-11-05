@@ -1,8 +1,6 @@
 import api from '@/services/apiClient'
 
-const prefix = '/permissions'
-
 export const getAllPermissions = async () => {
-  const response = await api.get(`${prefix}/`)
+  const response = await api.get('/roles/permissions')
   return response.data
 }

@@ -62,12 +62,13 @@ function resolveDataScope(user, action, resource) {
 }
 
 /**
- * Normalizes Prisma CASL rules for consumption by client-side MongoAbility (@casl/ability).
+ * Normalizes Prisma CASL rules for client-side 
  * Maps Prisma `{ in: [...] }` operators to Mongo `{ $in: [...] }`.
  */
 function serializeRulesForClient(rules = []) {
   return rules.map(rule => {
-    if (!rule.conditions) return rule;
+    if (!rule.conditions)
+      return rule;
     const conditions = {};
     for (const [key, val] of Object.entries(rule.conditions)) {
       conditions[key] = (val && Array.isArray(val.in)) ? { $in: val.in } : val;

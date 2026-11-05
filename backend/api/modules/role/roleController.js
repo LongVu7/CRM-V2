@@ -135,6 +135,20 @@ const removePermissionFromRole = async (req, res) => {
   }
 };
 
+// ─── System Permissions Dictionary
+const getAllPermissions = async (req, res) => {
+  try {
+    const data = await roleService.getAllPermissions();
+    res.status(200).json({
+      message: 'Permissions retrieved successfully',
+      ...data
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ error: error.message });
+  }
+};
+
 module.exports = {
   getAllRoles,
   getRoleById,
@@ -144,5 +158,6 @@ module.exports = {
   getRolePermissions,
   updateRolePermissions,
   assignPermissionToRole,
-  removePermissionFromRole
+  removePermissionFromRole,
+  getAllPermissions
 };

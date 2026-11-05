@@ -15,6 +15,9 @@ const roleController = require('./roleController');
 // All role administration routes are restricted strictly to Administrators
 router.use(authenticate, requireAdmin);
 
+// ─── System Permissions Dictionary
+router.get('/permissions', authorize('read', 'role'), roleController.getAllPermissions);
+
 // ─── Roles CRUD
 router.route('/')
     .get(authenticate, authorize('read', 'role'), roleController.getAllRoles)

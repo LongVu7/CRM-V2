@@ -36,7 +36,6 @@ const login = (req, res, next) => {
 
     const effectivePermissions = getEffectivePermissions(account);
     const teamScopes = await resolveTeamScopes(account);
-    const userPayload = buildUserContext(account, effectivePermissions, teamScopes);
     const ability = defineAbilityFor({
       accountId: account.id,
       roleId: account.roleId,
@@ -44,14 +43,11 @@ const login = (req, res, next) => {
       permissions: effectivePermissions,
       ...teamScopes
     });
+    const user = buildUserContext(account, effectivePermissions, teamScopes, ability);
 
     res.status(200).json({
       message: 'Login successful',
-      user: {
-        ...userPayload,
-        permissions: Array.from(userPayload.permissions),
-        abilityRules: ability.clientRules
-      }
+      user
     });
   })(req, res, next);
 };
@@ -65,11 +61,7 @@ const logout = (req, res) => {
 // ─── Get current user ───
 const getMe = (req, res) => {
   res.status(200).json({
-    user: {
-      ...req.user,
-      permissions: Array.from(req.user.permissions || []),
-      abilityRules: req.ability?.clientRules || []
-    }
+    user: req.user
   });
 };
 
@@ -92,11 +84,7 @@ const refreshToken = (req, res) => {
 
   res.status(200).json({
     message: 'Token refreshed',
-    user: {
-      ...req.user,
-      permissions: Array.from(req.user.permissions || []),
-      abilityRules: req.ability?.clientRules || []
-    }
+    user: req.user
   });
 };
 

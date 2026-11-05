@@ -99,17 +99,17 @@ const authorize = (action, resource, options = {}) => {
 
         // If target record does not exist in DB
         if (!record) {
-          return res.status(404).json({ error: 'Resource not found' });
+          return res.status(404).json({ error: 'Resource not found', message: 'Resource not found', reason: 'NOT_FOUND' });
         }
 
         // Evaluate target record directly against user's CASL ability
         if (!req.ability.can(act, subject(resName, record))) {
-          return res.status(404).json({ error: 'Resource not found' });
+          return res.status(404).json({ error: 'Resource not found', message: 'Resource not found', reason: 'NOT_FOUND' });
         }
 
         req.resource = record;
       } catch (err) {
-        return res.status(500).json({ error: 'Authorization verification failed', details: err.message });
+        return res.status(500).json({ error: 'Authorization verification failed', message: 'Authorization verification failed', details: err.message });
       }
     }
 

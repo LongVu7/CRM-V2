@@ -101,25 +101,26 @@ async function resolveTeamScopes(account) {
   return { memberTeamId, ledTeamIds, authorizedTeamIds, authorizedAccountIds };
 }
 
-function buildUserContext(account, effectivePermissions, teamScopes) {
+function buildUserContext(account, effectivePermissions, teamScopes, ability = null) {
   const roleName = account.role?.name || null;
   const isAdmin = (roleName || '').toLowerCase() === 'admin' || (roleName || '').toLowerCase() === 'administrator';
 
   return {
-    accountId: account.id,
     id: account.id,
+    accountId: account.id,
     email: account.email,
     fullName: account.fullName,
     roleId: account.roleId,
     roleName,
     isAdmin,
-    memberTeamId: teamScopes.memberTeamId,
-    ledTeamIds: teamScopes.ledTeamIds,
-    teamIds: teamScopes.authorizedTeamIds,
-    authorizedTeamIds: teamScopes.authorizedTeamIds,
-    authorizedAccountIds: teamScopes.authorizedAccountIds,
-    permissions: new Set(effectivePermissions.map(p => p.code)),
-    rolePermissions: effectivePermissions
+    memberTeamId: teamScopes?.memberTeamId || null,
+    ledTeamIds: teamScopes?.ledTeamIds || [],
+    authorizedTeamIds: teamScopes?.authorizedTeamIds || [],
+    teamIds: teamScopes?.authorizedTeamIds || [],
+    authorizedAccountIds: teamScopes?.authorizedAccountIds || [],
+    permissions: (effectivePermissions || []).map(p => p.code),
+    rolePermissions: effectivePermissions || [],
+    abilityRules: ability?.clientRules || []
   };
 }
 
@@ -127,7 +128,7 @@ function buildUserContext(account, effectivePermissions, teamScopes) {
 const authenticate = async (req, res, next) => {
   const token = extractToken(req);
   if (!token) {
-    return res.status(401).json({ error: 'Authentication required' });
+    return res.status(401).json({ error: 'Authentication required', message: 'Authentication required', reason: 'AUTH_REQUIRED' });
   }
 
   try {
@@ -135,13 +136,13 @@ const authenticate = async (req, res, next) => {
     const account = await fetchAccountWithRoles(decoded.sub);
 
     if (!account || !account.isActive) {
-      return res.status(401).json({ error: 'Account not found or deactivated' });
+      return res.status(401).json({ error: 'Account not found or deactivated', message: 'Account not found or deactivated', reason: 'ACCOUNT_INACTIVE' });
     }
 
     const effectivePermissions = getEffectivePermissions(account);
     const teamScopes = await resolveTeamScopes(account);
 
-    req.ability = defineAbilityFor({
+    const ability = defineAbilityFor({
       accountId: account.id,
       roleId: account.roleId,
       roleName: account.role?.name || null,
@@ -149,10 +150,11 @@ const authenticate = async (req, res, next) => {
       ...teamScopes
     });
 
-    req.user = buildUserContext(account, effectivePermissions, teamScopes);
+    req.ability = ability;
+    req.user = buildUserContext(account, effectivePermissions, teamScopes, ability);
     next();
   } catch (error) {
-    return res.status(401).json({ error: 'Invalid or expired token' });
+    return res.status(401).json({ error: 'Invalid or expired token', message: 'Invalid or expired token', reason: 'TOKEN_INVALID' });
   }
 };
 
@@ -161,7 +163,9 @@ const checkRole = (allowedRoles) => {
   return (req, res, next) => {
     if (!req.user || !allowedRoles.includes(req.user.roleName)) {
       return res.status(403).json({
-        message: "Forbidden: You do not have the correct role to perform this action.",
+        error: 'Forbidden',
+        message: 'Forbidden: You do not have the correct role to perform this action.',
+        reason: 'ROLE_FORBIDDEN',
         requiredRoles: allowedRoles,
         userRole: req.user?.roleName || null
       });

@@ -350,6 +350,19 @@ const removePermissionFromRole = async (roleId, permissionId) => {
   return { success: true };
 };
 
+/**
+ * List all available system permissions (grouped by resource)
+ */
+const getAllPermissions = async () => {
+  const permissions = await prisma.permission.findMany({
+    orderBy: [{ resource: 'asc' }, { action: 'asc' }]
+  });
+
+  const uniqueActions = [...new Set(permissions.map(p => p.action))].sort();
+
+  return { permissions, actions: uniqueActions };
+};
+
 module.exports = {
   getAllRoles,
   getRoleById,
@@ -359,5 +372,6 @@ module.exports = {
   getRolePermissions,
   updateRolePermissions,
   assignPermissionToRole,
-  removePermissionFromRole
+  removePermissionFromRole,
+  getAllPermissions
 };

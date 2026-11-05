@@ -717,7 +717,8 @@ const assignAccountToLead = async (leadId, accountId, user) => {
 
 const getCreatedLeadStats = async (accountId) => {
   const aid = parseInt(accountId, 10);
-  if (!aid || isNaN(aid)) return { today: 0, this_week: 0, this_month: 0, total: 0 };
+  if (!aid || isNaN(aid)) 
+    return { today: 0, this_week: 0, this_month: 0, total: 0 };
 
   const [stats] = await prisma.$queryRaw`
     SELECT
