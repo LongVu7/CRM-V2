@@ -345,16 +345,9 @@ const getScopeRecipients = async (query, user) => {
     if (!team) {
       throw createServiceError('Team not found', 404, 'TEAM_NOT_FOUND');
     } //Get team member only
-    // accountWhere = {
-    //   isActive: true,
-    //   teamMemberships: { some: { teamId: tid } }
-    // };
-    accountWhere = { // Get team members and team leaders - Notes: ask client to clear the ambiguous
+    accountWhere = {
       isActive: true,
-      OR: [
-        { teamMemberships: { some: { teamId: tid } } },
-        { teamsLed: { some: { id: tid } } }
-      ]
+      teamMemberships: { some: { teamId: tid } }
     };
 
   } else if (scope === 'NO_TEAM') {

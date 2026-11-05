@@ -84,18 +84,20 @@ function getEffectivePermissions(account) {
 }
 
 async function resolveTeamScopes(account) {
-  const ledTeamIds = (account.teamsLed || []).map(t => t.id);
-  const ledSubtreeTeamIds = await getDescendantSubtreeTeamIds(ledTeamIds);
-
+  const ledTeam = account.teamsLed?.[0] || null;
   const memberTeamId = account.teamMemberships?.[0]?.teamId || null;
-  const authorizedTeamIdsSet = new Set(ledSubtreeTeamIds);
-  if (memberTeamId) {
-    authorizedTeamIdsSet.add(memberTeamId);
+  const homeTeamId = ledTeam?.id || memberTeamId;
+
+  if (!homeTeamId) {
+    return { memberTeamId: null, ledTeamIds: [], authorizedTeamIds: [], authorizedAccountIds: [] };
   }
 
-  const authorizedTeamIds = Array.from(authorizedTeamIdsSet);
-  const authorizedAccountIds = await getAuthorizedAccountIds(authorizedTeamIds);
+  const ledTeamIds = ledTeam ? [ledTeam.id] : [];
+  const authorizedTeamIds = ledTeam
+    ? await getDescendantSubtreeTeamIds(ledTeam.id)
+    : [homeTeamId];
 
+  const authorizedAccountIds = await getAuthorizedAccountIds(authorizedTeamIds);
   return { memberTeamId, ledTeamIds, authorizedTeamIds, authorizedAccountIds };
 }
 

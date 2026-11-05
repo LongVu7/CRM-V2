@@ -4,7 +4,7 @@ model Team {
   name        String   @unique @db.VarChar(255)
   description String?
   parentId    Int?     @map("parent_id")
-  leaderId    Int?     @map("leader_id")
+  leaderId    Int?     @unique @map("leader_id")
   createdById Int?     @map("created_by_id")
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz()

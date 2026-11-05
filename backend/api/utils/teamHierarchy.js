@@ -112,21 +112,12 @@ async function getAuthorizedAccountIds(authorizedTeamIds, tx = prisma) {
     return [];
   }
 
-  const [members, leaders] = await Promise.all([
-    tx.teamMember.findMany({
-      where: { teamId: { in: normalizedIds } },
-      select: { accountId: true }
-    }),
-    tx.team.findMany({
-      where: { id: { in: normalizedIds }, leaderId: { not: null } },
-      select: { leaderId: true }
-    })
-  ]);
+  const members = await tx.teamMember.findMany({
+    where: { teamId: { in: normalizedIds } },
+    select: { accountId: true }
+  });
 
-  return Array.from(new Set([
-    ...members.map(m => m.accountId),
-    ...leaders.map(l => l.leaderId)
-  ]));
+  return members.map(m => m.accountId);
 }
 
 module.exports = {

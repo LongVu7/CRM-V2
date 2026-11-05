@@ -211,7 +211,8 @@ const createTeam = async (data, creatorId) => {
   }
 
   if (data.leaderId) {
-    const leader = await prisma.account.findUnique({ where: { id: Number(data.leaderId) } });
+    const leaderId = Number(data.leaderId);
+    const leader = await prisma.account.findUnique({ where: { id: leaderId } });
     if (!leader) {
       const error = new Error('Leader account not found');
       error.statusCode = 404;
@@ -222,23 +223,41 @@ const createTeam = async (data, creatorId) => {
       error.statusCode = 400;
       throw error;
     }
+
+    const alreadyLeads = await prisma.team.findFirst({ where: { leaderId } });
+    if (alreadyLeads) {
+      const error = new Error(`This account already leads team "${alreadyLeads.name}"`);
+      error.statusCode = 409;
+      throw error;
+    }
   }
 
-  const team = await prisma.team.create({
-    data: {
-      name: data.name.trim(),
-      description: data.description || null,
-      ...(data.parentId ? { parent: { connect: { id: Number(data.parentId) } } } : {}),
-      ...(data.leaderId ? { leader: { connect: { id: Number(data.leaderId) } } } : {}),
-      ...(creatorId ? { createdBy: { connect: { id: Number(creatorId) } } } : {})
-    },
-    include: {
-      parent: { select: { id: true, name: true } },
-      leader: { select: { id: true, fullName: true, email: true } }
-    }
-  });
+  return prisma.$transaction(async (tx) => {
+    const team = await tx.team.create({
+      data: {
+        name: data.name.trim(),
+        description: data.description || null,
+        ...(data.parentId ? { parent: { connect: { id: Number(data.parentId) } } } : {}),
+        ...(data.leaderId ? { leader: { connect: { id: Number(data.leaderId) } } } : {}),
+        ...(creatorId ? { createdBy: { connect: { id: Number(creatorId) } } } : {})
+      },
+      include: {
+        parent: { select: { id: true, name: true } },
+        leader: { select: { id: true, fullName: true, email: true } }
+      }
+    });
 
-  return team;
+    if (data.leaderId) {
+      // By default, leader as member of this team (transfers if already regular member elsewhere)
+      await tx.teamMember.upsert({
+        where: { accountId: Number(data.leaderId) },
+        update: { teamId: team.id, joinedAt: new Date() },
+        create: { teamId: team.id, accountId: Number(data.leaderId) }
+      });
+    }
+
+    return team;
+  });
 };
 
 /**
@@ -280,7 +299,8 @@ const updateTeam = async (id, data) => {
   }
 
   if (data.leaderId) {
-    const leader = await prisma.account.findUnique({ where: { id: Number(data.leaderId) } });
+    const leaderId = Number(data.leaderId);
+    const leader = await prisma.account.findUnique({ where: { id: leaderId } });
     if (!leader) {
       const error = new Error('Leader account not found');
       error.statusCode = 404;
@@ -291,24 +311,46 @@ const updateTeam = async (id, data) => {
       error.statusCode = 400;
       throw error;
     }
+
+    const alreadyLeads = await prisma.team.findFirst({
+      where: { leaderId, id: { not: teamId } }
+    });
+    if (alreadyLeads) {
+      const error = new Error(`This account already leads team "${alreadyLeads.name}"`);
+      error.statusCode = 409;
+      throw error;
+    }
   }
 
-  return prisma.team.update({
-    where: { id: teamId },
-    data: {
-      ...(data.name ? { name: data.name.trim() } : {}),
-      ...(data.description !== undefined ? { description: data.description } : {}),
-      ...(data.parentId !== undefined
-        ? (data.parentId === null ? { parent: { disconnect: true } } : { parent: { connect: { id: Number(data.parentId) } } })
-        : {}),
-      ...(data.leaderId !== undefined
-        ? (data.leaderId === null ? { leader: { disconnect: true } } : { leader: { connect: { id: Number(data.leaderId) } } })
-        : {})
-    },
-    include: {
-      parent: { select: { id: true, name: true } },
-      leader: { select: { id: true, fullName: true, email: true } }
+  return prisma.$transaction(async (tx) => {
+    const team = await tx.team.update({
+      where: { id: teamId },
+      data: {
+        ...(data.name ? { name: data.name.trim() } : {}),
+        ...(data.description !== undefined ? { description: data.description } : {}),
+        ...(data.parentId !== undefined
+          ? (data.parentId === null ? { parent: { disconnect: true } } : { parent: { connect: { id: Number(data.parentId) } } })
+          : {}),
+        ...(data.leaderId !== undefined
+          ? (data.leaderId === null ? { leader: { disconnect: true } } : { leader: { connect: { id: Number(data.leaderId) } } })
+          : {})
+      },
+      include: {
+        parent: { select: { id: true, name: true } },
+        leader: { select: { id: true, fullName: true, email: true } }
+      }
+    });
+
+    if (data.leaderId) {
+      // By default, appointed leader as member of this team (transfers if already regular member elsewhere; previous leader stays regular member)
+      await tx.teamMember.upsert({
+        where: { accountId: Number(data.leaderId) },
+        update: { teamId, joinedAt: new Date() },
+        create: { teamId, accountId: Number(data.leaderId) }
+      });
     }
+
+    return team;
   });
 };
 
@@ -375,6 +417,16 @@ const addMember = async (teamId, data) => {
     throw error;
   }
 
+  // Check if account already leads another team
+  const leadsAnother = await prisma.team.findFirst({
+    where: { leaderId: aid, id: { not: tid } }
+  });
+  if (leadsAnother) {
+    const error = new Error(`Cannot add account as member; they are already the leader of team "${leadsAnother.name}"`);
+    error.statusCode = 409;
+    throw error;
+  }
+
   if (rid) {
     const role = await prisma.role.findUnique({ where: { id: rid } });
     if (!role) {
@@ -421,6 +473,22 @@ const removeMember = async (teamId, accountId) => {
   const tid = Number(teamId);
   const aid = Number(accountId);
 
+  const team = await prisma.team.findUnique({
+    where: { id: tid },
+    select: { leaderId: true }
+  });
+  if (!team) {
+    const error = new Error('Team not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (team.leaderId === aid) {
+    const error = new Error('Cannot remove the designated team leader; reassign leadership first');
+    error.statusCode = 400;
+    throw error;
+  }
+
   const existing = await prisma.teamMember.findUnique({
     where: { accountId: aid }
   });
@@ -455,6 +523,9 @@ const getAvailableAccounts = async () => {
           team: { select: { id: true, name: true } },
           role: { select: { id: true, name: true } }
         }
+      },
+      teamsLed: {
+        select: { id: true, name: true }
       },
       isActive: true
     },
