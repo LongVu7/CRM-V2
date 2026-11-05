@@ -42,8 +42,9 @@
         @sort="handleSort" 
         v-model:selection="selectedLeads" 
         dataKey="id" 
+        :metaKeySelection="false"
         :removableSort="true" 
-        :scrollable="true"
+        :scrollable="true" 
         :scrollHeight="'calc(100vh - 200px)'" 
         class="lead-datatable"
         paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink RowsPerPageDropdown CurrentPageReport"
@@ -66,15 +67,6 @@
               </IconField>
             </div>
             <div class="toolbar-actions">
-              <Button 
-                v-if="selectedLeads.length > 0 && $can('delete', 'lead')" 
-                :label="`Delete (${selectedLeads.length})`" 
-                icon="pi pi-trash" 
-                severity="danger" 
-                text 
-                @click="confirmDeleteSelected" 
-                class="delete-btn" 
-              />
               <Button 
                 v-if="$can('import', 'lead')" 
                 label="Sync Google Sheets" 
@@ -121,6 +113,50 @@
                 class="filter-btn"
                 :badge="activeFilterCount > 0 ? String(activeFilterCount) : undefined" 
                 badgeSeverity="danger" 
+              />
+
+              <!-- Column Toggle MultiSelect -->
+              <MultiSelect
+                v-model="visibleColumns"
+                :options="ALL_COLUMNS"
+                optionLabel="header"
+                optionValue="field"
+                placeholder="Columns"
+                :maxSelectedLabels="0"
+                selectedItemsLabel="{0} cols"
+                class="columns-multiselect"
+                filter
+              >
+                <template #value>
+                  <div class="columns-value">
+                    <i class="pi pi-table"></i>
+                    <span>Columns ({{ visibleColumns.length }})</span>
+                  </div>
+                </template>
+                <template #footer>
+                  <div class="columns-dropdown-footer">
+                    <Button 
+                      label="Reset to Default" 
+                      icon="pi pi-refresh" 
+                      size="small" 
+                      severity="secondary" 
+                      text 
+                      class="w-full"
+                      @click="resetDefaultColumns" 
+                    />
+                  </div>
+                </template>
+              </MultiSelect>
+
+              <Button
+                v-if="!isDefaultColumns"
+                icon="pi pi-refresh"
+                text
+                rounded
+                severity="secondary"
+                size="small"
+                v-tooltip.top="'Reset default columns'"
+                @click="resetDefaultColumns"
               />
 
               <span v-if="selectedLeads.length > 0" class="selection-count">
@@ -204,22 +240,102 @@
           :exportable="false" 
         />
 
-        <!-- Data Columns -->
-        <Column field="assignedTo.fullName" header="Assigned Staff" sortable style="min-width: 160px">
+        <!-- Toggleable Columns -->
+        <Column v-if="isColVisible('assignedTo')" field="assignedTo.fullName" header="Assigned Staff" sortable style="min-width: 160px">
           <template #body="{ data }">
             <span v-if="data.assignedTo" class="user-name">{{ data.assignedTo.fullName }}</span>
             <span v-else class="null-text">—</span>
           </template>
         </Column>
 
-        <Column field="student.fullName" header="Full Name" sortable style="min-width: 160px">
+        <Column v-if="isColVisible('fullName')" field="student.fullName" header="Full Name" sortable style="min-width: 160px">
           <template #body="{ data }">
             <span v-if="data.student" class="student-name">{{ data.student.fullName }}</span>
             <span v-else class="null-text">—</span>
           </template>
         </Column>
 
-        <Column header="Interaction Status" style="min-width: 150px">
+        <Column v-if="isColVisible('mobile')" header="Mobile" style="min-width: 130px">
+          <template #body="{ data }">
+            <a v-if="data.student?.mobile || data.mobile" :href="`tel:${data.student?.mobile || data.mobile}`" class="phone-link" @click.stop>
+              <i class="pi pi-phone text-xs"></i> {{ data.student?.mobile || data.mobile }}
+            </a>
+            <span v-else class="null-text">—</span>
+          </template>
+        </Column>
+
+        <Column v-if="isColVisible('email')" header="Email" style="min-width: 160px">
+          <template #body="{ data }">
+            <span v-if="data.student?.email || data.email" class="text-sm">{{ data.student?.email || data.email }}</span>
+            <span v-else class="null-text">—</span>
+          </template>
+        </Column>
+
+        <Column v-if="isColVisible('birthDate')" header="Birth Date" style="min-width: 110px">
+          <template #body="{ data }">
+            <span v-if="data.student?.birthDate || data.birthDate">{{ formatDate(data.student?.birthDate || data.birthDate) }}</span>
+            <span v-else class="null-text">—</span>
+          </template>
+        </Column>
+
+        <Column v-if="isColVisible('gender')" header="Gender" style="min-width: 100px">
+          <template #body="{ data }">
+            <span v-if="data.student?.gender || data.gender">{{ data.student?.gender || data.gender }}</span>
+            <span v-else class="null-text">—</span>
+          </template>
+        </Column>
+
+        <Column v-if="isColVisible('schoolProvince')" header="School & Province" style="min-width: 180px">
+          <template #body="{ data }">
+            <div v-if="data.student?.education?.school || data.student?.education?.oldProvince" class="school-cell">
+              <span class="school-name" :title="data.student?.education?.school?.name">{{ data.student?.education?.school?.name || '—' }}</span>
+              <span v-if="data.student?.education?.oldProvince?.name || data.student?.education?.school?.oldProvince?.name" class="province-badge">
+                {{ data.student?.education?.oldProvince?.name || data.student?.education?.school?.oldProvince?.name }}
+              </span>
+            </div>
+            <span v-else class="null-text">—</span>
+          </template>
+        </Column>
+
+        <Column v-if="isColVisible('interestedMajor')" header="Interested Major" style="min-width: 160px">
+          <template #body="{ data }">
+            <span v-if="data.student?.specializedRegister?.interestedMajor" class="major-text">
+              {{ data.student.specializedRegister.interestedMajor.label || data.student.specializedRegister.interestedMajor.name }}
+            </span>
+            <span v-else class="null-text">—</span>
+          </template>
+        </Column>
+
+        <Column v-if="isColVisible('specificMajor')" header="Specific Major" style="min-width: 160px">
+          <template #body="{ data }">
+            <span v-if="data.student?.specializedRegister?.specificMajor" class="major-text">
+              {{ data.student.specializedRegister.specificMajor.label || data.student.specializedRegister.specificMajor.name }}
+            </span>
+            <span v-else class="null-text">—</span>
+          </template>
+        </Column>
+
+        <Column v-if="isColVisible('admissionYear')" header="Admission Year" style="min-width: 120px">
+          <template #body="{ data }">
+            <span>{{ data.student?.specializedRegister?.admissionYear || '—' }}</span>
+          </template>
+        </Column>
+
+        <Column v-if="isColVisible('source')" header="Source" style="min-width: 120px">
+          <template #body="{ data }">
+            <Tag 
+              v-if="getSourceLevel(data.sourceData, 'source') !== '—'" 
+              :value="getSourceLevel(data.sourceData, 'source')" 
+              :severity="getSourceSeverity(data.sourceData)" 
+              :icon="getSourceIcon(data.sourceData)"
+              rounded 
+              class="status-tag"
+            />
+            <span v-else class="null-text">—</span>
+          </template>
+        </Column>
+
+        <Column v-if="isColVisible('interactionStatus')" header="Interaction Status" style="min-width: 150px">
           <template #body="{ data }">
             <Tag 
               v-if="getStatusLevel(data.statusData, 'interaction') !== '—'" 
@@ -232,7 +348,7 @@
           </template>
         </Column>
 
-        <Column header="General Status" style="min-width: 150px">
+        <Column v-if="isColVisible('generalStatus')" header="General Status" style="min-width: 150px">
           <template #body="{ data }">
             <Tag 
               v-if="getStatusLevel(data.statusData, 'general') !== '—'" 
@@ -245,7 +361,7 @@
           </template>
         </Column>
 
-        <Column header="Detail Status" style="min-width: 150px">
+        <Column v-if="isColVisible('detailStatus')" header="Detail Status" style="min-width: 150px">
           <template #body="{ data }">
             <Tag 
               v-if="getStatusLevel(data.statusData, 'detail') !== '—'" 
@@ -258,7 +374,7 @@
           </template>
         </Column>
 
-        <Column field="description" header="Description" sortable style="min-width: 180px">
+        <Column v-if="isColVisible('description')" field="description" header="Description" sortable style="min-width: 180px">
           <template #body="{ data }">
             <span 
               v-if="data.description" 
@@ -271,7 +387,14 @@
           </template>
         </Column>
 
-        <Column field="createdAt" header="Created" sortable style="width: 110px">
+        <Column v-if="isColVisible('createdBy')" header="Created By" style="min-width: 150px">
+          <template #body="{ data }">
+            <span v-if="data.createdBy" class="user-name">{{ data.createdBy.fullName }}</span>
+            <span v-else class="null-text">—</span>
+          </template>
+        </Column>
+
+        <Column v-if="isColVisible('createdAt')" field="createdAt" header="Created" sortable style="width: 110px">
           <template #body="{ data }">
             <div class="created-cell">
               <span>{{ formatCompactDate(data.createdAt) }}</span>
@@ -280,65 +403,95 @@
           </template>
         </Column>
 
-        <!-- Actions Column -->
-        <Column header="Actions" style="width: 110px" :exportable="false" frozen alignFrozen="right">
+        <!-- Unified Floating Row Actions Column -->
+        <Column header="" style="width: 50px; text-align: center" :exportable="false" frozen alignFrozen="right">
           <template #body="{ data }">
-            <div class="action-buttons">
+            <div class="row-actions-wrapper" @click.stop>
               <Button 
-                v-if="canUpdate(data)" 
-                icon="pi pi-pencil" 
-                rounded 
-                text 
-                severity="info" 
-                aria-label="Edit Lead" 
-                v-tooltip.top="'Edit Lead'"
-                @click="router.push(`/leads/${data.id}`)" 
-              />
-              <Button 
-                v-if="canDelete(data)" 
-                icon="pi pi-trash" 
-                rounded 
-                text 
-                severity="danger" 
-                aria-label="Delete Lead" 
-                v-tooltip.top="'Delete Lead'"
-                @click="confirmDeleteAction(data)" 
-              />
-              <span v-if="!canUpdate(data) && !canDelete(data)" class="null-text">—</span>
-            </div>
-          </template>
-        </Column>
-
-        <!-- View Detail Column -->
-        <Column header="View Detail" style="width: 120px; text-align: center" :exportable="false">
-          <template #body="{ data }">
-            <div class="action-buttons" style="justify-content: center;">
-              <Button 
-                v-if="canRead(data)" 
-                icon="pi pi-history" 
+                icon="pi pi-ellipsis-v" 
                 rounded 
                 text 
                 severity="secondary" 
-                aria-label="Status Transition History" 
-                v-tooltip.top="'Status Transition History'"
-                @click="openStatusHistory(data.id)" 
+                size="small" 
+                class="row-actions-trigger" 
               />
-              <Button 
-                v-if="canRead(data)" 
-                icon="pi pi-eye" 
-                rounded 
-                text 
-                severity="info" 
-                aria-label="View Lead Details" 
-                v-tooltip.top="'View Details'"
-                @click="onShow(data.id)" 
-              />
-              <span v-if="!canRead(data)" class="null-text">—</span>
+              <div class="row-floating-actions">
+                <Button 
+                  v-if="canRead(data)" 
+                  icon="pi pi-eye" 
+                  rounded 
+                  text 
+                  severity="info" 
+                  aria-label="View Lead Details" 
+                  v-tooltip.top="'View Details'"
+                  @click="onShow(data.id)" 
+                />
+                <Button 
+                  v-if="canRead(data)" 
+                  icon="pi pi-history" 
+                  rounded 
+                  text 
+                  severity="secondary" 
+                  aria-label="Status Transition History" 
+                  v-tooltip.top="'Status Transition History'"
+                  @click="openStatusHistory(data.id)" 
+                />
+                <Button 
+                  v-if="canUpdate(data)" 
+                  icon="pi pi-pencil" 
+                  rounded 
+                  text 
+                  severity="info" 
+                  aria-label="Edit Lead" 
+                  v-tooltip.top="'Edit Lead'"
+                  @click="router.push(`/leads/${data.id}`)" 
+                />
+                <Button 
+                  v-if="canDelete(data)" 
+                  icon="pi pi-trash" 
+                  rounded 
+                  text 
+                  severity="danger" 
+                  aria-label="Delete Lead" 
+                  v-tooltip.top="'Delete Lead'"
+                  @click="confirmDeleteAction(data)" 
+                />
+              </div>
             </div>
           </template>
         </Column>
       </DataTable>
     </div>
+
+    <!-- Floating Bulk Action Dock when leads are selected -->
+    <transition name="dock-slide">
+      <div v-if="selectedLeads.length > 0" class="floating-bulk-dock">
+        <div class="dock-badge">
+          <i class="pi pi-check-circle"></i>
+          <span>Selected <strong>{{ selectedLeads.length }}</strong> {{ selectedLeads.length === 1 ? 'lead' : 'leads' }}</span>
+        </div>
+        <div class="dock-divider"></div>
+        <div class="dock-actions">
+          <Button 
+            v-if="$can('delete', 'lead')" 
+            :label="`Delete (${selectedLeads.length})`" 
+            icon="pi pi-trash" 
+            severity="danger" 
+            size="small" 
+            @click="confirmDeleteSelected" 
+          />
+          <Button 
+            icon="pi pi-times" 
+            text 
+            rounded 
+            severity="secondary" 
+            size="small" 
+            v-tooltip.top="'Clear selection'" 
+            @click="selectedLeads = []" 
+          />
+        </div>
+      </div>
+    </transition>
 
     <!-- Confirmation Dialog -->
     <ConfirmDialog />
@@ -358,7 +511,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -368,6 +521,7 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Select from 'primevue/select'
+import MultiSelect from 'primevue/multiselect'
 import Popover from 'primevue/popover'
 import Tag from 'primevue/tag'
 import { useToast } from 'primevue/usetoast'
@@ -381,8 +535,8 @@ import { useTableQuery } from '@/composables/useTableQuery'
 import { useSchoolOptions } from '@/composables/useSchoolOptions'
 import { exportLeads, syncGoogleSheets } from '@/services/leadService'
 import { canPerform } from '@/services/ability'
-import { getStatusLevel, getStatusTagSeverity } from '@/utils/leadLabels'
-import { formatCompactDate, formatCompactTime } from '@/utils/dateUtils'
+import { getStatusLevel, getStatusTagSeverity, getSourceLevel } from '@/utils/leadLabels'
+import { formatCompactDate, formatCompactTime, formatDate } from '@/utils/dateUtils'
 
 const router = useRouter()
 const toast = useToast()
@@ -400,7 +554,95 @@ const { currentParams, loadData, onPageChange, onSort, onSearch, onFilter } = us
   }
 )
 
-// Table selection & search
+// ─── Column Toggle Config ───
+const DEFAULT_COLUMNS = [
+  'assignedTo',
+  'fullName',
+  'mobile',
+  'schoolProvince',
+  'interestedMajor',
+  'source',
+  'interactionStatus',
+  'generalStatus',
+  'detailStatus',
+  'description',
+  'createdAt'
+]
+
+const ALL_COLUMNS = [
+  { field: 'assignedTo', header: 'Assigned Staff' },
+  { field: 'fullName', header: 'Full Name' },
+  { field: 'mobile', header: 'Mobile' },
+  { field: 'email', header: 'Email' },
+  { field: 'birthDate', header: 'Birth Date' },
+  { field: 'gender', header: 'Gender' },
+  { field: 'schoolProvince', header: 'School & Province' },
+  { field: 'interestedMajor', header: 'Interested Major' },
+  { field: 'specificMajor', header: 'Specific Major' },
+  { field: 'admissionYear', header: 'Admission Year' },
+  { field: 'source', header: 'Source' },
+  { field: 'interactionStatus', header: 'Interaction Status' },
+  { field: 'generalStatus', header: 'General Status' },
+  { field: 'detailStatus', header: 'Detail Status' },
+  { field: 'description', header: 'Description' },
+  { field: 'createdBy', header: 'Created By' },
+  { field: 'createdAt', header: 'Created Date' }
+]
+
+const loadSavedColumns = () => {
+  try {
+    const saved = localStorage.getItem('lead_table_visible_columns')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const validFields = ALL_COLUMNS.map(c => c.field)
+        const filtered = parsed.filter(f => validFields.includes(f))
+        if (filtered.length > 0) return filtered
+      }
+    }
+  } catch {}
+  return [...DEFAULT_COLUMNS]
+}
+
+const visibleColumns = ref(loadSavedColumns())
+
+watch(visibleColumns, (newCols) => {
+  try {
+    localStorage.setItem('lead_table_visible_columns', JSON.stringify(newCols))
+  } catch {}
+}, { deep: true })
+
+const isColVisible = (key) => visibleColumns.value.includes(key)
+
+const isDefaultColumns = computed(() => {
+  if (visibleColumns.value.length !== DEFAULT_COLUMNS.length) return false
+  return DEFAULT_COLUMNS.every(col => visibleColumns.value.includes(col))
+})
+
+const resetDefaultColumns = () => {
+  visibleColumns.value = [...DEFAULT_COLUMNS]
+}
+
+const getSourceType = (sourceData) => {
+  const source = getSourceLevel(sourceData, 'source')
+  return source ? source.toLowerCase() : ''
+}
+
+const getSourceSeverity = (sourceData) => {
+  const type = getSourceType(sourceData)
+  if (type === 'online') return 'success'
+  if (type === 'offline') return 'secondary'
+  return 'secondary'
+}
+
+const getSourceIcon = (sourceData) => {
+  const type = getSourceType(sourceData)
+  if (type === 'online') return 'pi pi-globe'
+  if (type === 'offline') return 'pi pi-map-marker'
+  return 'pi pi-tag'
+}
+
+// ─── Table selection & search ───
 const selectedLeads = ref([])
 const searchQuery = ref('')
 let searchTimeout = null
@@ -422,7 +664,7 @@ const handleSort = (event) => {
   onSort({ sortField: event.sortField, sortOrder: event.sortOrder })
 }
 
-// Filter Popover
+// ─── Filter Popover ───
 const { oldProvinces, fetchOldProvinces } = useSchoolOptions()
 const filterPopover = ref(null)
 const activeFilters = ref({ oldProvinceId: null, birthYear: null })
@@ -705,11 +947,39 @@ onMounted(() => {
 .secondary-left {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .filter-btn {
   position: relative;
+}
+
+.columns-multiselect {
+  width: 145px;
+}
+
+.columns-multiselect :deep(.p-multiselect-label) {
+  padding: 0.35rem 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.columns-dropdown-footer {
+  padding: 0.4rem 0.5rem;
+  border-top: 1px solid var(--p-surface-200);
+  display: flex;
+}
+
+.columns-value {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--p-text-color);
+}
+
+.columns-value i {
+  color: var(--p-primary-color);
 }
 
 .result-count,
@@ -825,6 +1095,46 @@ onMounted(() => {
   color: var(--p-text-color);
 }
 
+.phone-link {
+  color: var(--p-primary-color);
+  text-decoration: none;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+}
+
+.phone-link:hover {
+  text-decoration: underline;
+}
+
+.school-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.school-name {
+  font-weight: 500;
+  color: var(--p-text-color);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 180px;
+}
+
+.province-badge {
+  font-size: 0.72rem;
+  color: var(--p-text-muted-color);
+}
+
+.major-text {
+  font-size: 0.8125rem;
+  color: var(--p-text-color);
+}
+
 .null-text {
   color: var(--p-text-muted-color);
 }
@@ -866,6 +1176,117 @@ onMounted(() => {
 
 .action-buttons :deep(.p-button .p-button-icon) {
   font-size: 0.85rem;
+}
+
+/* Row-hover Floating Actions */
+.row-actions-wrapper {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.row-actions-trigger {
+  width: 1.75rem;
+  height: 1.75rem;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.row-floating-actions {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: none;
+  background: var(--p-content-background);
+  border: 1px solid var(--p-surface-200);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  padding: 0.15rem 0.35rem;
+  gap: 0.2rem;
+  align-items: center;
+  white-space: nowrap;
+  z-index: 50;
+}
+
+.row-floating-actions :deep(.p-button) {
+  width: 1.85rem;
+  height: 1.85rem;
+}
+
+.row-floating-actions :deep(.p-button .p-button-icon) {
+  font-size: 0.8rem;
+}
+
+.lead-datatable :deep(tr:hover) .row-actions-trigger {
+  display: none;
+}
+
+.lead-datatable :deep(tr:hover) .row-floating-actions {
+  display: flex;
+  animation: fadeIn 0.15s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-50%) scale(0.95); }
+  to { opacity: 1; transform: translateY(-50%) scale(1); }
+}
+
+/* Floating Bulk Action Dock matching original user layout */
+.floating-bulk-dock {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: var(--p-content-background);
+  border: 1px solid var(--p-primary-300);
+  border-radius: 999px;
+  padding: 0.5rem 0.85rem 0.5rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.dock-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+  color: var(--p-primary-800);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.dock-badge i {
+  color: var(--p-primary-600);
+  font-size: 1rem;
+}
+
+.dock-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--p-surface-300);
+}
+
+.dock-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dock-slide-enter-active,
+.dock-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dock-slide-enter-from,
+.dock-slide-leave-to {
+  opacity: 0;
+  transform: translate(-50%, 20px);
 }
 
 /* Empty & Loading */
