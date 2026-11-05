@@ -62,6 +62,27 @@ function resolveDataScope(user, action, resource) {
 }
 
 /**
+ * Normalizes Prisma CASL rules for consumption by client-side MongoAbility (@casl/ability).
+ * Maps Prisma `{ in: [...] }` operators to Mongo `{ $in: [...] }`.
+ */
+function serializeRulesForClient(rules = []) {
+  return rules.map(rule => {
+    if (!rule.conditions) return rule;
+    const conditions = {};
+    for (const [key, val] of Object.entries(rule.conditions)) {
+      conditions[key] = (val && Array.isArray(val.in)) ? { $in: val.in } : val;
+    }
+    return { ...rule, conditions };
+  });
+}
+
+function finalizeAbility(build) {
+  const ability = build();
+  ability.clientRules = serializeRulesForClient(ability.rules);
+  return ability;
+}
+
+/**
  * Constructs a Prisma-capable CASL Ability instance reflecting the user's role
  * and permissions compiled with dynamic scopes over authorized team subtrees.
  */
@@ -73,7 +94,18 @@ function defineAbilityFor(account = {}) {
   // 1. Super-administrator bypass
   if (isAdmin(account)) {
     can('manage', 'all');
-    return build();
+    return finalizeAbility(build);
+  }
+
+  // Define ability for Collaborator role
+  const roleName = (account.roleName || account.role?.name || '').toLowerCase();
+  const isCollab = roleName === 'collaborator';
+  if (isCollab && accountId) {
+    can('read', 'lead', { createdById: accountId });
+    can('update', 'lead', { createdById: accountId });
+    can('create', 'lead');
+    can('import', 'lead');
+    return finalizeAbility(build);
   }
 
   // 2. Normalize inputs
@@ -159,7 +191,7 @@ function defineAbilityFor(account = {}) {
     }
   }
 
-  return build();
+  return finalizeAbility(build);
 }
 
 /**
@@ -191,6 +223,7 @@ function buildPrismaScope(ability, action, subjectName) {
 module.exports = {
   defineAbilityFor,
   buildPrismaScope,
+  serializeRulesForClient,
   normalizeSubject,
   isAdmin,
   getEffectiveScope,

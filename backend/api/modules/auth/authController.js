@@ -1,6 +1,7 @@
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
 const { getEffectivePermissions, resolveTeamScopes, buildUserContext } = require('../../../middleware/auth');
+const { defineAbilityFor } = require('../../../config/ability');
 
 // ─── Login ───
 const login = (req, res, next) => {
@@ -36,12 +37,20 @@ const login = (req, res, next) => {
     const effectivePermissions = getEffectivePermissions(account);
     const teamScopes = await resolveTeamScopes(account);
     const userPayload = buildUserContext(account, effectivePermissions, teamScopes);
+    const ability = defineAbilityFor({
+      accountId: account.id,
+      roleId: account.roleId,
+      roleName: account.role?.name || null,
+      permissions: effectivePermissions,
+      ...teamScopes
+    });
 
     res.status(200).json({
       message: 'Login successful',
       user: {
         ...userPayload,
-        permissions: Array.from(userPayload.permissions)
+        permissions: Array.from(userPayload.permissions),
+        abilityRules: ability.clientRules
       }
     });
   })(req, res, next);
@@ -58,7 +67,8 @@ const getMe = (req, res) => {
   res.status(200).json({
     user: {
       ...req.user,
-      permissions: Array.from(req.user.permissions || [])
+      permissions: Array.from(req.user.permissions || []),
+      abilityRules: req.ability?.clientRules || []
     }
   });
 };
@@ -84,7 +94,8 @@ const refreshToken = (req, res) => {
     message: 'Token refreshed',
     user: {
       ...req.user,
-      permissions: Array.from(req.user.permissions || [])
+      permissions: Array.from(req.user.permissions || []),
+      abilityRules: req.ability?.clientRules || []
     }
   });
 };

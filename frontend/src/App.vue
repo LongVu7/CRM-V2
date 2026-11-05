@@ -15,7 +15,7 @@
 
       <nav class="sidebar-nav">
         <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" class="nav-item"
-          :class="{ active: route.path === item.to }" v-tooltip.right="sidebarCollapsed ? item.label : undefined">
+          :class="{ active: route.path === item.to || (item.to === '/collaborator/leads' && route.path.startsWith('/collaborator/leads')) }" v-tooltip.right="sidebarCollapsed ? item.label : undefined">
           <i :class="item.icon"></i>
           <span v-show="!sidebarCollapsed" class="nav-label">{{ item.label }}</span>
         </RouterLink>
@@ -95,15 +95,27 @@ const adminNavigationItems = [
   { label: 'Roles',      icon: 'pi pi-shield',          to: '/admin/roles',    permission: 'role.read' },
 ]
 
+const isCollaborator = computed(() => {
+  const role = (authStore.user?.roleName || authStore.user?.role?.name || '').toLowerCase()
+  return role === 'collaborator' || role === 'ctv'
+})
+
 const navItems = computed(() =>
-  navigationItems.filter(item => {
-    if (!item.permission) return true
-    const perms = Array.isArray(item.permission) ? item.permission : [item.permission]
-    return perms.some(p => {
-      const { action, subject } = parsePermission(p)
-      return can(action, subject)
+  navigationItems
+    .map(item => {
+      if (item.label === 'Leads' && isCollaborator.value) {
+        return { ...item, to: '/collaborator/leads' }
+      }
+      return item
     })
-  })
+    .filter(item => {
+      if (!item.permission) return true
+      const perms = Array.isArray(item.permission) ? item.permission : [item.permission]
+      return perms.some(p => {
+        const { action, subject } = parsePermission(p)
+        return can(action, subject)
+      })
+    })
 )
 
 const adminNavItems = computed(() =>

@@ -1,10 +1,20 @@
-const BUSINESS_TZ = 'Asia/Ho_Chi_Minh';
-const ICT_OFFSET = '+07:00';
+const BUSINESS_TZ = process.env.APP_TIMEZONE || 'Asia/Ho_Chi_Minh';
 
-function getIctDateBoundaries(fromStr, toStr) {
-  const fromInstant = new Date(fromStr + 'T00:00:00' + ICT_OFFSET).toISOString();
+function getTimezoneOffset(tz = BUSINESS_TZ, date = new Date()) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' }).formatToParts(date);
+    const match = (parts.find(p => p.type === 'timeZoneName')?.value || '').match(/GMT([+-]\d{2}:\d{2})/);
+    return match ? match[1] : '+07:00';
+  } catch {
+    return '+07:00';
+  }
+}
+
+function getIctDateBoundaries(fromStr, toStr, tz = BUSINESS_TZ) {
+  const offset = getTimezoneOffset(tz);
+  const fromInstant = new Date(fromStr + 'T00:00:00' + offset).toISOString();
   
-  const toDate = new Date(toStr + 'T00:00:00' + ICT_OFFSET);
+  const toDate = new Date(toStr + 'T00:00:00' + offset);
   const toExclusiveInstant = new Date(toDate.getTime() + 24 * 60 * 60 * 1000).toISOString();
 
   return { fromInstant, toExclusiveInstant };

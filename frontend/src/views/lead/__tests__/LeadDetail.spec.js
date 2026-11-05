@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createPinia } from 'pinia'
 import PrimeVue from 'primevue/config'
 import Tooltip from 'primevue/tooltip'
 import LeadDetail from '../LeadDetail.vue'
@@ -84,7 +85,7 @@ describe('LeadDetail mount check', () => {
   it('mounts LeadDetail without crashing', async () => {
     const wrapper = mount(LeadDetail, {
       global: {
-        plugins: [PrimeVue],
+        plugins: [PrimeVue, createPinia()],
         directives: { tooltip: Tooltip },
         mocks: {
           $route: { params: { id: '121' } },

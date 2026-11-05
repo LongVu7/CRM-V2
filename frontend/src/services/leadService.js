@@ -86,3 +86,8 @@ export const syncGoogleSheets = async (params = {}) => {
   const response = await api.post(`${prefix}/import/sheet-sync`, {}, { params })
   return response.data
 }
+
+export const getCreatedLeadStats = async (params = {}) => {
+  const response = await api.get(`${prefix}/created-stats`, { params })
+  return response.data.data
+}

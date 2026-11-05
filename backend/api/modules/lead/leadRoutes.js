@@ -61,6 +61,9 @@ router.route('/')
 router.route('/options')
     .get(authenticate, leadController.getLeadOptions);
 
+router.route('/created-stats')
+    .get(authenticate, authorize('read', 'lead'), leadController.getCreatedLeadStats);
+
 router.route('/export')
     .get(authenticate, authorize('export', 'lead'), leadController.exportLeads);
 

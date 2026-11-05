@@ -45,6 +45,18 @@ const router = createRouter({
       meta: { permission: 'lead.create' }
     },
     {
+      path: '/collaborator/leads',
+      name: 'collaborator-leads',
+      component: () => import('../views/lead/collaborator/CollaboratorLead.vue'),
+      meta: { permission: 'lead.read' }
+    },
+    {
+      path: '/collaborator/leads/new',
+      name: 'collaborator-lead-new',
+      component: () => import('../views/lead/collaborator/CollaboratorLeadNew.vue'),
+      meta: { permission: 'lead.create' }
+    },
+    {
       path: '/leads/import',
       name: 'lead-import',
       component: () => import('../views/lead/LeadImportView.vue'),
@@ -219,8 +231,21 @@ router.beforeEach((to) => {
     return '/login'
   }
 
+  const roleName = (authStore.user?.roleName || authStore.user?.role?.name || '').toLowerCase()
+  const isCollab = roleName === 'collaborator' || roleName === 'ctv'
+
   if (to.path === '/login' && authStore.isLoggedIn) {
-    return '/'
+    return isCollab ? '/collaborator/leads' : '/'
+  }
+
+  // Collaborator role redirect from staff lead routes
+  if (isCollab) {
+    if (to.path === '/' || to.path === '/leads') {
+      return '/collaborator/leads'
+    }
+    if (to.path === '/leads/new') {
+      return '/collaborator/leads/new'
+    }
   }
 
   // Admin guard — strictly for administrator roles

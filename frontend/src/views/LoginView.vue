@@ -71,7 +71,12 @@ export default {
       try {
         await this.authStore.login(this.email, this.password)
         this.toast.add({ severity: 'success', summary: 'Welcome', detail: 'Successfully logged in', life: 3000 })
-        this.$router.push('/')
+        const role = (this.authStore.user?.roleName || this.authStore.user?.role?.name || '').toLowerCase()
+        if (role === 'collaborator' || role === 'ctv') {
+          this.$router.push('/collaborator/leads')
+        } else {
+          this.$router.push('/')
+        }
       } catch (error) {
         this.toast.add({ 
           severity: 'error', 

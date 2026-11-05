@@ -152,7 +152,7 @@
       </div>
 
       <!-- Status Cascading -->
-      <div class="form-grid three-col">
+      <div class="form-grid three-col" v-if="!isCollaborator">
         <div class="form-field">
           <label>Status Interaction</label>
           <Select v-model="selectedInteraction" :options="interactions" optionLabel="label" optionValue="id" placeholder="Select interaction" :loading="loadingInteractions" fluid showClear />
@@ -203,7 +203,7 @@
     </div>
 
     <!-- SECTION 4: Interaction Details -->
-    <div class="form-section">
+    <div class="form-section" v-if="!isCollaborator">
       <div class="section-title">
         <h3><i class="pi pi-comments"></i> Interaction Information</h3>
       </div>
@@ -248,7 +248,8 @@
 </template>
 
 <script setup>
-import { ref, shallowRef, watch, onMounted, nextTick } from 'vue'
+import { ref, shallowRef, computed, watch, onMounted, nextTick } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
@@ -282,7 +283,18 @@ const props = defineProps({
   initialLead: {
     type: Object,
     default: null
+  },
+  hideStatusAndInteraction: {
+    type: Boolean,
+    default: false
   }
+})
+
+const authStore = useAuthStore()
+const isCollaborator = computed(() => {
+  if (props.hideStatusAndInteraction) return true
+  const role = (authStore.user?.roleName || authStore.user?.role?.name || '').toLowerCase()
+  return role === 'collaborator' || role === 'ctv'
 })
 
 // Options
@@ -544,7 +556,7 @@ const populateFromLead = (lead) => {
   if (lead.sourceDataId) {
     restoreSourceHierarchy(lead.sourceDataId)
   }
-  if (lead.statusDataId) {
+  if (lead.statusDataId && !isCollaborator.value) {
     restoreStatusHierarchy(lead.statusDataId)
   }
 }
@@ -612,13 +624,27 @@ const getPayload = () => {
     }
   }
 
+  if (isCollaborator.value) {
+    delete payload.statusDataId
+    delete payload.createDate
+    delete payload.interactionAt
+    delete payload.callCount
+    delete payload.compensationStatus
+    delete payload.eventNames
+    delete payload.callLog
+  }
+
   return payload
 }
 
 onMounted(async () => {
   fetchOldProvinces()
   await fetchStudentOptions()
-  await Promise.all([fetchSources(), fetchInteractions()])
+  if (!isCollaborator.value) {
+    await Promise.all([fetchSources(), fetchInteractions()])
+  } else {
+    await fetchSources()
+  }
 
   if (props.initialLead) {
     populateFromLead(props.initialLead)

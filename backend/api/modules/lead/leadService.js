@@ -5,6 +5,7 @@ const { buildHierarchyTree } = require('../../utils/taxonomyHierarchy');
 const { buildPaginationMeta } = require('../../utils/pagination');
 const { resolveDataScope } = require('../../../config/ability');
 const { capitalizeName } = require('./leadSchemas');
+const { BUSINESS_TZ } = require('../../utils/reportDateUtils');
 
 // ─── Helpers
 const handleError = (message, status) => {
@@ -714,6 +715,22 @@ const assignAccountToLead = async (leadId, accountId, user) => {
   });
 };
 
+const getCreatedLeadStats = async (accountId) => {
+  const aid = parseInt(accountId, 10);
+  if (!aid || isNaN(aid)) return { today: 0, this_week: 0, this_month: 0, total: 0 };
+
+  const [stats] = await prisma.$queryRaw`
+    SELECT
+      COUNT(*) FILTER (WHERE created_at >= date_trunc('day', NOW() AT TIME ZONE ${BUSINESS_TZ}) AT TIME ZONE ${BUSINESS_TZ})::int AS today,
+      COUNT(*) FILTER (WHERE created_at >= date_trunc('week', NOW() AT TIME ZONE ${BUSINESS_TZ}) AT TIME ZONE ${BUSINESS_TZ})::int AS this_week,
+      COUNT(*) FILTER (WHERE created_at >= date_trunc('month', NOW() AT TIME ZONE ${BUSINESS_TZ}) AT TIME ZONE ${BUSINESS_TZ})::int AS this_month,
+      COUNT(*)::int AS total
+    FROM lead
+    WHERE created_by_id = ${aid}
+  `;
+  return stats || { today: 0, this_week: 0, this_month: 0, total: 0 };
+};
+
 module.exports = {
   getAllLeads,
   getLeadById,
@@ -724,5 +741,6 @@ module.exports = {
   searchAccounts,
   exportLeads,
   getLeadOptions,
-  getLeadStatusHistory
+  getLeadStatusHistory,
+  getCreatedLeadStats
 };

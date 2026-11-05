@@ -4,17 +4,19 @@
       <h1>Edit Lead #{{ $route.params.id }}</h1>
       <div class="header-actions flex gap-2 align-items-center">
         <!-- Voice Call Button / SplitButton -->
-        <template v-if="callReadiness.canCall">
-          <SplitButton v-if="phoneMenuItems.length > 1" label="Call Contact" icon="pi pi-phone" severity="success"
-            :model="phoneMenuItems" @click="handlePrimaryCall" />
-          <Button v-else label="Call Contact" icon="pi pi-phone" severity="success" @click="handlePrimaryCall" />
-        </template>
-        <span v-else v-tooltip.top="callReadiness.message || 'Call unavailable'">
-          <Button label="Call Contact" icon="pi pi-phone" severity="secondary" disabled />
-        </span>
+        <template v-if="!isCollaborator">
+          <template v-if="callReadiness.canCall">
+            <SplitButton v-if="phoneMenuItems.length > 1" label="Call Contact" icon="pi pi-phone" severity="success"
+              :model="phoneMenuItems" @click="handlePrimaryCall" />
+            <Button v-else label="Call Contact" icon="pi pi-phone" severity="success" @click="handlePrimaryCall" />
+          </template>
+          <span v-else v-tooltip.top="callReadiness.message || 'Call unavailable'">
+            <Button label="Call Contact" icon="pi pi-phone" severity="secondary" disabled />
+          </span>
 
-        <Button label="Status History" icon="pi pi-history" severity="secondary" outlined
-          @click="statusHistoryDialogVisible = true" />
+          <Button label="Status History" icon="pi pi-history" severity="secondary" outlined
+            @click="statusHistoryDialogVisible = true" />
+        </template>
         <Button label="Back to List" severity="secondary" icon="pi pi-arrow-left" @click="$router.push('/leads')" />
       </div>
     </div>
@@ -35,7 +37,7 @@
         <LeadForm ref="leadFormRef" :initialLead="leadRecord" />
       </div>
 
-      <div class="section-card">
+      <div class="section-card" v-if="!isCollaborator">
         <div class="card-header flex justify-between items-center">
           <h2><i class="pi pi-history"></i> Status History</h2>
         </div>
@@ -99,6 +101,14 @@ import LeadAccountAssign from '@/components/lead/LeadAccountAssign.vue'
 import LeadStatusTimeline from '@/components/lead/LeadStatusTimeline.vue'
 import LeadStatusHistoryDialog from '@/components/lead/LeadStatusHistoryDialog.vue'
 import LeadCallDialog from '@/components/lead/LeadCallDialog.vue'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
+const isCollaborator = computed(() => {
+  const role = (authStore.user?.roleName || authStore.user?.role?.name || '').toLowerCase()
+  const email = (authStore.user?.email || '').toLowerCase()
+  return role === 'collaborator' || role === 'ctv' || role.includes('collaborator') || role.includes('ctv') || email.startsWith('ctv@')
+})
 
 const router = useRouter()
 const route = useRoute()
@@ -257,7 +267,7 @@ const submitGlobal = async () => {
   }
 
   // Check if user changed status to trigger transition notes dialog
-  const currentStatusId = payload.statusDataId || null
+  const currentStatusId = payload.statusDataId !== undefined ? (payload.statusDataId || null) : (initialStatusDataId.value || null)
   const prevStatusId = initialStatusDataId.value || null
   if (currentStatusId !== prevStatusId) {
     pendingPayload = payload

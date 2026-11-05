@@ -329,6 +329,23 @@ const distributeLeads = async (req, res) => {
   }
 };
 
+const getCreatedLeadStats = async (req, res) => {
+  try {
+    const isCollab = (req.user?.roleName || '').toLowerCase() === 'collaborator';
+    const targetAccountId = (!isCollab && req.query.accountId)
+      ? parseInt(req.query.accountId, 10)
+      : (req.user?.accountId || req.user?.id);
+
+    const stats = await leadService.getCreatedLeadStats(targetAccountId);
+    res.status(200).json({
+      message: 'Get created lead stats successfully',
+      data: stats
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
 module.exports = {
   getAllLeads,
   exportLeads,
@@ -348,5 +365,6 @@ module.exports = {
   getDistributionScopes,
   getScopeRecipients,
   previewDistribution,
-  distributeLeads
+  distributeLeads,
+  getCreatedLeadStats
 };
