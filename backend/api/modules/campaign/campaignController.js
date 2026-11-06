@@ -1,4 +1,5 @@
 const campaignService = require('./campaignService');
+const { parsePagination } = require('../../utils/pagination');
 
 // ─── Campaign CRUD ───
 
@@ -98,6 +99,31 @@ const addRecipients = async (req, res) => {
   }
 };
 
+const getRecipientCandidates = async (req, res) => {
+  try {
+    const { page, limit, skip } = parsePagination(req.query);
+    const { activityId } = req.params;
+    const { search, statusId, sortField, sortOrder } = req.query;
+
+    const result = await campaignService.getRecipientCandidates({
+      activityId,
+      page,
+      limit,
+      skip,
+      search,
+      statusId,
+      sortField,
+      sortOrder,
+      user: req.user,
+      permissionScope: req.permissionScope
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message || 'Error fetching recipient candidates' });
+  }
+};
+
 // ─── Send Email ───
 
 const sendActivity = async (req, res) => {
@@ -129,5 +155,6 @@ module.exports = {
   updateActivity,
   deleteActivity,
   addRecipients,
+  getRecipientCandidates,
   sendActivity
 };

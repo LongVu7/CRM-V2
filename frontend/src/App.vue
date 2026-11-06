@@ -78,11 +78,11 @@ const isAdmin = computed(() => {
 })
 
 const navigationItems = [
-  { label: 'Leads',  icon: 'pi pi-ticket',         to: '/leads',  permission: 'leads.read' },
-  { label: 'Leads Distribution', icon: 'pi pi-share-alt', to: '/leads/distribution', permission: 'leads.distribute' },
+  { label: 'Leads',  icon: 'pi pi-ticket',         to: '/leads',  permission: 'lead.read' },
+  { label: 'Leads Distribution', icon: 'pi pi-share-alt', to: '/leads/distribution', permission: 'lead.distribute' },
   { label: 'Dashboard',  icon: 'pi pi-chart-bar',       to: '/dashboard',  permission: 'report.read' },
   { label: 'Students',   icon: 'pi pi-graduation-cap', to: '/students',   permission: 'student.read' },
-  { label: 'Call History', icon: 'pi pi-phone',         to: '/calls',      permission: 'leads.read' },
+  { label: 'Call History', icon: 'pi pi-phone',         to: '/calls',      permission: 'call.read' },
   { label: 'Schools',    icon: 'pi pi-building',        to: '/schools',    permission: 'school.read' },
   { label: 'Campaigns',  icon: 'pi pi-send',            to: '/campaigns',  permission: 'campaign.read' },
   { label: 'Templates',  icon: 'pi pi-file-edit',       to: '/campaign-templates', permission: 'campaign_template.read' },

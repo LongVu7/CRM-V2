@@ -33,6 +33,7 @@ router.route('/:id/activities/:activityId')
 
 // ─── Activity Recipients ───
 router.route('/:id/activities/:activityId/recipients')
+    .get(authenticate, authorize('read', 'campaign'), campaignController.getRecipientCandidates)
     .post(authenticate, authorize('update', 'campaign'), validateBody(activityRecipientSchema), campaignController.addRecipients);
 
 // ─── Send Activity (email) ───

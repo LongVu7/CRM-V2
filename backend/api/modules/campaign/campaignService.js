@@ -1,6 +1,7 @@
 const prisma = require('../../../config/db');
 const { sendMail } = require('../../../config/mailer');
 const templateRenderer = require('../campaignTemplate/templateRenderer');
+const { buildPaginationMeta } = require('../../utils/pagination');
 
 // ─── Campaign CRUD ───
 
@@ -25,15 +26,17 @@ const createCampaign = async (data, userOrId) => {
     }
   }
 
-  const { teamId: _, ...rest } = data;
-
   return prisma.campaign.create({
     data: {
-      ...rest,
+      name: data.name,
+      description: data.description || null,
+      status: data.status,
+      notes: data.notes || null,
+      ownerId: Number(data.ownerId),
+      teamId: effectiveTeamId ? Number(effectiveTeamId) : null,
       startDate: new Date(data.startDate),
-      ...(data.endDate && { endDate: new Date(data.endDate) }),
-      createdById,
-      ...(effectiveTeamId && { teamId: Number(effectiveTeamId) })
+      endDate: data.endDate ? new Date(data.endDate) : null,
+      createdById
     },
     include: {
       owner: { select: { id: true, fullName: true, email: true } },
@@ -266,6 +269,116 @@ const sendEmailActivity = async (activityId) => {
   }
 };
 
+/**
+ * Query eligible lead candidates for campaign activity recipients with backend search, filter, and pagination
+ */
+const getRecipientCandidates = async ({
+  activityId,
+  page = 1,
+  limit = 10,
+  skip = 0,
+  search = '',
+  statusId = null,
+  sortField = 'createdAt',
+  sortOrder = 'desc',
+  permissionScope = {}
+} = {}) => {
+  // Check if email is required based on activity type (default to true)
+  let requireEmail = true;
+  if (activityId) {
+    const activity = await prisma.campaignActivity.findUnique({
+      where: { id: Number(activityId) }
+    });
+    if (activity && activity.type !== 'EMAIL') {
+      requireEmail = false;
+    }
+  }
+
+  const andClauses = [];
+
+  if (permissionScope && Object.keys(permissionScope).length > 0) {
+    andClauses.push(permissionScope);
+  }
+
+  const conditions = {
+    student: requireEmail
+      ? {
+          email: {
+            not: null,
+            notIn: ['']
+          }
+        }
+      : {
+          isNot: null
+        }
+  };
+
+  if (statusId) {
+    conditions.statusDataId = Number(statusId);
+  }
+
+  if (search?.trim()) {
+    const q = search.trim();
+    andClauses.push({
+      OR: [
+        { student: { fullName: { contains: q, mode: 'insensitive' } } },
+        { student: { email: { contains: q, mode: 'insensitive' } } },
+        { student: { mobile: { contains: q, mode: 'insensitive' } } },
+        { description: { contains: q, mode: 'insensitive' } }
+      ]
+    });
+  }
+
+  andClauses.push(conditions);
+  const where = andClauses.length === 1 ? andClauses[0] : { AND: andClauses };
+
+  const dir = sortOrder === 'asc' || sortOrder === 1 ? 'asc' : 'desc';
+  let orderBy = { createdAt: 'desc' };
+  if (sortField === 'student.fullName') orderBy = { student: { fullName: dir } };
+  else if (sortField === 'student.email') orderBy = { student: { email: dir } };
+  else if (sortField === 'student.mobile') orderBy = { student: { mobile: dir } };
+  else if (sortField === 'statusData.label') orderBy = { statusData: { label: dir } };
+  else if (sortField === 'createdAt') orderBy = { createdAt: dir };
+
+  const [leads, totalCount, statusList] = await Promise.all([
+    prisma.lead.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy,
+      include: {
+        student: {
+          select: {
+            id: true,
+            fullName: true,
+            email: true,
+            mobile: true
+          }
+        },
+        statusData: {
+          select: {
+            id: true,
+            label: true,
+            name: true
+          }
+        }
+      }
+    }),
+    prisma.lead.count({ where }),
+    prisma.statusData.findMany({
+      where: { isActive: true },
+      select: { id: true, label: true, name: true },
+      orderBy: { sortOrder: 'asc' }
+    })
+  ]);
+
+  return {
+    leads,
+    statuses: statusList,
+    pagination: buildPaginationMeta(page, limit, totalCount)
+  };
+};
+
 module.exports = {
   createCampaign,
   updateCampaign,
@@ -277,5 +390,6 @@ module.exports = {
   updateActivity,
   deleteActivity,
   addRecipients,
-  sendEmailActivity
+  sendEmailActivity,
+  getRecipientCandidates
 };

@@ -50,6 +50,11 @@ export const deleteActivity = async (campaignId, activityId) => {
 }
 
 // ─── Activity Recipients ───
+export const getRecipientCandidates = async (campaignId, activityId, params = {}) => {
+  const response = await api.get(`${prefix}/${campaignId}/activities/${activityId}/recipients`, { params })
+  return response.data
+}
+
 export const addActivityRecipients = async (campaignId, activityId, leadIds) => {
   const response = await api.post(`${prefix}/${campaignId}/activities/${activityId}/recipients`, { leadIds })
   return response.data

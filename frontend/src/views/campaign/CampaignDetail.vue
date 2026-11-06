@@ -65,6 +65,8 @@
         v-if="showRecipientDialog"
         v-model:visible="showRecipientDialog" 
         :loading="recipientLoading"
+        :campaignId="campaignId"
+        :activityId="selectedActivityForRecipients?.id"
         :initialRecipients="selectedActivityForRecipients?.recipients || []"
         @add="handleRecipientsAdded" 
     />
