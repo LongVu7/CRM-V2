@@ -36,15 +36,19 @@
 
       <div class="sidebar-footer" v-show="!sidebarCollapsed">
         <div class="user-info" v-if="authStore.user">
-          <div class="avatar">
+          <div class="avatar" @click="$router.push('/profile')" style="cursor: pointer;" v-tooltip.top="'View Profile'">
             <i class="pi pi-user"></i>
           </div>
-          <div class="user-details">
+          <div class="user-details" @click="$router.push('/profile')" style="cursor: pointer;" v-tooltip.top="'View Profile'">
             <span class="user-name">{{ authStore.user.fullName || 'User' }}</span>
             <span class="user-role">{{ authStore.user.roleName || 'Staff' }}</span>
           </div>
           <Button icon="pi pi-sign-out" text rounded severity="danger" size="small" v-tooltip.top="'Logout'" @click="handleLogout" style="margin-left: auto;" />
         </div>
+      </div>
+      <div class="sidebar-footer-collapsed" v-show="sidebarCollapsed">
+        <Button icon="pi pi-user" text rounded size="small" v-tooltip.right="'My Profile'" @click="$router.push('/profile')" />
+        <Button icon="pi pi-sign-out" text rounded severity="danger" size="small" v-tooltip.right="'Logout'" @click="handleLogout" />
       </div>
     </aside>
 
@@ -86,7 +90,8 @@ const navigationItems = [
   { label: 'Schools',    icon: 'pi pi-building',        to: '/schools',    permission: 'school.read' },
   { label: 'Campaigns',  icon: 'pi pi-send',            to: '/campaigns',  permission: 'campaign.read' },
   { label: 'Templates',  icon: 'pi pi-file-edit',       to: '/campaign-templates', permission: 'campaign_template.read' },
-  { label: 'Teams',      icon: 'pi pi-users',           to: '/teams',      permission: 'team.read' },
+  { label: 'My Team',    icon: 'pi pi-users',           to: '/my-team',    permission: 'team.read' },
+  { label: 'Team Management', icon: 'pi pi-sitemap',    to: '/teams',      permission: 'team.update' },
   { label: 'Error Reports', icon: 'pi pi-flag',         to: '/reports',    permission: null },
 ]
 
@@ -273,6 +278,15 @@ onMounted(() => {
 /* Sidebar Footer */
 .sidebar-footer {
   padding: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-footer-collapsed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 

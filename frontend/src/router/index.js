@@ -134,17 +134,24 @@ const router = createRouter({
     { path: '/teams/new', redirect: '/admin/teams/new' },
 
     // ─── Teams (Accessible to Members & Leaders) ───
+    // ─── Teams: read-only view for members, management for leaders ───
+    {
+      path: '/my-team',
+      name: 'my-team',
+      component: () => import('../views/team/MyTeam.vue'),
+      meta: { permission: 'team.read' }
+    },
     {
       path: '/teams',
       name: 'teams',
       component: () => import('../views/team/Team.vue'),
-      meta: { permission: 'team.read' }
+      meta: { permission: 'team.update' }
     },
     {
       path: '/teams/:id',
       name: 'team-detail',
       component: () => import('../views/team/TeamDetail.vue'),
-      meta: { permission: 'team.read' }
+      meta: { permission: 'team.update' }
     },
     {
       path: '/schools',
@@ -202,6 +209,11 @@ const router = createRouter({
       path: '/reports/:id',
       name: 'report-detail',
       component: () => import('../views/report/ReportDetail.vue'),
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('../views/ProfileView.vue')
     },
     {
       path: '/login',

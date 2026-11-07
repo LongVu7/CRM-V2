@@ -8,18 +8,31 @@
       </div>
 
       <div class="form-field">
-        <label for="tf-parent">Parent Team (Hierarchy)</label>
+        <label for="tf-parent">Part of another team?</label>
+
+        <div v-if="selectedParentName && !showParentSelect" class="parent-team-badge">
+          <div class="parent-team-info">
+            <i class="pi pi-sitemap"></i>
+            <span>Sub-team of <strong>{{ selectedParentName }}</strong></span>
+          </div>
+          <div class="parent-team-actions">
+            <Button label="Change" text size="small" icon="pi pi-pencil" @click="showParentSelect = true" />
+            <Button label="Make independent" text severity="secondary" size="small" icon="pi pi-times" @click="form.parentId = null" />
+          </div>
+        </div>
+
         <Select
+          v-else
           id="tf-parent"
           v-model="form.parentId"
           :options="parentTeamOptions"
           optionLabel="label"
           optionValue="value"
-          placeholder="None (Top-level Root Team)"
+          placeholder="No – this is an independent team"
           showClear
           fluid
         />
-        <small class="form-hint">Sub-teams automatically inherit data scope under this parent.</small>
+        <small class="form-hint">Leaders of the parent team will also be able to oversee this team.</small>
       </div>
 
       <div class="form-field">
@@ -102,6 +115,14 @@ const parentTeamOptions = computed(() => {
   }))
 })
 
+const showParentSelect = ref(false)
+
+const selectedParentName = computed(() => {
+  if (!form.value.parentId) return null
+  const found = parentTeamOptions.value.find(p => p.value === form.value.parentId)
+  return found?.label || null
+})
+
 const validate = () => {
   const e = {}
   if (!form.value.name || !form.value.name.trim()) {
@@ -138,7 +159,7 @@ const onSubmit = () => {
 
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
 }
 
@@ -146,6 +167,7 @@ const onSubmit = () => {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+  min-width: 0;
 }
 
 .form-field.full-width {
@@ -170,6 +192,35 @@ const onSubmit = () => {
 .form-hint {
   color: var(--p-text-muted-color);
   font-size: 0.78rem;
+}
+
+.parent-team-badge {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0.75rem;
+  background: var(--p-surface-50);
+  border: 1px solid var(--p-surface-200);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  flex-wrap: wrap;
+}
+
+.parent-team-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--p-text-color);
+}
+
+.parent-team-info i {
+  color: var(--p-primary-color);
+}
+
+.parent-team-actions {
+  display: flex;
+  gap: 0.25rem;
 }
 
 .form-actions {

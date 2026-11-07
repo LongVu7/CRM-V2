@@ -22,12 +22,13 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import { useToast } from 'primevue/usetoast'
 import TeamForm from '@/components/team/TeamForm.vue'
 import { useTeam } from '@/composables/useTeam'
 
+const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 const {
@@ -41,7 +42,7 @@ const {
 const newTeam = ref({
   name: '',
   description: '',
-  parentId: null,
+  parentId: route.query.parentId ? Number(route.query.parentId) : null,
   leaderId: null
 })
 

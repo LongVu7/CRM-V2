@@ -1,6 +1,9 @@
 <template>
   <div class="card-splitter">
-    <h2><i class="pi pi-users"></i> Team Members</h2>
+    <div>
+      <h2><i class="pi pi-users"></i> Team Members</h2>
+      <p class="members-hint">Each member always keeps their main account role. An extra role adds more permissions, but only for this team's data.</p>
+    </div>
   </div>
   <div class="members-section">
     <!-- Add Member Row -->
@@ -13,16 +16,6 @@
         placeholder="Search active account to add..."
         filter
         class="add-account-select"
-      />
-
-      <Select
-        v-model="selectedRole"
-        :options="roleOptions"
-        optionLabel="label"
-        optionValue="value"
-        placeholder="Contextual role (optional)..."
-        class="add-role-select"
-        showClear
       />
 
       <Button
@@ -55,7 +48,7 @@
         <template #body="{ data }"><span class="member-email">{{ data.email }}</span></template>
       </Column>
 
-      <Column header="Account Role" style="width: 150px">
+      <Column header="Main Role" style="width: 150px">
         <template #body="{ data }">
           <Tag
             v-if="data.accountRole"
@@ -66,14 +59,19 @@
         </template>
       </Column>
 
-      <Column header="Contextual Team Role" style="min-width: 200px">
+      <Column style="min-width: 220px">
+        <template #header>
+          <span class="role-col-header" v-tooltip.top="'Each member keeps their main role. An extra role adds permissions only for this team.'">
+            Extra Role in this Team <i class="pi pi-info-circle text-xs"></i>
+          </span>
+        </template>
         <template #body="{ data }">
           <Select
             :modelValue="data.roleId || null"
             :options="roleOptions"
             optionLabel="label"
             optionValue="value"
-            placeholder="No contextual role"
+            placeholder="None – account role only"
             class="table-role-select"
             @update:modelValue="newRoleId => handleRoleChange(data.id, newRoleId)"
           />
@@ -118,7 +116,6 @@ const emit = defineEmits(['add-member', 'update-member-role', 'remove-member'])
 const { roles, fetchRoles } = useRole()
 
 const selectedAccount = ref(null)
-const selectedRole = ref(null)
 
 onMounted(async () => {
   try {
@@ -129,7 +126,7 @@ onMounted(async () => {
 })
 
 const roleOptions = computed(() => {
-  const options = [{ label: 'None (Inherit Global Role)', value: null }]
+  const options = [{ label: 'None – account role only', value: null }]
   if (Array.isArray(roles.value)) {
     roles.value.forEach(r => {
       options.push({ label: r.name, value: r.id })
@@ -157,10 +154,9 @@ const handleAddMember = () => {
   if (!selectedAccount.value) return
   emit('add-member', {
     accountId: selectedAccount.value,
-    roleId: selectedRole.value
+    roleId: null
   })
   selectedAccount.value = null
-  selectedRole.value = null
 }
 
 const handleRoleChange = (accountId, newRoleId) => {
@@ -195,6 +191,19 @@ const handleRoleChange = (accountId, newRoleId) => {
   color: var(--p-primary-color);
 }
 
+.members-hint {
+  margin: 0.25rem 0 0 0;
+  font-size: 0.82rem;
+  color: var(--p-text-muted-color);
+}
+
+.role-col-header {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: help;
+}
+
 .members-section {
   display: flex;
   flex-direction: column;
@@ -210,13 +219,9 @@ const handleRoleChange = (accountId, newRoleId) => {
 }
 
 .add-account-select {
-  flex: 2;
+  flex: 1 1 300px;
   min-width: 250px;
-}
-
-.add-role-select {
-  flex: 1;
-  min-width: 180px;
+  max-width: 100%;
 }
 
 .table-role-select {
@@ -225,7 +230,7 @@ const handleRoleChange = (accountId, newRoleId) => {
 
 .members-table {
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
   border: 1px solid var(--p-surface-200);
 }
 

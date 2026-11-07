@@ -105,9 +105,19 @@
           </template>
         </Column>
 
-        <Column header="Actions" style="width: 120px" :exportable="false" frozen alignFrozen="right">
+        <Column header="Actions" style="width: 150px" :exportable="false" frozen alignFrozen="right">
           <template #body="{ data }">
             <div class="action-buttons">
+              <Button
+                v-if="isAdmin"
+                icon="pi pi-plus"
+                rounded
+                text
+                severity="success"
+                size="small"
+                v-tooltip.top="'Add Sub-team'"
+                @click="$router.push({ path: '/admin/teams/new', query: { parentId: data.id } })"
+              />
               <Button icon="pi pi-pencil" rounded text severity="info" size="small" v-tooltip.top="'Edit & Members'" @click="$router.push('/teams/' + data.id)" />
               <Button v-if="isAdmin" icon="pi pi-trash" rounded text severity="danger" size="small" v-tooltip.top="'Delete'" @click="confirmDeleteAction(data)" />
             </div>
@@ -123,7 +133,7 @@
         <p>Loading team hierarchy tree...</p>
       </div>
 
-      <div v-else-if="teamTree.length === 0" class="empty-state">
+      <div v-else-if="formattedTree.length === 0" class="empty-state">
         <i class="pi pi-sitemap"></i>
         <h3>No teams found</h3>
         <p>Create teams to view their organizational tree structure.</p>
@@ -133,17 +143,61 @@
         <div class="tree-legend">
           <span class="legend-item"><i class="pi pi-home icon-small"></i> Root Teams</span>
           <span class="legend-item"><i class="pi pi-level-down icon-small"></i> Sub-teams inherit parent scopes</span>
+          <span v-if="isAdmin" class="legend-item drag-hint"><i class="pi pi-arrows-alt icon-small"></i> Drag and drop onto a team to nest under it</span>
         </div>
-        <div class="tree-nodes">
-          <TeamTreeNode
-            v-for="rootNode in teamTree"
-            :key="rootNode.id"
-            :node="rootNode"
-            :depth="0"
-            @edit="id => $router.push('/teams/' + id)"
-            @delete="confirmDeleteAction"
-          />
-        </div>
+        <Tree
+          :value="formattedTree"
+          v-model:expandedKeys="expandedKeys"
+          :draggableNodes="isAdmin"
+          :droppableNodes="isAdmin"
+          @node-drop="onNodeDrop"
+          class="team-tree"
+        >
+          <template #default="{ node }">
+            <div class="tree-node-row">
+              <span class="tree-node-name">{{ node.label }}</span>
+              <span v-if="!node.data.parentId" class="root-badge">Root</span>
+              <span v-if="node.data.leader" class="leader-name">
+                <i class="pi pi-user-plus icon-small"></i> {{ node.data.leader.fullName }}
+              </span>
+              <span class="member-count-badge">
+                <i class="pi pi-users icon-small"></i> {{ node.data.memberCount || 0 }} members
+              </span>
+
+              <div class="tree-node-actions">
+                <Button
+                  v-if="isAdmin"
+                  icon="pi pi-plus"
+                  rounded
+                  text
+                  severity="success"
+                  size="small"
+                  v-tooltip.top="'Add Sub-team'"
+                  @click.stop="$router.push({ path: '/admin/teams/new', query: { parentId: node.data.id } })"
+                />
+                <Button
+                  icon="pi pi-pencil"
+                  rounded
+                  text
+                  severity="info"
+                  size="small"
+                  v-tooltip.top="'Edit & Members'"
+                  @click.stop="$router.push('/teams/' + node.data.id)"
+                />
+                <Button
+                  v-if="isAdmin"
+                  icon="pi pi-trash"
+                  rounded
+                  text
+                  severity="danger"
+                  size="small"
+                  v-tooltip.top="'Delete'"
+                  @click.stop="confirmDeleteAction(node.data)"
+                />
+              </div>
+            </div>
+          </template>
+        </Tree>
       </div>
     </div>
 
@@ -160,12 +214,12 @@ import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import ConfirmDialog from 'primevue/confirmdialog'
+import Tree from 'primevue/tree'
 import { useToast } from 'primevue/usetoast'
 import { useConfirm } from 'primevue/useconfirm'
 import { useTeam } from '@/composables/useTeam'
 import { useAuthStore } from '@/stores/auth'
 import { useAbility } from '@casl/vue'
-import TeamTreeNode from '@/components/team/TeamTreeNode.vue'
 
 const toast = useToast()
 const confirm = useConfirm()
@@ -178,10 +232,34 @@ const isAdmin = computed(() => {
   return role === 'admin' || role === 'administrator' || can('manage', 'all')
 })
 
-const { teams, teamTree, loading, fetchTeams, fetchTeamTree, deleteTeam } = useTeam()
+const { teams, teamTree, loading, fetchTeams, fetchTeamTree, deleteTeam, updateTeam } = useTeam()
 
 const viewMode = ref('table')
 const loadingTree = ref(false)
+const expandedKeys = ref({})
+
+const formattedTree = computed(() => {
+  const transform = (node) => ({
+    key: String(node.id),
+    label: node.name,
+    data: node,
+    icon: node.parentId ? 'pi pi-users' : 'pi pi-home',
+    children: (node.children || []).map(transform)
+  })
+  return (teamTree.value || []).map(transform)
+})
+
+const expandAll = (nodes) => {
+  const keys = {}
+  const walk = (items) => {
+    for (const item of items) {
+      keys[String(item.id)] = true
+      if (item.children?.length) walk(item.children)
+    }
+  }
+  walk(nodes)
+  expandedKeys.value = keys
+}
 
 const filters = ref({
   global: { value: null, matchMode: 'contains' }
@@ -205,7 +283,8 @@ const switchView = async (mode) => {
   if (mode === 'tree') {
     loadingTree.value = true
     try {
-      await fetchTeamTree()
+      const data = await fetchTeamTree()
+      expandAll(data || [])
     } catch (err) {
       toast.add({ severity: 'error', summary: 'Error', detail: err.response?.data?.error || err.message || 'Failed to fetch team tree', life: 5000 })
     } finally {
@@ -216,6 +295,54 @@ const switchView = async (mode) => {
 
 const onGlobalFilter = (e) => {
   filters.value.global.value = e.target.value
+}
+
+const onNodeDrop = (event) => {
+  const dragNode = event.dragNode
+  const dropNode = event.dropNode
+
+  if (!dragNode?.data?.id) return
+  if (dropNode && dropNode.data.id === dragNode.data.id) return
+
+  const targetTeamName = dropNode ? `"${dropNode.data.name}"` : 'independent top level'
+  const newParentId = dropNode ? dropNode.data.id : null
+
+  confirm.require({
+    message: `Are you sure you want to move team "${dragNode.data.name}" under ${targetTeamName}?`,
+    header: 'Confirm Move Team',
+    icon: 'pi pi-question-circle',
+    acceptClass: 'p-button-primary',
+    accept: async () => {
+      try {
+        await updateTeam(dragNode.data.id, {
+          parentId: newParentId
+        })
+        toast.add({
+          severity: 'success',
+          summary: 'Team Moved',
+          detail: `"${dragNode.data.name}" is now a sub-team of ${targetTeamName}`,
+          life: 3000
+        })
+        const data = await fetchTeamTree()
+        expandAll(data || [])
+        await loadData()
+      } catch (err) {
+        toast.add({
+          severity: 'error',
+          summary: 'Move Failed',
+          detail: err.response?.data?.error || err.message || 'Failed to move team',
+          life: 5000
+        })
+        const data = await fetchTeamTree()
+        expandAll(data || [])
+      }
+    },
+    reject: async () => {
+      // Revert tree to original structure when cancelled
+      const data = await fetchTeamTree()
+      expandAll(data || [])
+    }
+  })
 }
 
 const confirmDeleteAction = (teamData) => {
@@ -229,7 +356,8 @@ const confirmDeleteAction = (teamData) => {
         await deleteTeam(teamData.id)
         toast.add({ severity: 'success', summary: 'Success', detail: 'Team deleted successfully', life: 3000 })
         if (viewMode.value === 'tree') {
-          await fetchTeamTree()
+          const data = await fetchTeamTree()
+          expandAll(data || [])
         }
         await loadData()
       } catch (err) {
@@ -292,6 +420,11 @@ const confirmDeleteAction = (teamData) => {
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
+}
+
+.drag-hint {
+  color: var(--p-primary-color);
+  font-weight: 500;
 }
 
 .search-input {
@@ -420,6 +553,83 @@ const confirmDeleteAction = (teamData) => {
 
 .loading-state p {
   margin: 0;
+}
+
+/* Refined, balanced dashed tree connector lines */
+:deep(.team-tree) {
+  background: transparent;
+  padding: 0;
+  border: none;
+}
+
+:deep(.team-tree .p-tree-root-children) {
+  gap: 0.5rem;
+}
+
+:deep(.team-tree .p-tree-node-children) {
+  position: relative;
+  padding-left: 2rem;
+  gap: 0.35rem;
+}
+
+/* L-shaped dashed connector for each child node */
+:deep(.team-tree .p-tree-node-children > .p-tree-node) {
+  position: relative;
+}
+
+:deep(.team-tree .p-tree-node-children > .p-tree-node::before) {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: 0;
+  height: 1.45rem;
+  width: 0.95rem;
+  border-left: 1.5px dashed var(--p-surface-400, #94a3b8);
+  border-bottom: 1.5px dashed var(--p-surface-400, #94a3b8);
+}
+
+/* Vertical continuation dashed line to the next sibling */
+:deep(.team-tree .p-tree-node-children > .p-tree-node:not(:last-child)::after) {
+  content: '';
+  position: absolute;
+  left: -1rem;
+  top: 1.45rem;
+  bottom: 0;
+  border-left: 1.5px dashed var(--p-surface-400, #94a3b8);
+}
+
+:deep(.team-tree .p-tree-node-content) {
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  gap: 0.5rem;
+  border: 1px solid var(--p-surface-200);
+  background: var(--p-content-background);
+  transition: all 0.15s ease;
+  margin: 0.2rem 0;
+}
+
+:deep(.team-tree .p-tree-node-content:hover) {
+  background: var(--p-surface-50);
+  border-color: var(--p-surface-300);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.tree-node-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.tree-node-name {
+  font-weight: 600;
+  color: var(--p-text-color);
+}
+
+.tree-node-actions {
+  display: inline-flex;
+  gap: 0.2rem;
+  margin-left: 0.5rem;
 }
 </style>
 
