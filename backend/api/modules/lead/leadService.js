@@ -5,7 +5,8 @@ const { buildHierarchyTree } = require('../../utils/taxonomyHierarchy');
 const { buildPaginationMeta } = require('../../utils/pagination');
 const { resolveDataScope } = require('../../../config/ability');
 const { capitalizeName } = require('./leadSchemas');
-const { BUSINESS_TZ } = require('../../utils/reportDateUtils');
+const { BUSINESS_TZ, getIctDateBoundaries, resolveDateRange } = require('../../utils/dateUtils');
+const { getDescendantSubtreeTeamIds } = require('../../utils/teamHierarchy');
 
 // ─── Helpers
 const handleError = (message, status) => {
@@ -384,7 +385,7 @@ const getLeadStatusHistory = async (leadId) => {
   });
 };
 
-// ─── Mutation Operations
+// ─── Operations
 const createLead = async (payload, user) => {
   const {
     fullName, gender, mobile, email, otherPhone, birthDate, primaryAddress,
@@ -732,6 +733,124 @@ const getCreatedLeadStats = async (accountId) => {
   return stats || { today: 0, this_week: 0, this_month: 0, total: 0 };
 };
 
+const getCollaboratorStats = async (currentUser, query = {}) => {
+  const { timePreset = 'today', from: customFrom, to: customTo, subTeamId } = query;
+
+  const isAdmin = currentUser?.isAdmin || (currentUser?.roleName || '').toLowerCase() === 'admin' || (currentUser?.roleName || '').toLowerCase() === 'administrator';
+
+  let homeTeamId = currentUser?.memberTeamId || currentUser?.ledTeamIds?.[0] || null;
+
+  if (!homeTeamId) {
+    if (isAdmin) {
+      const parentWithSubs = await prisma.team.findFirst({
+        where: { children: { some: {} } },
+        select: { id: true }
+      });
+      homeTeamId = parentWithSubs?.id || 1;
+    } else {
+      const err = new Error('Access denied: user does not belong to any team');
+      err.statusCode = 403;
+      throw err;
+    }
+  }
+
+  // Resolve descendant sub-teams
+  const subtreeIds = await getDescendantSubtreeTeamIds(homeTeamId);
+  const childTeamIds = subtreeIds.filter(id => id !== homeTeamId);
+
+  if (childTeamIds.length === 0) {
+    const err = new Error('Access denied: your team has no sub teams to supervise');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  // Filter by subTeamId if passed
+  let targetTeamIds = childTeamIds;
+  if (subTeamId) {
+    const targetId = parseInt(subTeamId, 10);
+    if (!childTeamIds.includes(targetId)) {
+      const err = new Error('Access denied: this team is not your sub-team');
+      err.statusCode = 403;
+      throw err;
+    }
+    targetTeamIds = [targetId];
+  }
+
+  // Load Parent Team & Sub-Teams meta
+  const [parentTeam, subTeams] = await Promise.all([
+    prisma.team.findUnique({
+      where: { id: homeTeamId },
+      select: { id: true, name: true }
+    }),
+    prisma.team.findMany({
+      where: { id: { in: childTeamIds } },
+      select: {
+        id: true,
+        name: true,
+        members: {
+          select: { accountId: true }
+        }
+      }
+    })
+  ]);
+
+  const subTeamsPayload = subTeams.map(st => ({
+    id: st.id,
+    name: st.name,
+    memberCount: st.members.length
+  }));
+
+  // Date Boundaries
+  const dateRange = resolveDateRange(timePreset, customFrom, customTo);
+  const { fromInstant, toExclusiveInstant } = getIctDateBoundaries(dateRange.from, dateRange.to);
+
+  // Resolves member and lead counts
+  const members = await prisma.$queryRaw`
+    SELECT
+      a.id AS "accountId",
+      COALESCE(a.full_name, '—') AS "fullName",
+      COALESCE(a.email, '—') AS "email",
+      t.id AS "teamId",
+      t.name AS "teamName",
+      COUNT(l.id)::int AS "createdLeadsCount"
+    FROM team_member tm
+    INNER JOIN account a ON a.id = tm.account_id
+    INNER JOIN team t ON t.id = tm.team_id
+    LEFT JOIN lead l ON l.created_by_id = a.id
+      AND l.created_at >= ${new Date(fromInstant)}
+      AND l.created_at < ${new Date(toExclusiveInstant)}
+    WHERE tm.team_id = ANY(${targetTeamIds}::int[])
+    GROUP BY a.id, a.full_name, a.email, t.id, t.name
+    ORDER BY "createdLeadsCount" DESC, "fullName" ASC
+  `;
+
+  // Compute metrics
+  const totalCreatedLeads = members.reduce((sum, m) => sum + m.createdLeadsCount, 0);
+  const activeContributors = members.filter(m => m.createdLeadsCount > 0).length;
+
+  const fromDate = new Date(dateRange.from);
+  const toDateObj = new Date(dateRange.to);
+  const daysDiff = Math.max(1, Math.round((toDateObj - fromDate) / 86400000) + 1);
+  const dailyAverage = parseFloat((totalCreatedLeads / daysDiff).toFixed(1));
+
+  return {
+    timeWindow: {
+      preset: timePreset,
+      from: fromInstant,
+      to: toExclusiveInstant,
+      timezone: BUSINESS_TZ
+    },
+    parentTeam: parentTeam || { id: homeTeamId, name: 'Parent Team' },
+    subTeams: subTeamsPayload,
+    metrics: {
+      totalCreatedLeads,
+      activeContributors,
+      dailyAverage
+    },
+    members
+  };
+};
+
 module.exports = {
   getAllLeads,
   getLeadById,
@@ -743,5 +862,7 @@ module.exports = {
   exportLeads,
   getLeadOptions,
   getLeadStatusHistory,
-  getCreatedLeadStats
+  getCreatedLeadStats,
+  resolveDateRange,
+  getCollaboratorStats
 };

@@ -14,8 +14,17 @@
         </div>
       </div>
 
-      <!-- Header Actions: Quick link to Dedicated Lead Distribution View -->
-      <div class="header-actions">
+      <!-- Header Actions: Quick link to Dedicated Lead Distribution View & Collaborator Stats -->
+      <div class="header-actions flex align-items-center gap-2">
+        <Button
+          v-if="$can('read', 'lead')"
+          label="Collaborator Stats"
+          icon="pi pi-chart-bar"
+          severity="secondary"
+          outlined
+          class="stats-nav-btn"
+          @click="router.push('/leads/collaborator-stats')"
+        />
         <Button
           v-if="$can('distribute', 'lead')"
           label="Distribute Leads (Unassigned Pool)"

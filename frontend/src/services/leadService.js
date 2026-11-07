@@ -91,3 +91,8 @@ export const getCreatedLeadStats = async (params = {}) => {
   const response = await api.get(`${prefix}/created-stats`, { params })
   return response.data.data
 }
+
+export const getCollaboratorStats = async (params = {}) => {
+  const response = await api.get(`${prefix}/collaborator-stats`, { params })
+  return response.data.data
+}

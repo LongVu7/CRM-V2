@@ -10,7 +10,8 @@ const {
   assignAccountSchema,
   poolQuerySchema,
   recipientsQuerySchema,
-  distributionRequestSchema
+  distributionRequestSchema,
+  collaboratorStatsQuerySchema
 } = require('./leadSchemas');
 const upload = require('../../../middleware/upload');
 const leadController = require('./leadController');
@@ -63,6 +64,9 @@ router.route('/options')
 
 router.route('/created-stats')
     .get(authenticate, authorize('read', 'lead'), leadController.getCreatedLeadStats);
+
+router.route('/collaborator-stats')
+    .get(authenticate, authorize('read', 'lead'), validateQuery(collaboratorStatsQuerySchema), leadController.getCollaboratorStats);
 
 router.route('/export')
     .get(authenticate, authorize('export', 'lead'), leadController.exportLeads);

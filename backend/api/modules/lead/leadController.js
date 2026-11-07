@@ -346,6 +346,18 @@ const getCreatedLeadStats = async (req, res) => {
   }
 };
 
+const getCollaboratorStats = async (req, res) => {
+  try {
+    const stats = await leadService.getCollaboratorStats(req.user, req.query);
+    res.status(200).json({
+      message: 'Get collaborator lead stats successfully',
+      data: stats
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
 module.exports = {
   getAllLeads,
   exportLeads,
@@ -366,5 +378,6 @@ module.exports = {
   getScopeRecipients,
   previewDistribution,
   distributeLeads,
-  getCreatedLeadStats
+  getCreatedLeadStats,
+  getCollaboratorStats
 };

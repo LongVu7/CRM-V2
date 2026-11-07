@@ -1,5 +1,5 @@
 const reportRepository = require('./reportRepository');
-const { getIctDateBoundaries, getMonthsArray, BUSINESS_TZ } = require('../../utils/reportDateUtils');
+const { getIctDateBoundaries, getMonthsArray, BUSINESS_TZ } = require('../../utils/dateUtils');
 const { STATUS_BUCKETS } = require('../../../constants/reportConstants');
 const { getEffectiveScope, isAdmin } = require('../../../config/ability');
 

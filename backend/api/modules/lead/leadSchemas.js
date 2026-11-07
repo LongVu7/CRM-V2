@@ -251,6 +251,35 @@ const distributionRequestSchema = z.object({
   };
 });
 
+const normalizeDate = (val) => {
+  if (!val) return val;
+  if (/^\d{2}-\d{2}-\d{4}$/.test(val)) {
+    const [d, m, y] = val.split('-');
+    return `${y}-${m}-${d}`;
+  }
+  return val;
+};
+
+const dateFieldSchema = z.string()
+  .regex(/^(\d{4}-\d{2}-\d{2}|\d{2}-\d{2}-\d{4})$/, 'Date must be YYYY-MM-DD or DD-MM-YYYY')
+  .transform(normalizeDate)
+  .optional();
+
+const collaboratorStatsQuerySchema = z.object({
+  timePreset: z.enum(['today', 'yesterday', 'last_7_days', 'last_month', 'last_3_months', 'custom']).default('today'),
+  from: dateFieldSchema,
+  to: dateFieldSchema,
+  subTeamId: z.coerce.number().int().positive().optional()
+}).refine(data => {
+  if (data.timePreset === 'custom') {
+    return !!(data.from && data.to);
+  }
+  return true;
+}, {
+  message: "'from' and 'to' dates are required when timePreset is 'custom'",
+  path: ['from']
+});
+
 module.exports = {
   createLeadSchema,
   updateLeadSchema,
@@ -260,6 +289,7 @@ module.exports = {
   poolQuerySchema,
   recipientsQuerySchema,
   distributionRequestSchema,
+  collaboratorStatsQuerySchema,
   leadFields,
   capitalizeName
 };

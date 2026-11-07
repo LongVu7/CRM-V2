@@ -1,6 +1,6 @@
 const { Prisma } = require('@prisma/client');
 const prisma = require('../../../config/db');
-const { BUSINESS_TZ } = require('../../utils/reportDateUtils');
+const { BUSINESS_TZ } = require('../../utils/dateUtils');
 const { STATUS_BUCKETS } = require('../../../constants/reportConstants');
 
 //Filters
