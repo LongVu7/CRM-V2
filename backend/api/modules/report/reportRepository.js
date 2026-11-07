@@ -11,6 +11,18 @@ function buildFilters(filters) {
   return Prisma.empty;
 }
 
+// Build dynamic status bucket count columns for SQL aggregation
+function buildStatusCountColumns(fromInstant, toExclusiveInstant) {
+  const columns = Object.entries(STATUS_BUCKETS).map(([statusKey, fieldName]) => Prisma.sql`,
+    COUNT(DISTINCT fi.id) FILTER (
+      WHERE fi.first_processed_at >= ${fromInstant}::timestamptz 
+        AND fi.first_processed_at < ${toExclusiveInstant}::timestamptz
+        AND fi.bucket_status = ${statusKey}
+    )::int AS ${Prisma.raw(`"${fieldName}"`)}
+  `);
+  return Prisma.join(columns, '');
+}
+
 //Build scope condition
 function buildScopeCondition(scope) {
   if (!scope || scope.mode === 'none') return Prisma.sql`FALSE`;
@@ -69,6 +81,10 @@ LeadBase AS (
     i.student_id,
     rs.interaction_status,
     rs.general_status,
+    CASE
+      WHEN rs.interaction_status IN ('not_interested', 'wrong_number') THEN rs.interaction_status
+      ELSE rs.general_status
+    END AS bucket_status,
     se.province_group AS resolved_region_group,
     sc.old_province_id AS resolved_old_province_id
   FROM lead i
@@ -211,17 +227,6 @@ const getAccountCounts = async (scope, { fromInstant, toExclusiveInstant }, filt
   const filterCond = buildFilters(filters);
   const cte = baseCte(scopeCond, filterCond);
 
-  const statusFilters = Object.entries(STATUS_BUCKETS).map(([key, info]) => {
-    const levelCol = info.level === 'general' ? Prisma.raw('fi.general_status') : Prisma.raw('fi.interaction_status');
-    return Prisma.sql`,
-      COUNT(DISTINCT fi.id) FILTER (
-        WHERE fi.first_processed_at >= ${fromInstant}::timestamptz 
-          AND fi.first_processed_at < ${toExclusiveInstant}::timestamptz
-          AND ${levelCol} = ${key}
-      )::int AS ${Prisma.raw(`"${info.field}"`)}
-    `;
-  });
-
   return await prisma.$queryRaw`
     ${cte}
     SELECT
@@ -246,7 +251,7 @@ const getAccountCounts = async (scope, { fromInstant, toExclusiveInstant }, filt
           AND fi.nb_at IS NOT NULL
           AND fi.nb_at < ${toExclusiveInstant}::timestamptz
       )::int AS nb
-      ${Prisma.join(statusFilters, '')}
+      ${buildStatusCountColumns(fromInstant, toExclusiveInstant)}
 
     FROM account a
     INNER JOIN FilteredLead fi ON fi.assigned_to_id = a.id
@@ -259,17 +264,6 @@ const getMajorCounts = async (scope, { fromInstant, toExclusiveInstant }, filter
   const scopeCond = buildScopeCondition(scope);
   const filterCond = buildFilters(filters);
   const cte = baseCte(scopeCond, filterCond);
-
-  const statusFilters = Object.entries(STATUS_BUCKETS).map(([key, info]) => {
-    const levelCol = info.level === 'general' ? Prisma.raw('fi.general_status') : Prisma.raw('fi.interaction_status');
-    return Prisma.sql`,
-      COUNT(DISTINCT fi.id) FILTER (
-        WHERE fi.first_processed_at >= ${fromInstant}::timestamptz 
-          AND fi.first_processed_at < ${toExclusiveInstant}::timestamptz
-          AND ${levelCol} = ${key}
-      )::int AS ${Prisma.raw(`"${info.field}"`)}
-    `;
-  });
 
   return await prisma.$queryRaw`
     ${cte},
@@ -320,7 +314,7 @@ const getMajorCounts = async (scope, { fromInstant, toExclusiveInstant }, filter
           AND fi.interaction_status = 'pending'
       )::int AS "unprocessed"
 
-      ${Prisma.join(statusFilters, '')}
+      ${buildStatusCountColumns(fromInstant, toExclusiveInstant)}
 
     FROM FilteredLead fi
     JOIN student st ON fi.student_id = st.id
@@ -343,17 +337,6 @@ const getSourceCounts = async (scope, { fromInstant, toExclusiveInstant }, filte
   const scopeCond = buildScopeCondition(scope);
   const filterCond = buildFilters(filters);
   const cte = baseCte(scopeCond, filterCond);
-
-  const statusFilters = Object.entries(STATUS_BUCKETS).map(([key, info]) => {
-    const levelCol = info.level === 'general' ? Prisma.raw('fi.general_status') : Prisma.raw('fi.interaction_status');
-    return Prisma.sql`,
-      COUNT(DISTINCT fi.id) FILTER (
-        WHERE fi.first_processed_at >= ${fromInstant}::timestamptz 
-          AND fi.first_processed_at < ${toExclusiveInstant}::timestamptz
-          AND ${levelCol} = ${key}
-      )::int AS ${Prisma.raw(`"${info.field}"`)}
-    `;
-  });
 
   return await prisma.$queryRaw`
     ${cte},
@@ -392,7 +375,7 @@ const getSourceCounts = async (scope, { fromInstant, toExclusiveInstant }, filte
           AND fi.interaction_status = 'pending'
       )::int AS "unprocessed"
 
-      ${Prisma.join(statusFilters, '')}
+      ${buildStatusCountColumns(fromInstant, toExclusiveInstant)}
 
     FROM FilteredLead fi
     JOIN ResolvedSource rs ON rs.base_id = fi.source_data_id
@@ -416,17 +399,6 @@ const getRegionCounts = async (scope, { fromInstant, toExclusiveInstant }, filte
   const scopeCond = buildScopeCondition(scope);
   const filterCond = buildFilters(filters);
   const cte = baseCte(scopeCond, filterCond);
-
-  const statusFilters = Object.entries(STATUS_BUCKETS).map(([key, info]) => {
-    const levelCol = info.level === 'general' ? Prisma.raw('fi.general_status') : Prisma.raw('fi.interaction_status');
-    return Prisma.sql`,
-      COUNT(DISTINCT fi.id) FILTER (
-        WHERE fi.first_processed_at >= ${fromInstant}::timestamptz 
-          AND fi.first_processed_at < ${toExclusiveInstant}::timestamptz
-          AND ${levelCol} = ${key}
-      )::int AS ${Prisma.raw(`"${info.field}"`)}
-    `;
-  });
 
   return await prisma.$queryRaw`
     ${cte}
@@ -463,7 +435,7 @@ const getRegionCounts = async (scope, { fromInstant, toExclusiveInstant }, filte
           AND fi.interaction_status = 'pending'
       )::int AS "unprocessed"
 
-      ${Prisma.join(statusFilters, '')}
+      ${buildStatusCountColumns(fromInstant, toExclusiveInstant)}
 
     FROM FilteredLead fi
     WHERE fi.resolved_region_group IS NOT NULL
@@ -485,5 +457,6 @@ module.exports = {
   getAccountCounts,
   getMajorCounts,
   getSourceCounts,
-  getRegionCounts
+  getRegionCounts,
+  buildStatusCountColumns
 };
