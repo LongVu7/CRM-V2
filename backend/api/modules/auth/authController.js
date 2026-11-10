@@ -1,5 +1,7 @@
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
+const prisma = require('../../../config/db');
 const { getEffectivePermissions, resolveTeamScopes, buildUserContext } = require('../../../middleware/auth');
 const { defineAbilityFor } = require('../../../config/ability');
 
@@ -88,9 +90,83 @@ const refreshToken = (req, res) => {
   });
 };
 
+// ─── Change Password ───
+const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required' });
+    }
+
+    if (typeof newPassword !== 'string' || newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    }
+
+    const account = await prisma.account.findUnique({
+      where: { id: req.user.accountId },
+      select: { id: true, password: true }
+    });
+
+    if (!account) {
+      return res.status(404).json({ error: 'Account not found' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, account.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Current password is incorrect' });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ error: 'New password must be different from current password' });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.account.update({
+      where: { id: account.id },
+      data: { password: hashedPassword }
+    });
+
+    res.status(200).json({ message: 'Password updated successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to change password', details: error.message });
+  }
+};
+
+// ─── Update Profile ───
+const updateProfile = async (req, res) => {
+  try {
+    const { fullName } = req.body;
+
+    if (fullName !== undefined && (typeof fullName !== 'string' || !fullName.trim())) {
+      return res.status(400).json({ error: 'Full name cannot be empty' });
+    }
+
+    const updated = await prisma.account.update({
+      where: { id: req.user.accountId },
+      data: {
+        ...(fullName !== undefined && { fullName: fullName.trim() })
+      },
+      select: { id: true, fullName: true, email: true }
+    });
+
+    res.status(200).json({
+      message: 'Profile updated successfully',
+      user: {
+        ...req.user,
+        fullName: updated.fullName
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update profile', details: error.message });
+  }
+};
+
 module.exports = {
   login,
   logout,
   getMe,
-  refreshToken
+  refreshToken,
+  changePassword,
+  updateProfile
 };

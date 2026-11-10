@@ -93,19 +93,6 @@ function buildLeadDescription(row) {
   return notes.length > 0 ? notes.join(' | ') : null;
 }
 
-function buildLeadData(row, studentId) {
-  const data = {
-    assignedToId: null,
-    description: buildLeadDescription(row),
-    dataReceived: new Date(),
-    priority: null,
-    statusDataId: row.statusDataId || null,
-    sourceDataId: row.sourceDataId || null
-  };
-  if (studentId) data.studentId = studentId;
-  return data;
-}
-
 // ─── Google Sheets API ──────────────────────────────────────────────────────
 async function fetchSheetRows(sheetId, authClient) {
   const sheets = google.sheets({ version: 'v4', auth: authClient });
@@ -208,8 +195,7 @@ async function fetchReferenceData() {
 
 // ─── Validation & Orchestration ─────────────────────────────────────────────
 const CLASSIFICATION_KEYS = [
-  ['readyNew', 'READY_NEW_STUDENT_AND_LEAD'],
-  ['readyExisting', 'READY_EXISTING_STUDENT_NEW_LEAD'],
+  ['ready', 'READY'],
   ['existingLead', 'EXISTING_LEAD'],
   ['duplicateInFile', 'DUPLICATE_IN_FILE'],
   ['mappingIssue', 'MAPPING_ISSUE'],
@@ -221,13 +207,14 @@ function buildSummary(parsedRows) {
   for (const [key, value] of CLASSIFICATION_KEYS) {
     summary[key] = parsedRows.filter(r => r._meta.classification === value).length;
   }
+  summary.readyNew = summary.ready;
   return summary;
 }
 
 async function validateSheetLeadRows(rawData, sheetMetadata = {}) {
   if (!rawData || rawData.length === 0) {
     return {
-      summary: { total: 0, readyNew: 0, readyExisting: 0, existingLead: 0, duplicateInFile: 0, mappingIssue: 0, invalid: 0 },
+      summary: { total: 0, ready: 0, readyNew: 0, existingLead: 0, duplicateInFile: 0, mappingIssue: 0, invalid: 0 },
       rows: []
     };
   }
@@ -307,26 +294,24 @@ async function validateSheetLeadRows(rawData, sheetMetadata = {}) {
     return r;
   });
 
-  // 3. Batch query existing students & index to Map (O(1))
+  // 3. Query existing leads by mobile 
   const distinctMobiles = [...new Set(parsedRows.map(r => r.mobile).filter(Boolean))];
-  const existingStudents = await prisma.student.findMany({
+  const existingLeads = await prisma.student.findMany({
     where: { mobile: { in: distinctMobiles } },
-    include: { lead: true }
+    select: { mobile: true }
   });
-  const studentByMobile = new Map(existingStudents.map(s => [s.mobile, s]));
+  const existingMobiles = new Set(existingLeads.map(s => s.mobile));
 
   // 4. Enrich and classify rows
   for (const row of parsedRows) {
     if (row._meta.classification) continue;
 
-    const student = studentByMobile.get(row.mobile);
-    if (student) {
-      row.existingStudentId = student.id;
-      row.existingStudent = student;
-      row._meta.classification = student.lead ? 'EXISTING_LEAD' : 'READY_EXISTING_STUDENT_NEW_LEAD';
-    } else {
-      row._meta.classification = 'READY_NEW_STUDENT_AND_LEAD';
+    if (existingMobiles.has(row.mobile)) {
+      row._meta.classification = 'EXISTING_LEAD';
+      continue;
     }
+
+    row._meta.classification = 'READY';
 
     // Geography resolution O(1)
     const rawLoc = row.location || '';
@@ -419,16 +404,17 @@ async function validateSheetLeadRows(rawData, sheetMetadata = {}) {
 // ─── Database Mutation (Insert-Only with Milestone Stamping) ────────────────
 async function insertSheetLeadRows(rows, context = { type: 'SYSTEM', name: 'Google Sheets Background Sync' }) {
   const counters = {
-    newStudentsCreated: 0,
-    newLeadsForExisting: 0,
-    existingStudentsUpdated: 0,
-    skipped: 0
+    importedCount: 0,
+    skipped: 0,
+    get newStudentsCreated() { return this.importedCount; },
+    get newLeadsForExisting() { return 0; },
+    get existingStudentsUpdated() { return 0; }
   };
 
   for (const row of rows) {
     const classification = row._meta?.classification;
 
-    if (classification === 'READY_NEW_STUDENT_AND_LEAD') {
+    if (classification === 'READY' || classification === 'READY_NEW_LEAD') {
       try {
         await prisma.$transaction(async (tx) => {
           const milestoneUpdates = row.statusDataId
@@ -437,82 +423,42 @@ async function insertSheetLeadRows(rows, context = { type: 'SYSTEM', name: 'Goog
 
           const hasAcademic = Boolean(row.interestedMajorId && row.specificMajorId);
 
-          const student = await tx.student.create({
-            data: {
-              fullName: row.fullName,
-              gender: 'Unknown',
-              email: row.email || null,
-              mobile: row.mobile,
-              primaryAddress: row.primaryAddress || null,
-              ...(hasAcademic && {
-                specializedRegister: {
-                  create: {
-                    interestedMajor: { connect: { id: row.interestedMajorId } },
-                    specificMajor: { connect: { id: row.specificMajorId } },
-                    gpa: 'OTHER',
-                    programScore: 'OTHER'
-                  }
-                }
-              }),
-              education: {
-                create: {
-                  country: { connect: { id: row.countryId } },
-                  ...(row.schoolId && { school: { connect: { id: row.schoolId } } }),
-                  ...(row.oldProvinceId && { oldProvince: { connect: { id: row.oldProvinceId } } }),
-                  provinceGroup: row.provinceGroup || 'OTHER_PROVINCE',
-                  schoolType: row.resolvedSchoolType || 'NONE',
-                  class: row.resolvedClass || 'NONE'
-                }
-              },
-              lead: {
-                create: {
-                  description: buildLeadDescription(row),
-                  dataReceived: new Date(),
-                  ...(row.statusDataId && { statusData: { connect: { id: row.statusDataId } } }),
-                  ...(row.sourceDataId && { sourceData: { connect: { id: row.sourceDataId } } }),
-                  ...milestoneUpdates
-                }
-              }
-            },
-            include: { lead: true }
-          });
-
-          if (row.statusDataId && student.lead) {
-            await tx.leadStatusHistory.create({
-              data: {
-                leadId: student.lead.id,
-                previousStatusId: null,
-                newStatusId: row.statusDataId,
-                notes: 'Initial Google Sheets sync status',
-                changedAt: new Date()
-              }
-            });
-          }
-        });
-        counters.newStudentsCreated++;
-      } catch (err) {
-        logSync('ERROR', `Transaction failed for sheet sync row ${row._meta.rowNumber}`, {
-          rowNumber: row._meta.rowNumber,
-          mobile: row.mobile,
-          error: err.message || err
-        });
-        counters.skipped++;
-      }
-    } else if (classification === 'READY_EXISTING_STUDENT_NEW_LEAD') {
-      try {
-        await prisma.$transaction(async (tx) => {
-          const milestoneUpdates = row.statusDataId
-            ? await applyStatusTransition({ tx, lead: {}, newStatusDataId: row.statusDataId })
-            : {};
-
           const lead = await tx.lead.create({
             data: {
-              student: { connect: { id: row.existingStudentId } },
               description: buildLeadDescription(row),
               dataReceived: new Date(),
               ...(row.statusDataId && { statusData: { connect: { id: row.statusDataId } } }),
               ...(row.sourceDataId && { sourceData: { connect: { id: row.sourceDataId } } }),
-              ...milestoneUpdates
+              ...milestoneUpdates,
+              student: {
+                create: {
+                  fullName: row.fullName,
+                  gender: 'Unknown',
+                  email: row.email || null,
+                  mobile: row.mobile,
+                  primaryAddress: row.primaryAddress || null,
+                  ...(hasAcademic && {
+                    specializedRegister: {
+                      create: {
+                        interestedMajor: { connect: { id: row.interestedMajorId } },
+                        specificMajor: { connect: { id: row.specificMajorId } },
+                        gpa: 'OTHER',
+                        programScore: 'OTHER'
+                      }
+                    }
+                  }),
+                  education: {
+                    create: {
+                      country: { connect: { id: row.countryId } },
+                      ...(row.schoolId && { school: { connect: { id: row.schoolId } } }),
+                      ...(row.oldProvinceId && { oldProvince: { connect: { id: row.oldProvinceId } } }),
+                      provinceGroup: row.provinceGroup || 'OTHER_PROVINCE',
+                      schoolType: row.resolvedSchoolType || 'NONE',
+                      class: row.resolvedClass || 'NONE'
+                    }
+                  }
+                }
+              }
             }
           });
 
@@ -528,7 +474,7 @@ async function insertSheetLeadRows(rows, context = { type: 'SYSTEM', name: 'Goog
             });
           }
         });
-        counters.newLeadsForExisting++;
+        counters.importedCount++;
       } catch (err) {
         logSync('ERROR', `Transaction failed for sheet sync row ${row._meta.rowNumber}`, {
           rowNumber: row._meta.rowNumber,
@@ -669,6 +615,5 @@ module.exports = {
   syncGoogleSheetsToLeads,
   validateSheetLeadRows,
   insertSheetLeadRows,
-  resolveProvinceGroup,
-  buildLeadData
+  resolveProvinceGroup
 };

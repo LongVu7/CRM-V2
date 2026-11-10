@@ -16,3 +16,13 @@ export const getMe = async () => {
   const response = await api.get(`${prefix}/me`)
   return response.data
 }
+
+export const changePassword = async (currentPassword, newPassword) => {
+  const response = await api.put(`${prefix}/change-password`, { currentPassword, newPassword })
+  return response.data
+}
+
+export const updateProfile = async (data) => {
+  const response = await api.put(`${prefix}/profile`, data)
+  return response.data
+}

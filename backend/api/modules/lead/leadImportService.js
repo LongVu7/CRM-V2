@@ -148,9 +148,9 @@ const validateLeadRows = async (rawData) => {
     sources,
     accounts
   ] = await Promise.all([
-    prisma.lead.findMany({
-      where: { student: { mobile: { in: mobiles } } },
-      select: { student: { select: { mobile: true } } }
+    prisma.student.findMany({
+      where: { mobile: { in: mobiles } },
+      select: { mobile: true }
     }),
     prisma.oldProvince.findMany(),
     prisma.school.findMany(),
@@ -162,7 +162,7 @@ const validateLeadRows = async (rawData) => {
     prisma.account.findMany({ where: { isActive: true } })
   ]);
 
-  const existingMobileNumbers = new Set(existingLeads.map(l => l.student?.mobile));
+  const existingMobileNumbers = new Set(existingLeads.map(l => l.mobile));
 
   // Build O(1) lookup tables
   const oldProvinceMap = new Map();
@@ -337,7 +337,7 @@ const insertLeadRows = async (rows, context) => {
   }) || await prisma.country.findFirst();
 
   for (const row of rows) {
-    if (row._meta?.classification !== 'READY' && row._meta?.classification !== 'READY_NEW_STUDENT_AND_LEAD') {
+    if (row._meta?.classification !== 'READY') {
       skipped++;
       continue;
     }

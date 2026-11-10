@@ -13,6 +13,14 @@
       <div class="section-card">
         <div class="card-header">
           <h2><i class="pi pi-id-card"></i> Account Information</h2>
+          <Button
+            v-if="!isEditingName"
+            icon="pi pi-pencil"
+            label="Edit Name"
+            size="small"
+            text
+            @click="startEditName"
+          />
         </div>
 
         <div class="profile-avatar-row">
@@ -28,7 +36,12 @@
         <div class="info-list">
           <div class="info-item">
             <span class="info-label">Full Name</span>
-            <span class="info-value">{{ user?.fullName || '—' }}</span>
+            <div v-if="isEditingName" class="edit-name-row">
+              <InputText v-model="nameInput" size="small" placeholder="Enter your full name" />
+              <Button icon="pi pi-check" size="small" :loading="savingName" @click="handleUpdateName" />
+              <Button icon="pi pi-times" size="small" severity="secondary" text @click="isEditingName = false" />
+            </div>
+            <span v-else class="info-value">{{ user?.fullName || '—' }}</span>
           </div>
           <div class="info-item">
             <span class="info-label">Email Address</span>
@@ -92,7 +105,7 @@
               fluid
               :invalid="!!errors.newPassword"
             />
-            <small class="form-error">{{ errors.newPassword }}</small>
+            <small v-if="errors.newPassword" class="form-error">{{ errors.newPassword }}</small>
           </div>
 
           <div class="form-field">
@@ -126,18 +139,54 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Password from 'primevue/password'
+import InputText from 'primevue/inputtext'
 import { useToast } from 'primevue/usetoast'
 import { useAuthStore } from '@/stores/auth'
+import { changePassword, updateProfile } from '@/services/authService'
 
 const authStore = useAuthStore()
 const toast = useToast()
 
 const user = computed(() => authStore.user)
 
+onMounted(async () => {
+  await authStore.checkAuth()
+})
+
+// Profile editing
+const isEditingName = ref(false)
+const nameInput = ref('')
+const savingName = ref(false)
+
+const startEditName = () => {
+  nameInput.value = user.value?.fullName || ''
+  isEditingName.value = true
+}
+
+const handleUpdateName = async () => {
+  if (!nameInput.value.trim()) {
+    toast.add({ severity: 'error', summary: 'Validation Error', detail: 'Full Name cannot be empty', life: 3000 })
+    return
+  }
+  savingName.value = true
+  try {
+    const res = await updateProfile({ fullName: nameInput.value.trim() })
+    authStore.user = res.user
+    isEditingName.value = false
+    toast.add({ severity: 'success', summary: 'Success', detail: 'Profile updated successfully', life: 3000 })
+  } catch (err) {
+    const msg = err.response?.data?.error || err.message || 'Failed to update profile'
+    toast.add({ severity: 'error', summary: 'Error', detail: msg, life: 4000 })
+  } finally {
+    savingName.value = false
+  }
+}
+
+// Password change
 const saving = ref(false)
 const errors = ref({})
 const passwordForm = ref({
@@ -167,11 +216,11 @@ const handlePasswordSubmit = async () => {
   if (!validate()) return
   saving.value = true
   try {
-    // UI placeholder: ready to hook up to password change API
+    await changePassword(passwordForm.value.currentPassword, passwordForm.value.newPassword)
     toast.add({
-      severity: 'info',
-      summary: 'Password Change',
-      detail: 'UI ready. Connect backend password change endpoint to persist.',
+      severity: 'success',
+      summary: 'Success',
+      detail: 'Password updated successfully',
       life: 4000
     })
     passwordForm.value = {
@@ -180,6 +229,14 @@ const handlePasswordSubmit = async () => {
       confirmPassword: ''
     }
     errors.value = {}
+  } catch (err) {
+    const msg = err.response?.data?.error || err.message || 'Failed to update password'
+    toast.add({
+      severity: 'error',
+      summary: 'Password Change Failed',
+      detail: msg,
+      life: 4000
+    })
   } finally {
     saving.value = false
   }
@@ -234,6 +291,13 @@ const handlePasswordSubmit = async () => {
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
 }
 
 .card-header h2 {
@@ -302,6 +366,12 @@ const handlePasswordSubmit = async () => {
   align-items: center;
   padding-bottom: 0.75rem;
   border-bottom: 1px solid var(--p-surface-100);
+}
+
+.edit-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .info-item:last-child {
