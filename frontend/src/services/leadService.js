@@ -42,6 +42,16 @@ export const searchAccounts = async (query = '') => {
   return response.data.results
 }
 
+export const assignAccountToLead = async (id, accountId) => {
+  const response = await api.put(`${prefix}/${id}/assign-account`, { accountId })
+  return response.data
+}
+
+export const assignAccountToLeads = async (ids = [], accountId) => {
+  const response = await api.put(`${prefix}/bulk-assign`, { leadIds: ids, accountId })
+  return response.data
+}
+
 
 export const downloadLeadTemplate = async () => {
   const response = await api.get(`${prefix}/import/template`, { responseType: 'blob' })
@@ -92,7 +102,7 @@ export const getCreatedLeadStats = async (params = {}) => {
   return response.data.data
 }
 
-export const getCollaboratorStats = async (params = {}) => {
-  const response = await api.get(`${prefix}/collaborator-stats`, { params })
+export const getLeadStats = async (params = {}) => {
+  const response = await api.get(`${prefix}/stats`, { params })
   return response.data.data
 }

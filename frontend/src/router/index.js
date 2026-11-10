@@ -63,9 +63,10 @@ const router = createRouter({
       meta: { permission: ['lead.import'] }
     },
     {
-      path: '/leads/collaborator-stats',
-      name: 'collaborator-lead-stats',
-      component: () => import('../views/lead/CollaboratorLeadStats.vue'),
+      path: '/leads/stats',
+      alias: '/leads/collaborator-stats',
+      name: 'lead-stats',
+      component: () => import('../views/lead/LeadStats.vue'),
       meta: { permission: 'lead.read' }
     },
     {
@@ -258,7 +259,7 @@ router.beforeEach((to) => {
 
   // Collaborator role redirect from staff lead routes
   if (isCollab) {
-    if (to.path === '/' || to.path === '/leads' || to.path === '/leads/collaborator-stats') {
+    if (to.path === '/' || to.path === '/leads' || to.path === '/leads/stats' || to.path === '/leads/collaborator-stats') {
       return '/collaborator/leads'
     }
     if (to.path === '/leads/new') {

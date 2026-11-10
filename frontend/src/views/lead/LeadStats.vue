@@ -1,5 +1,5 @@
 <template>
-  <div class="lead-list-view collaborator-stats-view">
+  <div class="lead-list-view lead-stats-view collaborator-stats-view">
     <!-- Top Breadcrumb & Page Title -->
     <div class="page-header">
       <div class="header-left">
@@ -8,7 +8,7 @@
           <i class="pi pi-angle-right breadcrumb-separator"></i>
           <RouterLink to="/leads" class="breadcrumb-link">Lead Management</RouterLink>
           <i class="pi pi-angle-right breadcrumb-separator"></i>
-          <span class="breadcrumb-active">Collaborator Stats</span>
+          <span class="breadcrumb-active">Lead Stats</span>
         </div>
         <div class="title-row">
           <h1><i class="pi pi-chart-bar"></i> Sub-Team & Collaborator Lead Statistics</h1>
@@ -236,7 +236,7 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Tag from 'primevue/tag'
 
-import { getCollaboratorStats } from '@/services/leadService'
+import { getLeadStats } from '@/services/leadService'
 import { formatDate } from '@/utils/dateUtils'
 
 const router = useRouter()
@@ -267,23 +267,18 @@ const presets = [
   { label: 'Custom', value: 'custom' }
 ]
 
-const subTeamOptions = computed(() => [
-  { label: 'All Subordinate Teams', value: null },
-  ...subTeams.value.map(st => ({
-    label: `${st.name} (${st.memberCount} members)`,
-    value: st.id
-  }))
-])
-
-const formattedDateRange = computed(() => {
-  if (!timeWindow.value?.from || !timeWindow.value?.to) return ''
-  const fromFormatted = formatDate(timeWindow.value.from)
-  const toFormatted = formatDate(timeWindow.value.to)
-  return fromFormatted === toFormatted ? fromFormatted : `${fromFormatted} - ${toFormatted}`
+const subTeamOptions = computed(() => {
+  return [
+    { label: 'All Subordinate Teams', value: null },
+    ...subTeams.value.map(st => ({
+      label: st.name,
+      value: st.id
+    }))
+  ]
 })
 
 const filteredMembers = computed(() => {
-  if (!searchQuery.value?.trim()) return members.value
+  if (!searchQuery.value.trim()) return members.value
   const q = searchQuery.value.toLowerCase().trim()
   return members.value.filter(m => 
     (m.fullName && m.fullName.toLowerCase().includes(q)) ||
@@ -292,9 +287,17 @@ const filteredMembers = computed(() => {
   )
 })
 
-const selectPreset = (preset) => {
-  selectedPreset.value = preset
-  if (preset !== 'custom') {
+const formattedDateRange = computed(() => {
+  if (!timeWindow.value) return ''
+  const from = formatDate(timeWindow.value.from)
+  const to = formatDate(timeWindow.value.to)
+  if (from === to) return from
+  return `${from} - ${to}`
+})
+
+const selectPreset = (val) => {
+  selectedPreset.value = val
+  if (val !== 'custom') {
     customDateRange.value = null
     loadStats()
   }
@@ -309,10 +312,10 @@ const onCustomDateChange = (val) => {
 const formatIsoDate = (d) => {
   if (!d) return null
   const date = new Date(d)
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return `${year}-${month}-${day}`
 }
 
 const loadStats = async () => {
@@ -330,7 +333,7 @@ const loadStats = async () => {
       params.to = formatIsoDate(customDateRange.value[1])
     }
 
-    const data = await getCollaboratorStats(params)
+    const data = await getLeadStats(params)
     if (data) {
       parentTeam.value = data.parentTeam
       subTeams.value = data.subTeams || []
@@ -339,7 +342,7 @@ const loadStats = async () => {
       timeWindow.value = data.timeWindow || null
     }
   } catch (err) {
-    errorMessage.value = err.response?.data?.message || err.message || 'Failed to load collaborator statistics'
+    errorMessage.value = err.response?.data?.message || err.message || 'Failed to load lead statistics'
   } finally {
     loading.value = false
   }
@@ -351,6 +354,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.lead-stats-view,
 .collaborator-stats-view {
   padding: 1.5rem;
 }

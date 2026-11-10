@@ -312,7 +312,12 @@ const searchAccounts = async (query, user) => {
       id: true,
       fullName: true,
       email: true,
-      role: { select: { name: true } }
+      role: { select: { name: true } },
+      teamMemberships: {
+        select: {
+          team: { select: { id: true, name: true } }
+        }
+      }
     },
     take: 500,
     orderBy: { fullName: 'asc' }
@@ -716,6 +721,65 @@ const assignAccountToLead = async (leadId, accountId, user) => {
   });
 };
 
+const bulkAssignLeads = async (leadIds, accountId, user) => {
+  const aid = toInt(accountId);
+  await verifyAssignmentScope(aid, user);
+
+  const cleanIds = [...new Set((leadIds || []).map(id => parseInt(id, 10)))].filter(id => !isNaN(id) && id > 0);
+  if (cleanIds.length === 0) {
+    throw handleError('No valid lead IDs provided', 400);
+  }
+
+  const batchId = crypto.randomUUID();
+  const assignedById = user?.accountId || user?.id || null;
+  const now = new Date();
+
+  return prisma.$transaction(async (tx) => {
+    const currentLeads = await tx.lead.findMany({
+      where: { id: { in: cleanIds } },
+      select: { id: true, assignedToId: true }
+    });
+
+    if (currentLeads.length === 0) {
+      throw handleError('No matching leads found', 404);
+    }
+
+    const changedLeads = currentLeads.filter(l => l.assignedToId !== aid);
+
+    if (changedLeads.length > 0) {
+      const changedIds = changedLeads.map(l => l.id);
+
+      await tx.lead.updateMany({
+        where: { id: { in: changedIds } },
+        data: {
+          assignedToId: aid,
+          updatedAt: now
+        }
+      });
+
+      const logs = changedLeads.map(l => ({
+        leadId: l.id,
+        previousAssigneeId: l.assignedToId,
+        newAssigneeId: aid,
+        assignedById,
+        batchId,
+        method: 'MANUAL',
+        assignedAt: now
+      }));
+
+      await tx.leadAssignmentLog.createMany({
+        data: logs
+      });
+    }
+
+    return {
+      totalRequested: cleanIds.length,
+      updatedCount: changedLeads.length,
+      targetAccountId: aid
+    };
+  });
+};
+
 const getCreatedLeadStats = async (accountId) => {
   const aid = parseInt(accountId, 10);
   if (!aid || isNaN(aid)) 
@@ -733,7 +797,7 @@ const getCreatedLeadStats = async (accountId) => {
   return stats || { today: 0, this_week: 0, this_month: 0, total: 0 };
 };
 
-const getCollaboratorStats = async (currentUser, query = {}) => {
+const getLeadStats = async (currentUser, query = {}) => {
   const { timePreset = 'today', from: customFrom, to: customTo, subTeamId } = query;
 
   const isAdmin = currentUser?.isAdmin || (currentUser?.roleName || '').toLowerCase() === 'admin' || (currentUser?.roleName || '').toLowerCase() === 'administrator';
@@ -858,11 +922,12 @@ module.exports = {
   updateLead,
   deleteLead,
   assignAccountToLead,
+  bulkAssignLeads,
   searchAccounts,
   exportLeads,
   getLeadOptions,
   getLeadStatusHistory,
   getCreatedLeadStats,
   resolveDateRange,
-  getCollaboratorStats
+  getLeadStats,
 };

@@ -8,9 +8,11 @@ const {
   createLeadSchema,
   updateLeadSchema,
   assignAccountSchema,
+  bulkAssignSchema,
   poolQuerySchema,
   recipientsQuerySchema,
   distributionRequestSchema,
+  leadStatsQuerySchema,
   collaboratorStatsQuerySchema
 } = require('./leadSchemas');
 const upload = require('../../../middleware/upload');
@@ -65,11 +67,14 @@ router.route('/options')
 router.route('/created-stats')
     .get(authenticate, authorize('read', 'lead'), leadController.getCreatedLeadStats);
 
-router.route('/collaborator-stats')
-    .get(authenticate, authorize('read', 'lead'), validateQuery(collaboratorStatsQuerySchema), leadController.getCollaboratorStats);
+router.route('/stats')
+    .get(authenticate, authorize('read', 'lead'), validateQuery(leadStatsQuerySchema), leadController.getLeadStats);
 
 router.route('/export')
     .get(authenticate, authorize('export', 'lead'), leadController.exportLeads);
+
+router.route('/bulk-assign')
+    .put(authenticate, authorize('assign', 'lead'), validateBody(bulkAssignSchema), leadController.bulkAssignLeads);
 
 router.route('/:id')
     .get(authenticate, authorize('read', 'lead', leadIdorCheck), validateParams(idParamSchema), leadController.getLeadById)

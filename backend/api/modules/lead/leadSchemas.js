@@ -126,6 +126,11 @@ const assignAccountSchema = z.object({
   accountId: z.number().int('accountId must be an integer').nullable()
 }).strict();
 
+const bulkAssignSchema = z.object({
+  leadIds: z.array(z.number().int().positive()).min(1, 'At least one lead ID is required'),
+  accountId: z.number().int('accountId must be an integer').nullable()
+}).strict();
+
 const sanitizeSheetMobile = (val) => {
   if (val === undefined || val === null || val === '') return undefined;
   let str = String(val).trim();
@@ -265,7 +270,7 @@ const dateFieldSchema = z.string()
   .transform(normalizeDate)
   .optional();
 
-const collaboratorStatsQuerySchema = z.object({
+const leadStatsQuerySchema = z.object({
   timePreset: z.enum(['today', 'yesterday', 'last_7_days', 'last_month', 'last_3_months', 'custom']).default('today'),
   from: dateFieldSchema,
   to: dateFieldSchema,
@@ -284,12 +289,13 @@ module.exports = {
   createLeadSchema,
   updateLeadSchema,
   assignAccountSchema,
+  bulkAssignSchema,
   sheetLeadSyncSchema,
   sanitizeSheetMobile,
   poolQuerySchema,
   recipientsQuerySchema,
   distributionRequestSchema,
-  collaboratorStatsQuerySchema,
+  leadStatsQuerySchema,
   leadFields,
   capitalizeName
 };

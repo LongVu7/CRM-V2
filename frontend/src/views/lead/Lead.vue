@@ -18,12 +18,12 @@
       <div class="header-actions flex align-items-center gap-2">
         <Button
           v-if="$can('read', 'lead')"
-          label="Collaborator Stats"
+          label="Lead Stats"
           icon="pi pi-chart-bar"
           severity="secondary"
           outlined
           class="stats-nav-btn"
-          @click="router.push('/leads/collaborator-stats')"
+          @click="router.push('/leads/stats')"
         />
         <Button
           v-if="$can('distribute', 'lead')"
@@ -446,6 +446,16 @@
                   @click="openStatusHistory(data.id)" 
                 />
                 <Button 
+                  v-if="$can('assign', 'lead')" 
+                  icon="pi pi-user-edit" 
+                  rounded 
+                  text 
+                  severity="help" 
+                  aria-label="Assign Lead" 
+                  v-tooltip.top="'Assign / Transfer Lead'"
+                  @click="openAssignModal([data])" 
+                />
+                <Button 
                   v-if="canUpdate(data)" 
                   icon="pi pi-pencil" 
                   rounded 
@@ -482,6 +492,14 @@
         <div class="dock-divider"></div>
         <div class="dock-actions">
           <Button 
+            v-if="$can('assign', 'lead')" 
+            :label="`Assign (${selectedLeads.length})`" 
+            icon="pi pi-user-edit" 
+            severity="primary" 
+            size="small" 
+            @click="openAssignModal(selectedLeads)" 
+          />
+          <Button 
             v-if="$can('delete', 'lead')" 
             :label="`Delete (${selectedLeads.length})`" 
             icon="pi pi-trash" 
@@ -516,6 +534,13 @@
       v-model:visible="showDialogVisible"
       :leadId="showDialogLeadId"
     />
+
+    <!-- Lead Assignment / Transfer Dialog -->
+    <LeadAssignDialog
+      v-model:visible="assignDialogVisible"
+      :leads="leadsToAssign"
+      @assigned="handleAssignSuccess"
+    />
   </div>
 </template>
 
@@ -538,6 +563,7 @@ import { useConfirm } from 'primevue/useconfirm'
 
 import LeadShowDialog from '@/components/lead/LeadShowDialog.vue'
 import LeadStatusHistoryDialog from '@/components/lead/LeadStatusHistoryDialog.vue'
+import LeadAssignDialog from '@/components/lead/LeadAssignDialog.vue'
 
 import { useLead } from '@/composables/useLead'
 import { useTableQuery } from '@/composables/useTableQuery'
@@ -720,8 +746,20 @@ const showDialogVisible = ref(false)
 const showDialogLeadId = ref(null)
 const statusHistoryDialogVisible = ref(false)
 const selectedLeadIdForHistory = ref(null)
+const assignDialogVisible = ref(false)
+const leadsToAssign = ref([])
 const exporting = ref(false)
 const syncing = ref(false)
+
+const openAssignModal = (leadList = []) => {
+  leadsToAssign.value = leadList.length > 0 ? leadList : selectedLeads.value
+  assignDialogVisible.value = true
+}
+
+const handleAssignSuccess = async () => {
+  selectedLeads.value = []
+  await loadData()
+}
 
 const onShow = (leadId) => {
   showDialogLeadId.value = leadId

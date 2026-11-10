@@ -163,6 +163,21 @@ const assignAccountToLead = async (req, res) => {
   }
 };
 
+const bulkAssignLeads = async (req, res) => {
+  try {
+    const { leadIds, accountId } = req.body;
+    const result = await leadService.bulkAssignLeads(leadIds, accountId, req.user);
+    res.status(200).json({
+      message: accountId ? `Successfully assigned ${result.updatedCount} leads` : `Successfully unassigned ${result.updatedCount} leads`,
+      requestedByRole: req.user?.roleName,
+      requestedByAccountId: req.user?.accountId,
+      data: result
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
 
 
 // ─── Search staff accounts (for assignment UI)
@@ -345,11 +360,11 @@ const getCreatedLeadStats = async (req, res) => {
   }
 };
 
-const getCollaboratorStats = async (req, res) => {
+const getLeadStats = async (req, res) => {
   try {
-    const stats = await leadService.getCollaboratorStats(req.user, req.query);
+    const stats = await leadService.getLeadStats(req.user, req.query);
     res.status(200).json({
-      message: 'Get collaborator lead stats successfully',
+      message: 'Get lead stats successfully',
       data: stats
     });
   } catch (error) {
@@ -365,6 +380,7 @@ module.exports = {
   updateLead,
   deleteLead,
   assignAccountToLead,
+  bulkAssignLeads,
   searchAccounts,
   downloadTemplate,
   previewImportLead,
@@ -378,5 +394,5 @@ module.exports = {
   previewDistribution,
   distributeLeads,
   getCreatedLeadStats,
-  getCollaboratorStats
+  getLeadStats,
 };
