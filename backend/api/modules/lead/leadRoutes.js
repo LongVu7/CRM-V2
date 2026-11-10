@@ -9,6 +9,7 @@ const {
   updateLeadSchema,
   assignAccountSchema,
   bulkAssignSchema,
+  bulkDeleteSchema,
   poolQuerySchema,
   recipientsQuerySchema,
   distributionRequestSchema,
@@ -75,6 +76,10 @@ router.route('/export')
 
 router.route('/bulk-assign')
     .put(authenticate, authorize('assign', 'lead'), validateBody(bulkAssignSchema), leadController.bulkAssignLeads);
+
+router.route('/bulk-delete')
+    .post(authenticate, authorize('delete', 'lead'), validateBody(bulkDeleteSchema), leadController.bulkDeleteLeads)
+    .delete(authenticate, authorize('delete', 'lead'), validateBody(bulkDeleteSchema), leadController.bulkDeleteLeads);
 
 router.route('/:id')
     .get(authenticate, authorize('read', 'lead', leadIdorCheck), validateParams(idParamSchema), leadController.getLeadById)

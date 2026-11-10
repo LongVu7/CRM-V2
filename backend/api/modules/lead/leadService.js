@@ -721,7 +721,7 @@ const assignAccountToLead = async (leadId, accountId, user) => {
   });
 };
 
-const bulkAssignLeads = async (leadIds, accountId, user) => {
+const bulkAssignLeads = async (leadIds, accountId, user, permissionScope = {}) => {
   const aid = toInt(accountId);
   await verifyAssignmentScope(aid, user);
 
@@ -735,13 +735,22 @@ const bulkAssignLeads = async (leadIds, accountId, user) => {
   const now = new Date();
 
   return prisma.$transaction(async (tx) => {
+    const where = { id: { in: cleanIds } };
+    if (permissionScope && Object.keys(permissionScope).length > 0) {
+      where.AND = [permissionScope];
+    }
+
     const currentLeads = await tx.lead.findMany({
-      where: { id: { in: cleanIds } },
+      where,
       select: { id: true, assignedToId: true }
     });
 
     if (currentLeads.length === 0) {
-      throw handleError('No matching leads found', 404);
+      throw handleError('No matching leads found or access denied', 404);
+    }
+
+    if (currentLeads.length !== cleanIds.length) {
+      throw handleError('One or more leads are outside your authorized scope or not found', 403);
     }
 
     const changedLeads = currentLeads.filter(l => l.assignedToId !== aid);
@@ -776,6 +785,77 @@ const bulkAssignLeads = async (leadIds, accountId, user) => {
       totalRequested: cleanIds.length,
       updatedCount: changedLeads.length,
       targetAccountId: aid
+    };
+  });
+};
+
+const bulkDeleteLeads = async (leadIds, user, permissionScope = {}) => {
+  const cleanIds = [...new Set((leadIds || []).map(id => parseInt(id, 10)))].filter(id => !isNaN(id) && id > 0);
+  if (cleanIds.length === 0) {
+    throw handleError('No valid lead IDs provided', 400);
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const where = { id: { in: cleanIds } };
+    if (permissionScope && Object.keys(permissionScope).length > 0) {
+      where.AND = [permissionScope];
+    }
+
+    const leads = await tx.lead.findMany({
+      where,
+      select: {
+        id: true,
+        studentId: true,
+        student: {
+          select: {
+            id: true,
+            specializedRegisterId: true
+          }
+        }
+      }
+    });
+
+    if (leads.length === 0) {
+      throw handleError('No matching leads found or access denied', 404);
+    }
+
+    if (leads.length !== cleanIds.length) {
+      throw handleError('One or more leads are outside your authorized scope or not found', 403);
+    }
+
+    const studentIds = [];
+    const specializedRegisterIds = [];
+
+    for (const lead of leads) {
+      if (lead.student) {
+        studentIds.push(lead.student.id);
+        if (lead.student.specializedRegisterId) {
+          specializedRegisterIds.push(lead.student.specializedRegisterId);
+        }
+      }
+    }
+
+    // 1. Delete leads
+    await tx.lead.deleteMany({
+      where: { id: { in: cleanIds } }
+    });
+
+    // 2. Cascade delete students
+    if (studentIds.length > 0) {
+      await tx.student.deleteMany({
+        where: { id: { in: studentIds } }
+      });
+    }
+
+    // 3. Cascade delete specialized registers
+    if (specializedRegisterIds.length > 0) {
+      await tx.specializedRegister.deleteMany({
+        where: { id: { in: specializedRegisterIds } }
+      });
+    }
+
+    return {
+      deletedCount: cleanIds.length
     };
   });
 };
@@ -923,6 +1003,7 @@ module.exports = {
   deleteLead,
   assignAccountToLead,
   bulkAssignLeads,
+  bulkDeleteLeads,
   searchAccounts,
   exportLeads,
   getLeadOptions,

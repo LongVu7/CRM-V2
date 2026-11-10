@@ -33,7 +33,8 @@ export const deleteLead = async (id) => {
 }
 
 export const deleteLeads = async (ids = []) => {
-  return Promise.all(ids.map(id => api.delete(`${prefix}/${id}`)))
+  const response = await api.post(`${prefix}/bulk-delete`, { leadIds: ids })
+  return response.data
 }
 
 export const searchAccounts = async (query = '') => {

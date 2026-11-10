@@ -131,6 +131,10 @@ const bulkAssignSchema = z.object({
   accountId: z.number().int('accountId must be an integer').nullable()
 }).strict();
 
+const bulkDeleteSchema = z.object({
+  leadIds: z.array(z.number().int().positive()).min(1, 'At least one lead ID is required')
+}).strict();
+
 const sanitizeSheetMobile = (val) => {
   if (val === undefined || val === null || val === '') return undefined;
   let str = String(val).trim();
@@ -290,6 +294,7 @@ module.exports = {
   updateLeadSchema,
   assignAccountSchema,
   bulkAssignSchema,
+  bulkDeleteSchema,
   sheetLeadSyncSchema,
   sanitizeSheetMobile,
   poolQuerySchema,

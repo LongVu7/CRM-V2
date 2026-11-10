@@ -166,9 +166,24 @@ const assignAccountToLead = async (req, res) => {
 const bulkAssignLeads = async (req, res) => {
   try {
     const { leadIds, accountId } = req.body;
-    const result = await leadService.bulkAssignLeads(leadIds, accountId, req.user);
+    const result = await leadService.bulkAssignLeads(leadIds, accountId, req.user, req.permissionScope);
     res.status(200).json({
       message: accountId ? `Successfully assigned ${result.updatedCount} leads` : `Successfully unassigned ${result.updatedCount} leads`,
+      requestedByRole: req.user?.roleName,
+      requestedByAccountId: req.user?.accountId,
+      data: result
+    });
+  } catch (error) {
+    handleError(res, error);
+  }
+};
+
+const bulkDeleteLeads = async (req, res) => {
+  try {
+    const { leadIds } = req.body;
+    const result = await leadService.bulkDeleteLeads(leadIds, req.user, req.permissionScope);
+    res.status(200).json({
+      message: `Successfully deleted ${result.deletedCount} leads`,
       requestedByRole: req.user?.roleName,
       requestedByAccountId: req.user?.accountId,
       data: result
@@ -381,6 +396,7 @@ module.exports = {
   deleteLead,
   assignAccountToLead,
   bulkAssignLeads,
+  bulkDeleteLeads,
   searchAccounts,
   downloadTemplate,
   previewImportLead,

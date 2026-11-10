@@ -774,7 +774,7 @@ const openStatusHistory = (id) => {
 // Single delete confirmation
 const confirmDeleteAction = (lead) => {
   confirm.require({
-    message: `Are you sure you want to delete lead #${lead.id}? Student records will be preserved.`,
+    message: `Are you sure you want to delete lead #${lead.id}? Associated records will also be permanently deleted.`,
     header: 'Delete Lead',
     icon: 'pi pi-exclamation-triangle',
     rejectLabel: 'Cancel',
@@ -799,7 +799,7 @@ const confirmDeleteSelected = () => {
 
   const count = selectedLeads.value.length
   confirm.require({
-    message: `Are you sure you want to delete ${count} selected ${count === 1 ? 'lead' : 'leads'}? Student records will be preserved.`,
+    message: `Are you sure you want to delete ${count} selected ${count === 1 ? 'lead' : 'leads'}? Associated student and registration records will also be permanently deleted.`,
     header: 'Delete Selected Leads',
     icon: 'pi pi-exclamation-triangle',
     rejectLabel: 'Cancel',
