@@ -3,7 +3,7 @@
     <h3 class="text-lg font-semibold mb-4">2. Biểu đồ tình trạng xử lý data</h3>
 
     <div class="chart-wrapper">
-      <Chart type="bar" :data="chartData" :options="chartOptions" />
+      <Chart type="bar" :data="chartData" :options="chartOptions" class="h-full" />
     </div>
   </div>
 </template>
@@ -46,7 +46,7 @@ const chartOptions = {
   maintainAspectRatio: false,
   plugins: {
     legend: {
-      position: 'bottom',
+      position: 'right',
       labels: {
         boxWidth: 30,
         boxHeight: 15,
@@ -87,12 +87,12 @@ const chartOptions = {
 .chart-wrapper {
   position: relative;
   width: 100%;
-  height: 340px;
+  height: 320px;
 }
 
 @media (max-width: 768px) {
   .chart-wrapper {
-    min-height: 300px;
+    height: 260px;
   }
 }
 </style>

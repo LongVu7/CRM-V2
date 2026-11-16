@@ -1,6 +1,6 @@
 <template>
   <div class="chart-container bg-white dark:bg-gray-800 border rounded shadow-sm p-4 col-span-1 md:col-span-2">
-    <h3 class="text-lg font-semibold mb-4">2. Bảng tình trạng xử lý data</h3>
+    <h3 class="text-lg font-semibold mb-4">Bảng tình trạng xử lý data</h3>
     <DataTable :value="accountList" dataKey="accountId" responsiveLayout="scroll" :paginator="true" :rows="10" scrollable scrollHeight="400px">
       <Column field="accountName" header="Tài khoản" frozen class="font-semibold"></Column>
       <Column field="paymentCompletedNb">

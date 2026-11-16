@@ -100,6 +100,7 @@ const handleFilterChange = async (filters = {}) => {
   align-items: stretch;
 }
 
+
 /* Other charts */
 .charts-grid {
   display: grid;

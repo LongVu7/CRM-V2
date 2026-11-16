@@ -1,8 +1,8 @@
 <template>
-  <div class="chart-container bg-white dark:bg-gray-800 border rounded shadow-sm p-4 flex flex-col">
+  <div class="chart-container bg-white dark:bg-gray-800 border rounded shadow-sm p-4">
     <h3 class="text-lg font-semibold mb-4">Thống kê lead theo ngành</h3>
-    <div class="flex-1 flex justify-center items-center min-h-[100px]">
-      <Chart type="doughnut" :data="chartData" :options="chartOptions" class="w-[100%] max-w-[400px]" />
+    <div class="chart-wrapper">
+      <Chart type="doughnut" :data="chartData" :options="chartOptions" class="h-full" />
     </div>
   </div>
 </template>
@@ -37,6 +37,8 @@ const chartData = computed(() => {
 })
 
 const chartOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
   cutout: '40%',
   plugins: {
     legend: {
@@ -45,3 +47,16 @@ const chartOptions = {
   }
 }
 </script>
+
+<style scoped>
+.chart-wrapper {
+  position: relative;
+  height: 320px;
+}
+
+@media (max-width: 768px) {
+  .chart-wrapper {
+    height: 260px;
+  }
+}
+</style>
