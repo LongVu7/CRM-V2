@@ -17,10 +17,17 @@
       <!-- Header Actions: Quick link to Dedicated Lead Distribution View & Collaborator Stats -->
       <div class="header-actions flex align-items-center gap-2">
         <Button
+          label="AI Assistant"
+          icon="pi pi-sparkles"
+          outlined
+          class="ai-assistant-btn"
+          @click="chatbotDialogVisible = true"
+        />
+        <Button
           v-if="$can('read', 'lead')"
           label="Lead Stats"
           icon="pi pi-chart-bar"
-          severity="secondary"
+          severity="info"
           outlined
           class="stats-nav-btn"
           @click="router.push('/leads/stats')"
@@ -541,6 +548,11 @@
       :leads="leadsToAssign"
       @assigned="handleAssignSuccess"
     />
+
+    <!-- AI Chatbot Assistant Dialog -->
+    <ChatbotDialog
+      v-model:visible="chatbotDialogVisible"
+    />
   </div>
 </template>
 
@@ -564,6 +576,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import LeadShowDialog from '@/components/lead/LeadShowDialog.vue'
 import LeadStatusHistoryDialog from '@/components/lead/LeadStatusHistoryDialog.vue'
 import LeadAssignDialog from '@/components/lead/LeadAssignDialog.vue'
+import ChatbotDialog from '@/components/chatbot/ChatbotDialog.vue'
 
 import { useLead } from '@/composables/useLead'
 import { useTableQuery } from '@/composables/useTableQuery'
@@ -747,6 +760,7 @@ const showDialogLeadId = ref(null)
 const statusHistoryDialogVisible = ref(false)
 const selectedLeadIdForHistory = ref(null)
 const assignDialogVisible = ref(false)
+const chatbotDialogVisible = ref(false)
 const leadsToAssign = ref([])
 const exporting = ref(false)
 const syncing = ref(false)
@@ -947,6 +961,16 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+}
+
+.ai-assistant-btn {
+  color: #1e3a8a !important;
+  border-color: #1e3a8a !important;
+  font-weight: 600;
+}
+
+.ai-assistant-btn:hover {
+  background-color: #eff6ff !important;
 }
 
 .distribution-nav-btn {

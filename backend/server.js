@@ -18,6 +18,7 @@ const countryRoutes = require('./api/modules/country/countryRoutes');
 const reportRoutes = require('./api/modules/report/reportRoutes');
 const teamRoutes = require('./api/modules/team/teamRoutes');
 const voipRoutes = require('./api/modules/voip/voipRoutes');
+const chatbotRoutes = require('./api/modules/chatbot/chatbotRoutes');
 
 const { authenticate } = require('./middleware/auth');
 const { requireAdmin } = require('./middleware/authorize');
@@ -58,6 +59,7 @@ app.use('/api/campaigns', campaignRoutes);
 app.use('/api/campaign-templates', campaignTemplateRoutes);
 app.use('/api/error-reports', errorReportRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/chatbot', chatbotRoutes);
 app.use('/api', voipRoutes);
 
 app.listen(port);
