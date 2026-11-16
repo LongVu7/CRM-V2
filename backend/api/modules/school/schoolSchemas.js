@@ -2,14 +2,12 @@ const { z } = require('zod');
 
 const createSchoolSchema = z.object({
   name: z.string().min(1, 'name is required').max(255),
-  oldProvinceId: z.number().int().positive('oldProvinceId must be a positive integer'),
-  schoolType: z.string().max(50).optional()
+  oldProvinceId: z.number().int().positive('oldProvinceId must be a positive integer')
 }).strict();
 
 const updateSchoolSchema = z.object({
   name: z.string().min(1).max(255).optional(),
-  oldProvinceId: z.number().int().positive('oldProvinceId must be a positive integer').optional(),
-  schoolType: z.string().max(50).optional()
+  oldProvinceId: z.number().int().positive('oldProvinceId must be a positive integer').optional()
 }).strict().refine(
   (data) => Object.keys(data).length > 0,
   { message: 'Request body cannot be empty' }

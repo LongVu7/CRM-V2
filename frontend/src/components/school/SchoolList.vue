@@ -56,12 +56,6 @@
           <span v-else class="null-text">—</span>
         </template>
       </Column>
-      <Column field="schoolType" header="Type" sortable style="width: 130px">
-        <template #body="{ data }">
-          <Tag v-if="data.schoolType" :value="formatSchoolType(data.schoolType)" :severity="typeSeverity(data.schoolType)" />
-          <span v-else class="null-text">—</span>
-        </template>
-      </Column>
       <Column field="createdAt" header="Created" sortable style="width: 160px">
         <template #body="{ data }"><span class="date-text">{{ formatDateTime(data.createdAt) }}</span></template>
       </Column>
@@ -87,13 +81,11 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
-import Tag from 'primevue/tag'
 import Select from 'primevue/select'
 import ConfirmDialog from 'primevue/confirmdialog'
 import { useConfirm } from 'primevue/useconfirm'
 import { useSchoolOptions } from '@/composables/useSchoolOptions'
 import { formatDateTime } from '@/utils/dateUtils'
-import { formatSchoolType, typeSeverity } from '@/utils/schoolLabels'
 
 const props = defineProps({
   schools: { type: Array, default: () => [] },

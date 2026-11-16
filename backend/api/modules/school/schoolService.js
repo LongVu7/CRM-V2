@@ -113,7 +113,7 @@ const updateSchool = async (id, data) => {
 // ─── Delete a school
 const deleteSchool = async (id) => {
   // Prevent deletion if students are assigned
-  const studentCount = await prisma.student.count({ where: { schoolId: Number(id) } });
+  const studentCount = await prisma.studentEducation.count({ where: { schoolId: Number(id) } });
   if (studentCount > 0) {
     const err = new Error(`Cannot delete school: ${studentCount} student(s) are still assigned`);
     err.status = 400;

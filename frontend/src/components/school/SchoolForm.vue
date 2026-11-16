@@ -14,14 +14,6 @@
       </div>
     </div>
 
-    <div class="form-grid">
-      <div class="form-field">
-        <label for="schf-type">School Type</label>
-        <Select id="schf-type" v-model="form.schoolType" :options="schoolTypeOptions" optionLabel="label" optionValue="value"
-          placeholder="Select type" showClear fluid />
-      </div>
-    </div>
-
     <div class="form-actions" v-if="!hideSubmit">
       <Button type="submit" :label="buttonText" icon="pi pi-check" :loading="isSubmitting" />
     </div>
@@ -34,7 +26,6 @@ import InputText from 'primevue/inputtext'
 import Select from 'primevue/select'
 import Button from 'primevue/button'
 import { useSchoolOptions } from '@/composables/useSchoolOptions'
-import { schoolTypeOptions } from '@/constants/school'
 
 const props = defineProps({
   school: { type: Object, required: true },

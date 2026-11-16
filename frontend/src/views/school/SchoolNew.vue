@@ -33,8 +33,7 @@ const isSubmitting = ref(false)
 
 const schoolTemplate = ref({
   name: '',
-  cityId: null,
-  schoolType: null
+  oldProvinceId: null
 })
 
 const createNewSchool = async (payload) => {
