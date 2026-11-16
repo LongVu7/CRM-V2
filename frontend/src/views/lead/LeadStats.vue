@@ -80,7 +80,7 @@
             :options="subTeamOptions" 
             optionLabel="label" 
             optionValue="value" 
-            placeholder="All Subordinate Teams" 
+            placeholder="All Teams" 
             class="w-14rem"
             @change="loadStats"
           />
@@ -269,7 +269,7 @@ const presets = [
 
 const subTeamOptions = computed(() => {
   return [
-    { label: 'All Subordinate Teams', value: null },
+    { label: 'All Teams', value: null },
     ...subTeams.value.map(st => ({
       label: st.name,
       value: st.id

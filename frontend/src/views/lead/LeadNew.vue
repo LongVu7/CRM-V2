@@ -2,7 +2,7 @@
   <div class="lead-new-view">
     <div class="page-header">
       <h1>Create New Lead</h1>
-      <Button 
+      <Button  
         label="Back to List" 
         severity="secondary" 
         icon="pi pi-arrow-left" 

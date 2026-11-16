@@ -78,7 +78,7 @@
             <div class="toolbar-actions">
               <Button 
                 v-if="$can('import', 'lead')" 
-                label="Sync Google Sheets" 
+                label="Import Google Sheets" 
                 icon="pi pi-sync" 
                 text 
                 @click="onSyncSheets" 
