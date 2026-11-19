@@ -18,15 +18,9 @@
 
     <div v-else class="cards-container">
       <div class="section-card">
-        <!-- TeamMembers - Add member to team -->
-        <TeamMembers
-          :members="linkedMembers"
-          :allAccounts="availableAccounts"
-          :isAdding="isAddingMember"
-          @add-member="handleAddMember"
-          @update-member-role="handleUpdateMemberRole"
-          @remove-member="handleRemoveMember"
-        />
+        <div class="card-header">
+          <h2><i class="pi pi-info-circle"></i> Team Information</h2>
+        </div>
         <!-- TeamForm - specify team metadata and hierarchy -->
         <TeamForm
           :team="existingTeam"
@@ -35,6 +29,18 @@
           :isSubmitting="isSubmitting"
           buttonText="Save Changes"
           @submit="handleSubmit"
+        />
+      </div>
+
+      <div class="section-card">
+        <!-- TeamMembers - Add member to team -->
+        <TeamMembers
+          :members="linkedMembers"
+          :allAccounts="availableAccounts"
+          :isAdding="isAddingMember"
+          @add-member="handleAddMember"
+          @update-member-role="handleUpdateMemberRole"
+          @remove-member="handleRemoveMember"
         />
       </div>
     </div>
@@ -208,12 +214,38 @@ const handleRemoveMember = async (accountId) => {
   color: var(--p-text-color);
 }
 
+.cards-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
 .section-card {
   background: var(--p-content-background);
   border: 1px solid var(--p-surface-200);
   border-radius: 12px;
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.card-header {
+  border-bottom: 1px solid var(--p-surface-200);
+  padding-bottom: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.card-header h2 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--p-text-color);
+}
+
+.card-header h2 i {
+  color: var(--p-primary-color);
 }
 
 .loading-state, .empty-state {

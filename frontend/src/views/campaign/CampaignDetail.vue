@@ -50,7 +50,7 @@
     </div>
 
     <!-- Activity Dialog -->
-    <Dialog v-model:visible="showActivityDialog" :header="editingActivity ? 'Edit Activity' : 'Create Activity'" modal :style="{ width: '50vw' }">
+    <Dialog v-model:visible="showActivityDialog" :header="editingActivity ? 'Edit Activity' : 'Create Activity'" modal :style="{ width: '760px', maxWidth: '95vw' }">
       <ActivityForm 
           v-model="activityFormData" 
           :isEditMode="!!editingActivity"

@@ -1,54 +1,52 @@
 <template>
-    <div class="p-fluid">
-        <div class="formgrid grid">
-            <div class="field col">
-                <label for="actType">Type *</label>
-                <Select id="actType" v-model="activity.type" :options="activityTypeOptions" optionLabel="label" optionValue="value" :disabled="isEditMode" @change="onTypeChange" />
+    <div class="activity-form">
+        <div class="form-grid">
+            <div class="form-field">
+                <label for="actType">Type <span class="required">*</span></label>
+                <Select id="actType" v-model="activity.type" :options="activityTypeOptions" optionLabel="label" optionValue="value" :disabled="isEditMode" @change="onTypeChange" fluid />
             </div>
-            <div class="field col">
-                <label for="actName">Activity Name *</label>
-                <InputText id="actName" v-model="activity.name" />
+            <div class="form-field">
+                <label for="actName">Activity Name <span class="required">*</span></label>
+                <InputText id="actName" v-model="activity.name" placeholder="Enter activity name" fluid />
             </div>
         </div>
 
-        <div class="field" v-if="filteredTemplates.length > 0">
-            <label for="template">Use Template (Optional)</label>
-            <Select 
-              id="template" 
-              v-model="selectedTemplate" 
-              :options="filteredTemplates" 
-              optionLabel="name" 
-              placeholder="Select a template to auto-fill" 
-              showClear
-              @change="onTemplateChange" 
-            />
+        <div class="form-grid">
+            <div class="form-field" v-if="filteredTemplates.length > 0">
+                <label for="template">Use Template (Optional)</label>
+                <Select 
+                  id="template" 
+                  v-model="selectedTemplate" 
+                  :options="filteredTemplates" 
+                  optionLabel="name" 
+                  placeholder="Select a template to auto-fill" 
+                  showClear
+                  fluid
+                  @change="onTemplateChange" 
+                />
+            </div>
+            <div class="form-field">
+                <label for="scheduledAt">Scheduled At</label>
+                <DatePicker id="scheduledAt" v-model="activity.scheduledAt" showTime dateFormat="dd/mm/yy" showIcon placeholder="dd/mm/yyyy hh:mm" fluid />
+            </div>
         </div>
 
-        <div v-if="activity.type === 'EMAIL'" class="field">
+        <div v-if="activity.type === 'EMAIL'" class="form-field">
             <label for="subject">Email Subject</label>
-            <InputText id="subject" v-model="activity.subject" />
+            <InputText id="subject" v-model="activity.subject" placeholder="Enter email subject" fluid />
         </div>
 
-        <div class="field">
+        <div class="form-field">
             <label>Content</label>
-            <p class="text-500 mb-2 text-sm">Use variables: {{fullName}}, {{email}}, {{mobile}}</p>
-
-            <div v-if="activity.type === 'EMAIL'">
-                <Editor v-model="activity.content" editorStyle="height: 280px" />
-            </div>
-            <div v-else>
-                <Textarea v-model="activity.content" rows="6" :placeholder="activity.type === 'SMS' ? 'Enter SMS content...' : 'Enter ZNS content...'" />
-                <small class="text-500 block mt-1">Characters: {{ characterCount }}</small>
-            </div>
+            <Editor v-if="activity.type === 'EMAIL'" v-model="activity.content" editorStyle="height: 280px" />
+            <template v-else>
+                <Textarea v-model="activity.content" rows="6" :placeholder="activity.type === 'SMS' ? 'Enter SMS content...' : 'Enter ZNS content...'" fluid />
+                <small class="char-count">Characters: {{ characterCount }}</small>
+            </template>
         </div>
 
-        <div class="field">
-            <label for="scheduledAt">Scheduled At</label>
-            <DatePicker id="scheduledAt" v-model="activity.scheduledAt" showTime dateFormat="dd/mm/yy" showIcon />
-        </div>
-
-        <div class="flex justify-content-end gap-2 mt-3">
-            <Button label="Cancel" icon="pi pi-times" class="p-button-text" @click="emit('cancel')" />
+        <div class="form-actions">
+            <Button label="Cancel" icon="pi pi-times" severity="secondary" text @click="emit('cancel')" />
             <Button :label="isEditMode ? 'Update Activity' : 'Create Activity'" icon="pi pi-check" @click="emit('save')" :loading="loading" />
         </div>
     </div>
@@ -127,3 +125,51 @@ watch(() => activity.value.type, () => {
     filterTemplates()
 })
 </script>
+
+<style scoped>
+.activity-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.form-field label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--p-text-color);
+}
+
+.required {
+    color: var(--p-red-400);
+}
+
+.char-count {
+    color: var(--p-text-muted-color);
+    font-size: 0.75rem;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+@media (max-width: 640px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>

@@ -128,7 +128,7 @@ const onGlobalFilter = (e) => {
       </Column>
       <Column field="isActive" header="Active" sortable style="width: 100px">
         <template #body="{ data }">
-          <Tag :value="data.isActive ? 'Active' : 'Inactive'" :severity="data.isActive ? 'success' : 'warn'" />
+          <Tag :value="data.isActive ? 'Active' : 'Inactive'" :severity="data.isActive ? 'success' : 'danger'" />
         </template>
       </Column>
       <Column field="createdAt" header="Created" sortable style="width: 160px">

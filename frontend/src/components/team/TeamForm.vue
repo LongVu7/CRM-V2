@@ -8,6 +8,21 @@
       </div>
 
       <div class="form-field">
+        <label for="tf-leader">Team Leader</label>
+        <Select
+          id="tf-leader"
+          v-model="form.leaderId"
+          :options="leaderOptions"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Select a team leader"
+          showClear
+          filter
+          fluid
+        />
+      </div>
+
+      <div class="form-field full-width">
         <label for="tf-parent">Part of another team?</label>
 
         <div v-if="selectedParentName && !showParentSelect" class="parent-team-badge">
@@ -30,23 +45,10 @@
           optionValue="value"
           placeholder="No – this is an independent team"
           showClear
+          filter
           fluid
         />
         <small class="form-hint">Leaders of the parent team will also be able to oversee this team.</small>
-      </div>
-
-      <div class="form-field">
-        <label for="tf-leader">Team Leader</label>
-        <Select
-          id="tf-leader"
-          v-model="form.leaderId"
-          :options="leaderOptions"
-          optionLabel="label"
-          optionValue="value"
-          placeholder="Select a team leader"
-          showClear
-          fluid
-        />
       </div>
 
       <div class="form-field full-width">
@@ -199,10 +201,11 @@ const onSubmit = () => {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.45rem 0.75rem;
+  min-height: 2.5rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.75rem;
   background: var(--p-surface-50);
   border: 1px solid var(--p-surface-200);
-  border-radius: 8px;
+  border-radius: var(--p-inputtext-border-radius, 6px);
   font-size: 0.875rem;
   flex-wrap: wrap;
 }
@@ -216,6 +219,10 @@ const onSubmit = () => {
 
 .parent-team-info i {
   color: var(--p-primary-color);
+}
+
+.parent-team-info strong {
+  font-weight: 600;
 }
 
 .parent-team-actions {

@@ -93,7 +93,6 @@
       </Column>
     </DataTable>
   </div>
-  <div class="card-splitter"></div>
 </template>
 
 <script setup>

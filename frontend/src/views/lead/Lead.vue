@@ -36,7 +36,7 @@
           v-if="$can('distribute', 'lead')"
           label="Distribute Leads (Unassigned Pool)"
           icon="pi pi-share-alt"
-          severity="warn"
+          severity="info"
           class="distribution-nav-btn"
           @click="router.push('/leads/distribution')"
         />
