@@ -434,6 +434,11 @@ const addMember = async (teamId, data) => {
       error.statusCode = 404;
       throw error;
     }
+    if (['admin', 'administrator'].includes((role.name || '').trim().toLowerCase())) {
+      const error = new Error('Admin role cannot be assigned');
+      error.statusCode = 400;
+      throw error;
+    }
   }
 
   // User can be a member of single teams

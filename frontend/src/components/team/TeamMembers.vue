@@ -124,12 +124,16 @@ onMounted(async () => {
   }
 })
 
+const isAdminRole = (name) => ['admin', 'administrator'].includes((name || '').trim().toLowerCase())
+
 const roleOptions = computed(() => {
   const options = [{ label: 'None – account role only', value: null }]
   if (Array.isArray(roles.value)) {
-    roles.value.forEach(r => {
-      options.push({ label: r.name, value: r.id })
-    })
+    roles.value
+      .filter(r => !isAdminRole(r.name))
+      .forEach(r => {
+        options.push({ label: r.name, value: r.id })
+      })
   }
   return options
 })
